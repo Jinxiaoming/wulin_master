@@ -8,24 +8,15 @@ import './jquery_ui_setup.js'
 import 'rails-ujs'
 import 'materialize-css'
 
-$(function(){
-  if (navigator.userAgent.indexOf('AppleWebKit') === -1 && navigator.userAgent.indexOf('Gecko') === -1) {
-    displayNewNotification('The browser you are currently using is not supported, we recommend using Chrome.', true);
-  }
-});
-
-// jQuery plugins
-import '../jquery_plugins/date.format.js'
-import '../jquery_plugins/flatpickr.js'
-import '../jquery_plugins/jquery.form.js'
-import '../jquery_plugins/jquery.history.js'
-import '../jquery_plugins/jquery.inputmask.bundle.js'
-import '../jquery_plugins/jquery.namespace.js'
-import '../jquery_plugins/lazyjsonviewer.js'
-import '../jquery_plugins/materialnote.js'
-import '../jquery_plugins/select2.js'
-import '../jquery_plugins/sortable.js'
+// Import NPM managed dependencies
+import 'flatpickr'
+import 'select2'
+import 'jquery-form'
+import 'inputmask'
+import { Sortable } from 'sortablejs'
 window.Sortable = Sortable;
+
+$(function(){
 
 // SlickGrid dependencies
 import '../jquery_plugins/SlickGrid/lib/chosen.jquery.js'

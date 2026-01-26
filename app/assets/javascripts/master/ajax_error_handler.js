@@ -4,14 +4,8 @@
 
 /**
  * Handles errors from both legacy jQuery AJAX and modern Fetch API.
- * 
- * @param {Object} options - Error details
- * @param {number} options.status - HTTP status code
- * @param {string} options.responseText - Raw response text
- * @param {Object} [options.responseJSON] - Parsed JSON response
- * @param {Function} [options.getResponseHeader] - Function to get headers
  */
-window.handleAjaxError = function(xhr) {
+function handleAjaxError(xhr) {
   let msg = xhr.responseText;
   let wulin_oauth;
 
@@ -40,11 +34,7 @@ window.handleAjaxError = function(xhr) {
       }
       break;
   }
-};
-
-// Legacy jQuery global handler (for any remaining jQuery AJAX calls)
-if (typeof jQuery !== 'undefined') {
-  $(document).off('ajaxError').on('ajaxError', function(_, xhr) {
-    window.handleAjaxError(xhr);
-  });
 }
+
+// Export to window for global access
+window.handleAjaxError = handleAjaxError;

@@ -2,22 +2,16 @@
   "name": "wulin_master",
   "version": "3.0.0",
   "private": true,
-  "peerDependencies": {
-    "jquery": ">=1.12.4",
-    "jquery-ui": ">=1.14.1"
-  },
   "dependencies": {
-    "rails-ujs": "^5.2.8",
-    "materialize-css": "^1.0.0",
-    "material-icons": "^0.7.7",
-    "flatpickr": "^4.6.13",
-    "select2": "^4.1.0-rc.0",
-    "sortablejs": "^1.15.2",
-    "jquery-form": "^4.3.0",
-    "inputmask": "^5.0.9",
-    "6pac-slickgrid": "^5.10.0",
-    "jquery.event.drag": "^2.2.2",
     "@hotwired/stimulus": "^3.2.2",
-    "@hotwired/turbo-rails": "^8.0.12"
+    "@hotwired/turbo-rails": "^8.0.12",
+    "flatpickr": "^4.6.13",
+    "inputmask": "^5.0.9",
+    "material-icons": "^0.7.7",
+    "materialize-css": "^1.0.0",
+    "rails-ujs": "^5.2.8",
+    "slickgrid": "^5.18.2",
+    "sortablejs": "^1.15.2",
+    "tom-select": "^2.4.3"
   }
 }

@@ -43,9 +43,6 @@ WulinMaster.actions.Edit = Object.assign({}, WulinMaster.actions.BaseAction, {
             grid.onOpenEditModalEnd.notify({ modal });
           },
           onCloseStart: (modal) => {
-            if (typeof jQuery !== 'undefined' && jQuery.fn.materialnote) {
-              $(modal).find(".materialnote").materialnote('destroy');
-            }
             document.querySelectorAll(".note-popover").forEach(el => el.remove());
           }
         });
@@ -180,7 +177,7 @@ WulinMaster.actions.Edit = Object.assign({}, WulinMaster.actions.BaseAction, {
  * Fills form values from grid data.
  */
 window.fillValues = function (scope, grid, selectedIndexes) {
-  const container = scope instanceof jQuery ? scope[0] : scope;
+  const container = scope;
   if (!container) return;
 
   let data = {};
@@ -238,11 +235,6 @@ window.loadValue = function (scope, data) {
       } else {
         input.value = value || '';
         input.labels?.forEach(l => l.classList.toggle('active', !!value));
-        
-        // Handle materialnote (legacy)
-        if (input.classList.contains('materialnote') && typeof jQuery !== 'undefined' && jQuery.fn.materialnote) {
-          $(input).materialnote('code', value);
-        }
       }
     });
   }

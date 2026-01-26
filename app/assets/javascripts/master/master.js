@@ -1,7 +1,3 @@
-// Import jQuery setup FIRST to ensure global availability for legacy plugins
-import './jquery_setup.js'
-import './jquery_ui_setup.js'
-
 // External dependencies
 import * as Turbo from "@hotwired/turbo"
 window.Turbo = Turbo
@@ -11,9 +7,10 @@ import 'materialize-css'
 
 // Import NPM managed dependencies
 import 'flatpickr'
-import 'select2'
-import 'jquery-form'
-import 'inputmask'
+import TomSelect from 'tom-select'
+window.TomSelect = TomSelect
+import Inputmask from 'inputmask'
+window.Inputmask = Inputmask
 import { Sortable } from 'sortablejs'
 window.Sortable = Sortable;
 
@@ -50,27 +47,20 @@ application.register("grid-states", GridStatesController)
 application.register("toolbar", ToolbarController)
 
 // SlickGrid dependencies from NPM
-import 'jquery.event.drag'
-import '6pac-slickgrid/dist/browser/slick.core'
-import '6pac-slickgrid/dist/browser/slick.grid'
-import '6pac-slickgrid/dist/browser/controls/slick.columnpicker'
-import '6pac-slickgrid/dist/browser/controls/slick.pager'
-import '6pac-slickgrid/dist/browser/plugins/slick.autotooltips'
-import '6pac-slickgrid/dist/browser/plugins/slick.cellcopymanager'
-import '6pac-slickgrid/dist/browser/plugins/slick.cellrangedecorator'
-import '6pac-slickgrid/dist/browser/plugins/slick.cellrangeselector'
-import '6pac-slickgrid/dist/browser/plugins/slick.cellselectionmodel'
-import '6pac-slickgrid/dist/browser/plugins/slick.checkboxselectcolumn'
-import '6pac-slickgrid/dist/browser/plugins/slick.rowdetailview'
-import '6pac-slickgrid/dist/browser/plugins/slick.rowselectionmodel'
-
-// Local SlickGrid dependencies and extensions
-import '../jquery_plugins/SlickGrid/lib/chosen.jquery.js'
-import '../jquery_plugins/SlickGrid/lib/extension.js'
-
-// Overrides
-import '../overrides/chosen.jquery.js'
-import '../overrides/jquery_difference.js'
+import 'slickgrid/dist/browser/slick.grid.css'
+import 'slickgrid/dist/browser/slick-default-theme.css'
+import 'slickgrid/dist/browser/slick.core'
+import 'slickgrid/dist/browser/slick.grid'
+import 'slickgrid/dist/browser/controls/slick.columnpicker'
+import 'slickgrid/dist/browser/controls/slick.pager'
+import 'slickgrid/dist/browser/plugins/slick.autotooltips'
+import 'slickgrid/dist/browser/plugins/slick.cellcopymanager'
+import 'slickgrid/dist/browser/plugins/slick.cellrangedecorator'
+import 'slickgrid/dist/browser/plugins/slick.cellrangeselector'
+import 'slickgrid/dist/browser/plugins/slick.cellselectionmodel'
+import 'slickgrid/dist/browser/plugins/slick.checkboxselectcolumn'
+import 'slickgrid/dist/browser/plugins/slick.rowdetailview'
+import 'slickgrid/dist/browser/plugins/slick.rowselectionmodel'
 
 // Core master files (in dependency order)
 import './escape_html.js'

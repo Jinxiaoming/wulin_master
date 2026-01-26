@@ -159,9 +159,8 @@ class InputElementEditor extends BaseEditor {
         dataArray.forEach(item => dataObject[item] = null);
 
         input.classList.add("autocomplete");
-        // Materialize autocomplete still needs jQuery for now
-        if (typeof jQuery !== 'undefined' && jQuery.fn.autocomplete) {
-          $(input).autocomplete({
+        if (window.M && window.M.Autocomplete) {
+          window.M.Autocomplete.init(input, {
             data: dataObject,
             limit: 5,
             minLength: this.column.autocomplete_minlength || 1,
@@ -287,26 +286,24 @@ class SelectElementEditor extends BaseEditor {
     setTimeout(() => {
       const gridView = this.args.container.closest('.slick-viewport');
       
-      // Chosen events still need jQuery
-      if (typeof jQuery !== 'undefined') {
-        const $select = $(this.select);
-        $select.on('chosen:ready chosen:showing_dropdown', () => {
-          if (gridView) gridView.style.overflow = 'hidden';
+      // TomSelect (Replacing Chosen)
+      if (window.TomSelect) {
+        this.ts = new TomSelect(this.select, {
+          allowEmptyOption: !this.column.required,
+          onDropdownOpen: () => {
+            if (gridView) gridView.style.overflow = 'hidden';
+          },
+          onDropdownClose: () => {
+            if (gridView) gridView.style.overflow = 'auto';
+          }
         });
-        $select.on('chosen:hiding_dropdown', () => {
-          if (gridView) gridView.style.overflow = 'auto';
-        });
-        $select.trigger('chosen:open.chosen');
+        this.ts.focus();
       }
     });
   }
 
   setAllowSingleDeselect() {
-    if (typeof jQuery !== 'undefined' && jQuery.fn.chosen) {
-      $(this.select).chosen({
-        allow_single_deselect: !this.column.required
-      });
-    }
+    // Handled in openDropDown for TomSelect
   }
 }
 
@@ -375,10 +372,13 @@ class DistinctEditor extends SelectElementEditor {
         this.select.value = this.args.item[this.column.field] || "";
         this.setAllowSingleDeselect();
         
-        if (typeof jQuery !== 'undefined') {
-          $(this.select).on('change', () => {
-            if (this.select.value === this.addOptionText) {
-              window.Ui.createAddOptionModal(this.select);
+        if (window.TomSelect) {
+          this.ts = new TomSelect(this.select, {
+            allowEmptyOption: !this.column.required,
+            onChange: (value) => {
+              if (value === this.addOptionText) {
+                window.Ui.createAddOptionModal(this.select);
+              }
             }
           });
         }
@@ -450,7 +450,7 @@ class RelationEditor extends SelectElementEditor {
         this.select.appendChild(opt);
       }
     });
-    this.setAllowSingleDeselect();
+    this.openDropDown();
   }
 
   appendOptions(target, value) {
@@ -693,8 +693,8 @@ class DateTimeEditor extends DateTimeBaseEditor {
   constructor(args) {
     super(args);
     this.initElements();
-    // Inputmask still needs jQuery
-    if (typeof jQuery !== 'undefined' && jQuery.fn.inputmask) $(this.input).inputmask('wulinDateTime');
+    // Inputmask
+    if (window.Inputmask) new Inputmask('wulinDateTime').mask(this.input);
 
     if (!this.column.hide_calendar) {
       const config = window.fpMergeConfigs(this.fpConfigGrid, window.fpConfigFormDateTime);
@@ -708,7 +708,7 @@ class DateEditor extends DateTimeBaseEditor {
     super(args);
     this.initElements();
     const isUS = typeof window.USDateFormat === 'function' && window.USDateFormat();
-    if (typeof jQuery !== 'undefined' && jQuery.fn.inputmask) $(this.input).inputmask(isUS ? 'wulinUSDate' : 'wulinDate');
+    if (window.Inputmask) new Inputmask(isUS ? 'wulinUSDate' : 'wulinDate').mask(this.input);
 
     if (!this.column.hide_calendar) {
       const config = window.fpMergeConfigs(this.fpConfigGrid, isUS ? window.fpConfigFormUSDate : window.fpConfigFormDate);
@@ -721,7 +721,7 @@ class TimeEditor extends DateTimeBaseEditor {
   constructor(args) {
     super(args);
     this.initElements();
-    if (typeof jQuery !== 'undefined' && jQuery.fn.inputmask) $(this.input).inputmask('wulinTime');
+    if (window.Inputmask) new Inputmask('wulinTime').mask(this.input);
 
     if (!this.column.hide_calendar) {
       const config = window.fpMergeConfigs(this.fpConfigGrid, window.fpConfigFormTime);

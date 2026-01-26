@@ -172,7 +172,7 @@ const clearErrors = () => {
  * Global entry point to initialize a WulinForm.
  */
 window.initializeWulinForm = (formElement, onProxySuccess, onProxyFailure) => {
-  currentForm = formElement instanceof jQuery ? formElement[0] : formElement;
+  currentForm = formElement;
   
   if (onProxySuccess) successCallback = onProxySuccess;
   if (onProxyFailure) failureCallback = onProxyFailure;

@@ -1,30 +1,43 @@
-// Loader system using Stimulus bridge
-$.fn.append_loader = function() {
-  const element = this[0];
-  if (element) {
-    if (!element.dataset.controller || !element.dataset.controller.includes("loader")) {
-      element.dataset.controller = (element.dataset.controller ? element.dataset.controller + " " : "") + "loader";
-    }
+/**
+ * Loader utilities for WulinMaster.
+ * Modernized to use Stimulus bridge and remove jQuery.
+ */
+(function() {
+  /**
+   * Appends a loading spinner to an element.
+   */
+  function appendLoader(element) {
+    if (!element) return;
+    
     const controller = window.Stimulus.getControllerForElementAndIdentifier(element, "loader");
     if (controller) {
       controller.append();
     } else {
-      // Fallback if controller not yet connected
-      if (!$(element).find(".ajax-loading").length) {
-        $(element).append('<div class="ajax-loading"></div>');
+      if (!element.querySelector(".ajax-loading")) {
+        const loader = document.createElement('div');
+        loader.className = 'ajax-loading';
+        element.appendChild(loader);
       }
     }
   }
-};
 
-$.fn.remove_loader = function() {
-  const element = this[0];
-  if (element) {
+  /**
+   * Removes a loading spinner from an element.
+   */
+  function removeLoader(element) {
+    if (!element) return;
+
     const controller = window.Stimulus.getControllerForElementAndIdentifier(element, "loader");
     if (controller) {
       controller.remove();
     } else {
-      $(element).find(".ajax-loading").remove();
+      element.querySelector(".ajax-loading")?.remove();
     }
   }
-};
+
+  // Export to window for global access
+  window.appendLoader = appendLoader;
+  window.removeLoader = removeLoader;
+
+  // Legacy jQuery support removed
+})();

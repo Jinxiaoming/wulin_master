@@ -23,7 +23,7 @@ export default class ConnectionManager {
     if (this.requests.has(url)) return;
 
     // UI: Show progress bar in grid header
-    const container = grid.container instanceof jQuery ? grid.container[0] : grid.container;
+    const container = grid.container;
     const header = container.querySelector('.slick-header');
     
     // Cleanup old progress bars

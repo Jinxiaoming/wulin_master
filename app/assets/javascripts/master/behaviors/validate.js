@@ -1,6 +1,6 @@
 // when editor validate return false
 
-WulinMaster.behaviors.Validate = $.extend({}, WulinMaster.behaviors.BaseBehavior, {
+WulinMaster.behaviors.Validate = Object.assign({}, WulinMaster.behaviors.BaseBehavior, {
   event: "onValidationError",
 
   subscribe: function(target) {

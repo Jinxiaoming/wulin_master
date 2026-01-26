@@ -1,28 +1,21 @@
-// Panel system using Stimulus bridge
-window.adjustPanelButtons = function(panelId){
-  const element = document.getElementById(panelId);
-  if (element) {
-    if (!element.dataset.controller || !element.dataset.controller.includes("panel")) {
-      element.dataset.controller = (element.dataset.controller ? element.dataset.controller + " " : "") + "panel";
-      // We also need to mark the buttons target if it exists
-      const btns = element.querySelector(".panel_btns");
-      if (btns) {
-        btns.dataset.panelTarget = "buttons";
-      }
-    }
-    const controller = window.Stimulus.getControllerForElementAndIdentifier(element, "panel");
-    if (controller) {
-      controller.adjust();
-    } else {
-      // Fallback to jQuery
-      var $panel = $("#" + panelId);
-      var $btns = $panel.find(".panel_btns");
-      if($btns.length === 0) return false;
+/**
+ * Panel utilities for WulinMaster.
+ * Modernized to use Stimulus bridge and remove jQuery.
+ */
+window.adjustPanelButtons = function(panelId) {
+  const panel = document.getElementById(panelId);
+  if (!panel) return;
 
-      var panelHeight = $panel.height();
-      var btnsHeight = $btns.height();
-      var margin = (panelHeight - btnsHeight) / 2 * 0.8;
-      $btns.css("margin-top", margin + "px");
+  const controller = window.Stimulus.getControllerForElementAndIdentifier(panel, "panel");
+  if (controller) {
+    controller.adjust();
+  } else {
+    const btns = panel.querySelector(".panel_btns");
+    if (btns) {
+      const panelHeight = panel.offsetHeight;
+      const btnsHeight = btns.offsetHeight;
+      const margin = (panelHeight - btnsHeight) / 2 * 0.8;
+      btns.style.marginTop = `${margin}px`;
     }
   }
 };

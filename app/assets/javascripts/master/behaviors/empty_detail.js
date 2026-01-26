@@ -1,6 +1,6 @@
 // master-detail grid relation, detail grid clear data when master grid has no selection
 
-WulinMaster.behaviors.EmptyDetail = $.extend({}, WulinMaster.behaviors.BaseBehavior, {
+WulinMaster.behaviors.EmptyDetail = Object.assign({}, WulinMaster.behaviors.BaseBehavior, {
   event: "onDataLoaded",
 
   subscribe: function(target) {

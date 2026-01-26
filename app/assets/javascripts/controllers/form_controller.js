@@ -29,76 +29,41 @@ export default class extends Controller {
     const dependSelect = document.getElementById(dependSelectId)
     const targetSelect = document.getElementById(targetSelectId)
 
-    if (!dependSelect || !targetSelect || typeof jQuery === 'undefined') return
+    if (!dependSelect || !targetSelect) return
 
-    $(dependSelect).on("select2:select select2:clear", () => {
-      const data = $(dependSelect).select2('data')[0]
-      const masterId = data ? data.id : ''
-      const url = `${fetchUrl}&master_model=${masterModel}&master_id=${masterId}`
+    const data = dependSelect.tomselect?.options[dependSelect.value];
+    const masterId = data ? data.id : ''
+    const url = `${fetchUrl}&master_model=${masterModel}&master_id=${masterId}`
 
-      fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
-        .then(r => r.json())
-        .then(items => {
-          const $target = $(targetSelect)
-          const previousValue = $target.val()
-          $target.empty()
-          
-          // Add blank option if not required
-          if (targetSelect.dataset.required !== 'true') {
-            $target.append(new Option('', '', false, false))
-          }
+    fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+      .then(r => r.json())
+      .then(items => {
+        const ts = targetSelect.tomselect;
+        if (!ts) return;
 
-          items.forEach(item => {
-            const option = new Option(item.name || item, item.id || item, false, false)
-            $target.append(option)
-          })
+        const previousValue = ts.getValue();
+        ts.clearOptions();
+        
+        if (targetSelect.dataset.required !== 'true') {
+          ts.addOption({ id: '', name: '' });
+        }
 
-          if (items.some(item => String(item.id || item) === String(previousValue))) {
-            $target.val(previousValue).trigger('change')
-          } else {
-            $target.val(null).trigger('change')
-          }
-          
-          // Update label state
-          const label = targetSelect.closest('.field')?.querySelector('label')
-          if (label) {
-            label.classList.toggle('active', !!$target.val())
-          }
-        })
-    })
-  }
+        items.forEach(item => {
+          ts.addOption({ id: item.id || item, name: item.name || item });
+        });
 
-  /**
-   * Initializes MaterialNote (RichTextEditor).
-   */
-  initRichTextEditor(event) {
-    const element = event.currentTarget
-    if (typeof jQuery === 'undefined' || !jQuery.fn.materialnote) return
-
-    window.materialNoteIndex = (window.materialNoteIndex || 0) + 1
-    
-    $(element).materialnote({
-      height: 300,
-      toolbar: [
-        ['style', ['bold', 'italic', 'underline', 'clear']],
-        ['font', ['strikethrough']],
-        ['fontsize', ['fontsize']],
-        ['color', ['color']],
-        ['table', ['table']],
-        ['para', ['ul', 'ol', 'paragraph']],
-        ['insert', ['link', 'picture', 'video']],
-        ['view', ['fullscreen', 'codeview']]
-      ],
-      callbacks: {
-        onFocus: () => element.parentElement.classList.add('focused'),
-        onBlur: () => element.parentElement.classList.remove('focused')
-      },
-      defaultColors: {
-        text: 'red',
-        background: 'transparent'
-      },
-      posIndex: window.materialNoteIndex
-    })
+        if (items.some(item => String(item.id || item) === String(previousValue))) {
+          ts.setValue(previousValue);
+        } else {
+          ts.setValue(null);
+        }
+        
+        // Update label state
+        const label = targetSelect.closest('.field')?.querySelector('label')
+        if (label) {
+          label.classList.toggle('active', !!ts.getValue())
+        }
+      })
   }
 
   /**
@@ -118,7 +83,7 @@ export default class extends Controller {
         hide_autocomplete: hideAutocomplete === 'true',
         autocomplete_minlength: parseInt(autocompleteMinlength, 10) || 1
       },
-      container: $(container) // Legacy bridge
+      container: container
     }
 
     if (typeof window.TextEditorForForm === 'function') {

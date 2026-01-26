@@ -13,19 +13,6 @@ document.addEventListener("DOMContentLoaded", () => {
   const nav = document.getElementById("navigation");
   const content = document.getElementById("content");
 
-  if (nav && typeof jQuery !== 'undefined' && jQuery.fn.resizable) {
-    $(nav).resizable({ 
-      handles: 'e, w', 
-      minWidth: 199, 
-      maxWidth: 500 
-    }).on("resize", () => {
-      if (content) {
-        content.style.left = `${nav.offsetWidth + 1}px`;
-      }
-      nav.style.height = 'auto';
-    });
-  }
-
   // --- Turbo Integration ---
   
   // Listen for Turbo before-render to perform cleanup

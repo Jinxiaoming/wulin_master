@@ -47,15 +47,15 @@ file "package.json", <<~JSON
     },
     "dependencies": {
       "rails-ujs": "^5.2.8",
-      "jquery": "^1.12.4",
-      "jquery-ui": "^1.14.1",
       "materialize-css": "^1.0.0",
       "material-icons": "^0.7.7",
       "flatpickr": "^4.6.13",
-      "select2": "^4.1.0-rc.0",
-      "sortablejs": "^1.15.2",
-      "jquery-form": "^4.3.0",
-      "inputmask": "^5.0.9"
+      "sortablejs": "^1.15.6",
+      "slickgrid": "^5.18.2",
+      "inputmask": "^5.0.9",
+      "tom-select": "^2.4.3",
+      "@hotwired/stimulus": "^3.2.2",
+      "@hotwired/turbo-rails": "^8.0.21"
     }
   }
 JSON

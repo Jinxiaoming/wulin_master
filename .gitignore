@@ -14,3 +14,8 @@ spec/wulin_app/.ruby-version
 spec/wulin_app/config/database.yml
 spec/wulin_app/.byebug_history
 spec/wulin_app/public/assets/*
+
+# Yarn
+.yarn/
+node_modules/
+yarn.lock

@@ -109,14 +109,9 @@ const Ui = {
       if (el.type === 'checkbox' || el.type === 'radio') el.checked = false;
       if (el.tagName === 'SELECT') {
         el.selectedIndex = -1;
-        if (typeof jQuery !== 'undefined' && (jQuery.fn.select2 || jQuery.fn.chosen)) {
-          $(el).trigger('change').trigger('chosen:updated');
-        }
+        if (el.tomselect) el.tomselect.clear();
       }
     });
-
-    // Cleanup for chosen (legacy)
-    form.querySelectorAll('ul.chzn-choices li.search-choice').forEach(el => el.remove());
   },
 
   /**
@@ -137,10 +132,6 @@ const Ui = {
             grid.onOpenCreateModalEnd.notify();
           },
           onCloseStart: (modal) => {
-            // Cleanup for materialnote (legacy)
-            if (typeof jQuery !== 'undefined' && jQuery.fn.materialnote) {
-              $(modal).find(".materialnote").materialnote("destroy");
-            }
             document.querySelectorAll(".note-popover").forEach(el => el.remove());
             grid.options['needDuplicateSelectedRows'] = false;
           },
@@ -162,35 +153,27 @@ const Ui = {
       select.querySelectorAll("option[value='']").forEach(opt => opt.remove());
     });
 
-    // Init Select2 (Still requires jQuery for now as Select2 is a jQuery plugin)
-    if (typeof jQuery !== 'undefined' && jQuery.fn.select2) {
-      $(container).find('select.select2').each((_, e) => {
-        const $el = $(e);
-        $el.select2({
-          placeholder: "",
-          allowClear: true,
-          width: "100%"
-        }).on("select2:unselecting", function() {
-          $(this).data("unselecting", true);
-        }).on("select2:opening", function(e) {
-          if ($(this).data("unselecting")) {
-            const field = $(this).closest(".field");
-            field.find("label").removeClass("active");
-            $(this).removeData("unselecting");
-            e.preventDefault();
+    // Init TomSelect (Replacing Select2)
+    container.querySelectorAll('select.select2').forEach(select => {
+      if (select.tomselect) select.tomselect.destroy();
+      
+      const ts = new TomSelect(select, {
+        placeholder: "",
+        allowEmptyOption: true,
+        width: "100%",
+        onDropdownOpen: () => {
+          select.closest(".field")?.querySelector("label")?.classList.add("active");
+        },
+        onDropdownClose: () => {
+          if (!select.value) {
+            select.closest(".field")?.querySelector("label")?.classList.remove("active");
           }
-        }).on("select2:open", (evt) => {
-          $(evt.target).closest(".field").find("label").addClass("active");
-        }).on("select2:close", (evt) => {
-          if (!$(evt.target).val()) {
-            $(evt.target).closest(".field").find("label").removeClass("active");
-          }
-          const targetFlagId = evt.target.dataset.targetId;
+          const targetFlagId = select.dataset.targetId;
           const targetFlag = container.querySelector(`input.target_flag:checkbox[data-target-id="${targetFlagId}"]`);
           if (targetFlag) targetFlag.checked = true;
-        });
+        }
       });
-    }
+    });
 
     // Make labels active for inputs with values
     container.querySelectorAll('.field').forEach(field => {
@@ -202,18 +185,18 @@ const Ui = {
 
     // Setup Datepickers (Flatpickr)
     container.querySelectorAll('input[data-datetime]').forEach(el => {
-      if (typeof jQuery !== 'undefined' && jQuery.fn.inputmask) $(el).inputmask('wulinDateTime');
+      if (window.Inputmask) new Inputmask('wulinDateTime').mask(el);
       flatpickr(el, Object.assign({}, window.fpConfigFormDateTime || {}, window.onCalendarOpenClose));
     });
 
     container.querySelectorAll('input[data-date]').forEach(el => {
       const isUS = typeof window.USDateFormat === 'function' && window.USDateFormat();
-      if (typeof jQuery !== 'undefined' && jQuery.fn.inputmask) $(el).inputmask(isUS ? 'wulinUSDate' : 'wulinDate');
+      if (window.Inputmask) new Inputmask(isUS ? 'wulinUSDate' : 'wulinDate').mask(el);
       flatpickr(el, Object.assign({}, isUS ? window.fpConfigFormUSDate : window.fpConfigFormDate || {}, window.onCalendarOpenClose));
     });
 
     container.querySelectorAll('input[data-time]').forEach(el => {
-      if (typeof jQuery !== 'undefined' && jQuery.fn.inputmask) $(el).inputmask('wulinTime');
+      if (window.Inputmask) new Inputmask('wulinTime').mask(el);
       flatpickr(el, Object.assign({}, window.fpConfigFormTime || {}, { appendTo: el.parentElement }));
     });
   },
@@ -340,11 +323,13 @@ const Ui = {
     });
 
     if (!fillValuesWillRun && selectedIndexes !== undefined) {
-      if (typeof window.fillValues === 'function') window.fillValues($(container), grid, selectedIndexes);
+      if (typeof window.fillValues === 'function') window.fillValues(container, grid, selectedIndexes);
     }
 
     const firstInput = container.querySelector('input:not([type="hidden"]), select, textarea');
-    if (firstInput) firstInput.focus();
+    if (firstInput) {
+      setTimeout(() => firstInput.focus(), 100);
+    }
 
     if (grid.master?.filter_column && grid.master?.filter_value) {
       const hidden = document.createElement('input');
@@ -370,11 +355,9 @@ const Ui = {
 
   setupChosen: function (grid, target, scope, selectedIndexes) {
     if (selectedIndexes !== undefined && typeof window.fillValues === 'function') {
-      window.fillValues($(scope), grid, selectedIndexes);
+      window.fillValues(container, grid, selectedIndexes);
     }
     target.dispatchEvent(new Event('change'));
-    // Trigger legacy chosen update if present
-    if (typeof jQuery !== 'undefined' && jQuery.fn.chosen) $(target).trigger('chosen:updated');
     this.unCheckEmpty(target);
     this.addNewOption(target);
   },
@@ -581,13 +564,9 @@ const Ui = {
 
   createJsonViewModal: function (jsonData) {
     const modal = this.headerModal('JSON View');
-    if (typeof jQuery !== 'undefined' && jQuery.fn.jsonViewer) {
-      $(modal).find('.modal-content').jsonViewer(jsonData);
-    } else {
-      const pre = document.createElement('pre');
-      pre.textContent = JSON.stringify(jsonData, null, 2);
-      modal.querySelector('.modal-content').appendChild(pre);
-    }
+    const pre = document.createElement('pre');
+    pre.textContent = JSON.stringify(jsonData, null, 2);
+    modal.querySelector('.modal-content').appendChild(pre);
   },
 
   createAddOptionModal: function (inputBox) {
@@ -620,7 +599,6 @@ const Ui = {
         const flag = document.querySelector(`input.target_flag:checkbox[data-target-id="${targetId}"]`);
         if (flag) flag.checked = true;
 
-        if (typeof jQuery !== 'undefined' && jQuery.fn.chosen) $(inputBox).trigger('chosen:updated');
         M.Modal.getInstance(modal)?.close();
       } else {
         alert('New option can not be blank!');

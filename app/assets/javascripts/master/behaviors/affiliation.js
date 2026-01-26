@@ -1,6 +1,6 @@
 // master-detail grid relation, detail grid render the records which belongs to the selected row of master grid
 
-WulinMaster.behaviors.Affiliation = $.extend({}, WulinMaster.behaviors.BaseBehavior, {
+WulinMaster.behaviors.Affiliation = Object.assign({}, WulinMaster.behaviors.BaseBehavior, {
   event: "onSelectedRowsChanged",
 
   subscribe: function(target) {
@@ -40,7 +40,7 @@ WulinMaster.behaviors.Affiliation = $.extend({}, WulinMaster.behaviors.BaseBehav
       // filter the detail grid
       detailGrid.resetActiveCell();
 
-      var existingFilters = $.map(detailGrid.loader.getFilters(), function(e) { return e[0]; });
+      const existingFilters = detailGrid.loader.getFilters().map(e => e[0]);
       var candidateFilters = detailGrid.candidateFilters;
       var dif = $.difference(existingFilters, candidateFilters);
       // if current filters cover  candidate filters

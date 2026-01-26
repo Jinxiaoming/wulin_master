@@ -1,6 +1,6 @@
 // push selected IDs to operatedIds when selected row changed
 
-WulinMaster.behaviors.GetOperateIds = $.extend({}, WulinMaster.behaviors.BaseBehavior, {
+WulinMaster.behaviors.GetOperateIds = Object.assign({}, WulinMaster.behaviors.BaseBehavior, {
   event: "onSelectedRowsChanged",
 
   subscribe: function(target) {

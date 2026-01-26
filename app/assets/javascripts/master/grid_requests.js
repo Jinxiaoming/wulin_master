@@ -119,8 +119,8 @@ var Requests = {
     const currentRow = this.getCurrentRows(grid, [item.id])[1];
 
     const gridParams = {};
-    $.each(grid.loader.getParams(), function(_, value) {
-      gridParams[value[0]] = value[1];
+    grid.loader.getParams().forEach(([key, value]) => {
+      gridParams[key] = value;
     });
 
     const url = `${grid.path}/${item.id}.json${grid.query}`;
@@ -186,7 +186,7 @@ var Requests = {
 
           this.updateToolbarState(grid, ids);
 
-          const recordSize = $.isArray(ids) ? ids.length : ids.split(',').length;
+          const recordSize = Array.isArray(ids) ? ids.length : String(ids).split(',').length;
           const modelName = grid.model ? grid.model.toLowerCase() : 'record';
           const message = recordSize > 1 ? `${recordSize} ${modelName}s deleted` : `1 ${modelName} deleted`;
           displayNewNotification(message, 'success');
@@ -213,18 +213,20 @@ var Requests = {
    * Updates the toolbar state after a deletion.
    */
   updateToolbarState: function(grid, ids) {
-    const toolbarSelect = grid.container.find('.toolbar-select');
-    const buttonMode = toolbarSelect.data('mode');
+    const toolbarSelect = grid.container.querySelector('.toolbar-select');
+    if (!toolbarSelect) return;
+
+    const buttonMode = toolbarSelect.dataset.mode;
     
     if(buttonMode === 'split') {
-      toolbarSelect.attr('hidden', true);
+      toolbarSelect.hidden = true;
     } else {
-      toolbarSelect
-        .find('.specific')
-        .addClass('toolbar_icon_disabled')
-        .removeClass('specific')
-        .addClass('static-waves-effect')
-        .removeClass('waves-effect');
+      toolbarSelect.querySelectorAll('.specific').forEach(el => {
+        el.classList.add('toolbar_icon_disabled');
+        el.classList.remove('specific');
+        el.classList.add('static-waves-effect');
+        el.classList.remove('waves-effect');
+      });
     }
   },
 

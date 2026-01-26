@@ -1,4 +1,4 @@
-WulinMaster.behaviors.ColorColumns = $.extend({}, WulinMaster.behaviors.BaseBehavior, {
+WulinMaster.behaviors.ColorColumns = Object.assign({}, WulinMaster.behaviors.BaseBehavior, {
   events: ['onAddExtraCellClasses'],
 
   subscribe: function (target) {

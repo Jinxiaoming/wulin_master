@@ -139,8 +139,7 @@
                     id: "#{model_name}_#{column_name}_rich_text_editor", |
                     "data-field" => field, |
                     "data-target-id" => "#{column_name}_target_flag", |
-                    class: 'materialnote', |
-                    data: { action: "form#initRichTextEditor" } |
+                    class: 'materialize-textarea' |
                   }= column.value(object)
               - elsif column.sql_type.to_s.downcase == 'text'
                 .input-field.input-outlined

@@ -1,43 +1,46 @@
-// Events for inclusion and exclusion grids:
-// - 1. remove row highlight for opponent grid when select a row in current grid
-// - 2. enable/disable 'Add' or 'Remove' button when select a row in the grid
-
-WulinMaster.behaviors.IncludeExcludeTrivia = $.extend({}, WulinMaster.behaviors.BaseBehavior, {
+/**
+ * Events for inclusion and exclusion grids:
+ * - 1. remove row highlight for opponent grid when select a row in current grid
+ * - 2. enable/disable 'Add' or 'Remove' button when select a row in the grid
+ */
+WulinMaster.behaviors.IncludeExcludeTrivia = Object.assign({}, WulinMaster.behaviors.BaseBehavior, {
   event: "onSelectedRowsChanged",
 
   subscribe: function(target) {
     this.grid = target;
-    var self = this;
-    target[this.event].subscribe(function(){ self.handler(); });
+    const self = this;
+    target[this.event].subscribe(() => self.handler());
   },
 
   unsubscribe: function() {
-
   },
 
   handler: function() {
-    var panel_buttons = $("#panel_inclusion_exclusion .panel_btns");
-    var addButton = panel_buttons.find("#add_btn");
-    var removeButton = panel_buttons.find("#remove_btn");
-    var inclusionGridName = panel_buttons.data('inclusion-grid');
-    var exclusionGridName = panel_buttons.data('exclusion-grid');
-    var inclusionGrid = gridManager.getGrid(inclusionGridName);
-    var exclusionGrid = gridManager.getGrid(exclusionGridName);
+    const panelButtons = document.querySelector(".panel_btns[data-inclusion-grid]");
+    if (!panelButtons) return;
 
-    if(this.grid.name == inclusionGridName && this.grid.getSelectedRows().length > 0) {
-      addButton.addClass('disabled');
-      removeButton.removeClass('disabled');
-      exclusionGrid.resetActiveCell();   // remove highlight
-    } else if(this.grid.name == exclusionGridName && this.grid.getSelectedRows().length > 0) {
-      removeButton.addClass('disabled');
-      addButton.removeClass('disabled');
-      inclusionGrid.resetActiveCell();   // remove highlight
-    } else if(inclusionGrid.getSelectedRows().length === 0 && exclusionGrid.getSelectedRows().length === 0) {
-      addButton.addClass('disabled');
-      removeButton.addClass('disabled');
+    const addButton = panelButtons.querySelector("#add_btn");
+    const removeButton = panelButtons.querySelector("#remove_btn");
+    const inclusionGridName = panelButtons.dataset.inclusionGrid;
+    const exclusionGridName = panelButtons.dataset.exclusionGrid;
+    const inclusionGrid = window.gridManager.getGrid(inclusionGridName);
+    const exclusionGrid = window.gridManager.getGrid(exclusionGridName);
+
+    if (!inclusionGrid || !exclusionGrid) return;
+
+    if (this.grid.name === inclusionGridName && this.grid.getSelectedRows().length > 0) {
+      addButton?.classList.add('disabled');
+      removeButton?.classList.remove('disabled');
+      exclusionGrid.resetActiveCell(); // remove highlight
+    } else if (this.grid.name === exclusionGridName && this.grid.getSelectedRows().length > 0) {
+      removeButton?.classList.add('disabled');
+      addButton?.classList.remove('disabled');
+      inclusionGrid.resetActiveCell(); // remove highlight
+    } else if (inclusionGrid.getSelectedRows().length === 0 && exclusionGrid.getSelectedRows().length === 0) {
+      addButton?.classList.add('disabled');
+      removeButton?.classList.add('disabled');
     }
   }
-
 });
 
 WulinMaster.BehaviorManager.register("include_exclude_trivia", WulinMaster.behaviors.IncludeExcludeTrivia);

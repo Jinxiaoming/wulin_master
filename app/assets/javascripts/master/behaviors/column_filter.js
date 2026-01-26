@@ -1,6 +1,6 @@
 // two columns, has_many relationship
 
-WulinMaster.behaviors.ColumnFilter = $.extend({}, WulinMaster.behaviors.BaseBehavior, {
+WulinMaster.behaviors.ColumnFilter = Object.assign({}, WulinMaster.behaviors.BaseBehavior, {
   event: "onDataLoaded",
 
   subscribe: function(target) {

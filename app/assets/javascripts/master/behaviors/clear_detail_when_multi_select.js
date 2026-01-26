@@ -1,6 +1,6 @@
 // master-detail grid relation, detail grid clear data when master grid has multi selection
 
-WulinMaster.behaviors.ClearDetailWhenMultiSelect = $.extend({}, WulinMaster.behaviors.BaseBehavior, {
+WulinMaster.behaviors.ClearDetailWhenMultiSelect = Object.assign({}, WulinMaster.behaviors.BaseBehavior, {
   event: "onSelectedRowsChanged",
 
   subscribe: function(target) {

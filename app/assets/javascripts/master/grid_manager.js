@@ -184,7 +184,7 @@ export default class GridManager {
 
     const pagerElement = document.querySelector(`${this.gridElementPrefix}${name}${this.pagerElementSuffix}`);
     if (pagerElement) {
-      grid.pager = new Slick.Controls.Pager(loader, grid, $(pagerElement)); // Pager still might need jQuery
+      grid.pager = new Slick.Controls.Pager(loader, grid, pagerElement);
     }
 
     // Sorting

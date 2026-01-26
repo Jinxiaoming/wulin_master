@@ -1,6 +1,6 @@
 // Disable sorting after grid rendered for some cases (eg: eagerLoading is false)
 
-WulinMaster.behaviors.disableSortingInitially = $.extend({}, WulinMaster.behaviors.BaseBehavior, {
+WulinMaster.behaviors.disableSortingInitially = Object.assign({}, WulinMaster.behaviors.BaseBehavior, {
   event: "onRendered",
 
   subscribe: function(target) {

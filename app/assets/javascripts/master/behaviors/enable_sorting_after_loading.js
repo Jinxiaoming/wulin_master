@@ -1,6 +1,6 @@
 // Enable columns sorting after data loaded
 
-WulinMaster.behaviors.enableSortingAfterLoading = $.extend({}, WulinMaster.behaviors.BaseBehavior, {
+WulinMaster.behaviors.enableSortingAfterLoading = Object.assign({}, WulinMaster.behaviors.BaseBehavior, {
   event: "onDataLoaded",
 
   subscribe: function(target) {

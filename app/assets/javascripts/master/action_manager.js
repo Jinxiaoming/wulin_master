@@ -128,7 +128,7 @@ const BaseAction = {
    * Adjusts the grid height when displayed inside a modal.
    */
   setGridHeightInModal: function(modalDom) {
-    const modal = modalDom instanceof jQuery ? modalDom[0] : modalDom;
+    const modal = modalDom;
     if (!modal) return;
 
     const headerHeight = modal.querySelector('.modal-header')?.offsetHeight || 0;

@@ -1,6 +1,6 @@
 // highlight the selected rows
 
-WulinMaster.behaviors.Highlight = $.extend({}, WulinMaster.behaviors.BaseBehavior, {
+WulinMaster.behaviors.Highlight = Object.assign({}, WulinMaster.behaviors.BaseBehavior, {
   event: "onDataLoaded",
 
   subscribe: function(target) {

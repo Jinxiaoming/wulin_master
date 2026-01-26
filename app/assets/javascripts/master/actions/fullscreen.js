@@ -8,7 +8,7 @@ WulinMaster.actions.fullscreen = Object.assign({}, WulinMaster.actions.BaseActio
   handler: function (e) {
     const btn = e.currentTarget;
     const grid = this.getGrid();
-    const container = grid.container instanceof jQuery ? grid.container[0] : grid.container;
+    const container = grid.container;
 
     this.toggleSiblings(container);
     this.transform(btn, container);

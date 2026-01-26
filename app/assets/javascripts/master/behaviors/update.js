@@ -1,6 +1,6 @@
 // cell update events
 
-WulinMaster.behaviors.Update = $.extend({}, WulinMaster.behaviors.BaseBehavior, {
+WulinMaster.behaviors.Update = Object.assign({}, WulinMaster.behaviors.BaseBehavior, {
   event: "onCellChange",
 
   subscribe: function(target) {

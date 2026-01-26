@@ -4,7 +4,7 @@
 // until the current filter is the last candidate filter, we can refresh the grid
 // code example see Affilication behavior
 
-WulinMaster.behaviors.AddCandidateFilter = $.extend({}, WulinMaster.behaviors.BaseBehavior, {
+WulinMaster.behaviors.AddCandidateFilter = Object.assign({}, WulinMaster.behaviors.BaseBehavior, {
   event: "onRendered",
 
   subscribe: function(target) {

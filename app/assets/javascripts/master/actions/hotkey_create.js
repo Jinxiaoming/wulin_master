@@ -1,28 +1,29 @@
-// Hotkey 'C' to create record
-
-WulinMaster.actions.HotkeyCreate = $.extend({}, WulinMaster.actions.BaseAction, {
+/**
+ * Hotkey 'C' to create record
+ */
+WulinMaster.actions.HotkeyCreate = Object.assign({}, WulinMaster.actions.BaseAction, {
   name: 'hotkey_create',
-  event: 'keypress.create',
+  event: 'keypress',
   triggerElementIdentifier: '.grid_container',
 
-  handler: function(e, args) {
-    if(Ui.addOrDeleteLocked()) return true;
+  handler: function(e) {
+    if (window.Ui.addOrDeleteLocked()) return true;
 
-    var grid = Ui.findCurrentGrid();
-    if (grid && (e.which == 99 || e.which == 67)) {  // keypress 'C' for show dialog
-      Ui.openDialog(grid, 'wulin_master_new_form', grid.options);
+    const grid = window.Ui.findCurrentGrid();
+    if (grid && (e.key === 'c' || e.key === 'C')) {
+      window.Ui.openDialog(grid, 'wulin_master_new_form', grid.options);
 
-      // register 'Create' button click event, need to remove to dialog action later
-      $('body').off("click", '#' + grid.name + '_submit').on('click', '#' + grid.name + '_submit', function() {
-        Requests.createByAjax(grid, false);
-        return false;
-      });
+      const submitHandler = (evt) => {
+        const btn = evt.target;
+        if (btn.id !== `${grid.name}_submit` && btn.id !== `${grid.name}_submit_continue`) return;
 
-      // register 'Create and Continue' button click event, need to remove to dialog action later
-      $('body').off("click", '#' + grid.name + '_submit_continue').on('click', '#' + grid.name + '_submit_continue', function() {
-        Requests.createByAjax(grid, true);
-        return false;
-      });
+        evt.preventDefault();
+        const continueOn = btn.id === `${grid.name}_submit_continue`;
+        window.Requests.createByAjax(grid, continueOn);
+      };
+
+      document.body.removeEventListener('click', submitHandler);
+      document.body.addEventListener('click', submitHandler);
     }
   }
 });

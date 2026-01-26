@@ -1,21 +1,22 @@
-// Hotkey 'D' to delete record
-
-WulinMaster.actions.HotkeyDelete = $.extend({}, WulinMaster.actions.BaseAction, {
+/**
+ * Hotkey 'D' to delete record
+ */
+WulinMaster.actions.HotkeyDelete = Object.assign({}, WulinMaster.actions.BaseAction, {
   name: 'hotkey_delete',
-  event: 'keypress.delete',
+  event: 'keypress',
   triggerElementIdentifier: '.grid_container',
 
-  handler: function(e, args) {
-    if(Ui.addOrDeleteLocked()) return true;
+  handler: function(e) {
+    if (window.Ui.addOrDeleteLocked()) return true;
 
-    var grid = Ui.findCurrentGrid();
-    if (grid && (e.which == 100 || e.which == 68)) {  // keypress 'D' for delete
-      var ids = grid.getSelectedIds();
+    const grid = window.Ui.findCurrentGrid();
+    if (grid && (e.key === 'd' || e.key === 'D')) {
+      const ids = grid.getSelectedIds();
       if (ids.length > 0) {
         this.deleteGridRecords(grid, ids);
         return false;
       } else {
-        displayErrorMessage("Please select a record.");
+        window.displayErrorMessage("Please select a record.", "Selection Error");
       }
     }
   }

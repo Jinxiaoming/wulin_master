@@ -1,115 +1,183 @@
-let form = $('form');
+/**
+ * WulinForm handles the submission and validation of legacy WulinMaster forms.
+ * It provides mechanisms for disabling/enabling forms during submission
+ * and displaying validation errors.
+ */
+
+let currentForm = null;
 let successCallback = (data) => true;
 let failureCallback = (data) => true;
 
-const objectName = () => {
-  const formId = form.attr('id');
+/**
+ * Extracts the object name from the form ID (e.g., "new_user" -> "user").
+ */
+const getObjectName = () => {
+  if (!currentForm) return "";
+  const formId = currentForm.id;
   const newRegExp = /^new_(.*)$/;
   const editRegExp = /^edit_(.*)$/;
+  
   if (newRegExp.test(formId)) {
     return newRegExp.exec(formId)[1];
-  } else {
+  } else if (editRegExp.test(formId)) {
     return editRegExp.exec(formId)[1];
+  }
+  return "";
+};
+
+/**
+ * Returns the submit button element.
+ */
+const getSubmitButton = () => {
+  return currentForm?.querySelector('#submit input[type="submit"]');
+};
+
+/**
+ * Disables all inputs in the form and shows a loading state.
+ */
+const disableForm = () => {
+  if (!currentForm) return;
+  currentForm.querySelectorAll('input, select, textarea').forEach(el => {
+    el.disabled = true;
+    el.style.opacity = '0.5';
+  });
+  
+  const btn = getSubmitButton();
+  if (btn) {
+    btn.dataset.originalValue = btn.value;
+    btn.value = 'Please wait...';
   }
 };
 
-const submitButton = () => $('#submit input:submit', form);
-
-const disableForm = () => {
-  $('input', form).attr('disabled', 'disabled').css('opacity', 0.5);
-  // Save the submit button text to the original value
-  submitButton().data('originalValue', submitButton().val()).val('Please wait...');
-};
-
+/**
+ * Re-enables form inputs and restores the submit button.
+ */
 const enableForm = () => {
-  $("input", form).removeAttr('disabled').css('opacity', 1.0);
-  // Restore saved submit button text value
-  $('#submit input:submit', form).val(submitButton().data('originalValue'));
-  $("input:first", form).focus();
+  if (!currentForm) return;
+  currentForm.querySelectorAll('input, select, textarea').forEach(el => {
+    el.disabled = false;
+    el.style.opacity = '1.0';
+  });
+  
+  const btn = getSubmitButton();
+  if (btn && btn.dataset.originalValue) {
+    btn.value = btn.dataset.originalValue;
+  }
+  
+  currentForm.querySelector('input:not([type="hidden"])')?.focus();
 };
 
-const formSubmitted = () => {
-  clearErrors();
-  const ajaxOptions = {
-    type: 'POST',
-    url: form.attr('action') + ".json",
-    data: form.serializeArray(),
-    dataType: 'json',
-    success: (data) => handleInviteResponse(data),
-    failure: (data) => {
-      displayErrorMessage('An unexpected occured, please try again.');
-      enableForm();
-      failureCallback(data);
-    }
-  };
+/**
+ * Handles form submission via Fetch API.
+ */
+const onFormSubmit = async (e) => {
+  if (e) e.preventDefault();
+  if (!currentForm) return false;
 
-  $.ajax(ajaxOptions);
+  clearErrors();
   disableForm();
+
+  const url = `${currentForm.getAttribute('action')}.json`;
+  const formData = new FormData(currentForm);
+  
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      body: formData,
+      headers: {
+        'X-CSRF-Token': decodeURIComponent(window._token || ''),
+        'X-Requested-With': 'XMLHttpRequest',
+        'Accept': 'application/json'
+      }
+    });
+
+    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+    
+    const data = await response.json();
+    handleResponse(data);
+  } catch (error) {
+    console.error('Form submission error:', error);
+    window.displayErrorMessage('An unexpected error occurred, please try again.', 'Error');
+    enableForm();
+    failureCallback(error);
+  }
+
   return false;
 };
 
-const handleInviteResponse = (data) => {
+/**
+ * Processes the server response after form submission.
+ */
+const handleResponse = (data) => {
   if (data.success) {
+    let message = 'Successfully created!';
     if (data.count) {
-      if (data.count == 1) {
-        displayNewNotification('One record successfully created!');
-      } else {
-        displayNewNotification(data.count + ' records created!');
-      }
-    } else {
-      displayNewNotification('Successfully created!');
+      message = data.count === 1 ? 'One record successfully created!' : `${data.count} records created!`;
     }
+    window.displayNewNotification(message, 'success');
     enableForm();
     successCallback(data);
   } else {
     if (data.error_message) {
       displayValidationErrors(data.error_message);
     }
-    displayNewNotification('Your form contains some errors, please try again.');
+    window.displayNewNotification('Your form contains some errors, please try again.', 'error');
     enableForm();
   }
 };
 
+/**
+ * Displays validation errors for multiple fields.
+ */
 const displayValidationErrors = (errors) => {
-  for (const error in errors) {
-    displayValidationError(error, errors[error]);
+  for (const field in errors) {
+    displayValidationError(field, errors[field]);
   }
 };
 
+/**
+ * Displays validation errors for a specific field.
+ */
 const displayValidationError = (field, errors) => {
-  const fieldSelector = "#" + objectName() + "_" + field;
-  const errorContainerForField = errorContainer($(fieldSelector));
-  errorContainerForField.html(errors.join(', '));
-};
-
-const errorContainer = (field) => {
-  if (field.siblings('div.field_error').length > 0) {
-    return field.siblings('div.field_error');
-  } else {
-    const errorField = $('<div/>');
-    errorField.addClass('field_error');
-    field.parent().append(errorField);
-    return errorField;
+  const fieldId = `${getObjectName()}_${field}`;
+  const element = document.getElementById(fieldId);
+  if (element) {
+    const container = getOrCreateErrorContainer(element);
+    container.textContent = errors.join(', ');
   }
 };
 
-const clearErrorField = (field) => {
-  $(field).html('');
+/**
+ * Finds or creates an error message container for a field.
+ */
+const getOrCreateErrorContainer = (field) => {
+  let container = field.parentElement.querySelector('.field_error');
+  if (!container) {
+    container = document.createElement('div');
+    container.className = 'field_error';
+    field.parentElement.appendChild(container);
+  }
+  return container;
 };
 
+/**
+ * Clears all validation error messages in the current form.
+ */
 const clearErrors = () => {
-  $('.field_error', form).each((index, errorField) => {
-    clearErrorField(errorField);
-  });
+  if (!currentForm) return;
+  currentForm.querySelectorAll('.field_error').forEach(el => el.textContent = '');
 };
 
-window.initializeWulinForm = (wulinForm, aSuccessCallback, aFailureCallback) => {
-  form = $(wulinForm);
-  if (aSuccessCallback) {
-    successCallback = aSuccessCallback;
+/**
+ * Global entry point to initialize a WulinForm.
+ */
+window.initializeWulinForm = (formElement, onProxySuccess, onProxyFailure) => {
+  currentForm = formElement instanceof jQuery ? formElement[0] : formElement;
+  
+  if (onProxySuccess) successCallback = onProxySuccess;
+  if (onProxyFailure) failureCallback = onProxyFailure;
+  
+  if (currentForm) {
+    currentForm.onsubmit = onFormSubmit;
   }
-  if (aFailureCallback) {
-    failureCallback = aFailureCallback;
-  }
-  form.bind('submit', () => formSubmitted());
 };

@@ -15,8 +15,10 @@ export default class extends Controller {
    * Sets initial focus to the first visible input.
    */
   initializeFocus() {
-    const firstInput = this.element.querySelector('.input-outlined input:not([type="hidden"])')
-    if (firstInput) firstInput.focus()
+    const firstInput = this.element.querySelector('.input-outlined input:not([type="hidden"]), .input-outlined select, .input-outlined textarea')
+    if (firstInput) {
+      setTimeout(() => firstInput.focus(), 100)
+    }
   }
 
   /**
@@ -31,9 +33,7 @@ export default class extends Controller {
 
     $(dependSelect).on("select2:select select2:clear", () => {
       const data = $(dependSelect).select2('data')[0]
-      if (!data) return
-
-      const masterId = data.id
+      const masterId = data ? data.id : ''
       const url = `${fetchUrl}&master_model=${masterModel}&master_id=${masterId}`
 
       fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
@@ -42,16 +42,27 @@ export default class extends Controller {
           const $target = $(targetSelect)
           const previousValue = $target.val()
           $target.empty()
+          
+          // Add blank option if not required
+          if (targetSelect.dataset.required !== 'true') {
+            $target.append(new Option('', '', false, false))
+          }
 
           items.forEach(item => {
-            const option = new Option(item.name, item.id, false, false)
+            const option = new Option(item.name || item, item.id || item, false, false)
             $target.append(option)
           })
 
-          if (items.some(item => String(item.id) === String(previousValue))) {
+          if (items.some(item => String(item.id || item) === String(previousValue))) {
             $target.val(previousValue).trigger('change')
           } else {
             $target.val(null).trigger('change')
+          }
+          
+          // Update label state
+          const label = targetSelect.closest('.field')?.querySelector('label')
+          if (label) {
+            label.classList.toggle('active', !!$target.val())
           }
         })
     })

@@ -1,306 +1,250 @@
 // Toolbar Item: 'Edit'
-
-WulinMaster.actions.Edit = $.extend({}, WulinMaster.actions.BaseAction, {
+WulinMaster.actions.Edit = Object.assign({}, WulinMaster.actions.BaseAction, {
   name: 'edit',
 
   handler: function () {
-    var grid = this.getGrid();
-
-    // Batch update action
-    batchUpdateByAjax(grid);
+    const grid = this.getGrid();
+    this.batchUpdateByAjax(grid);
     return false;
   },
-});
 
-var batchUpdateByAjax = function (grid, version) {
-  var ids, name, scope, width, height, selectedIndexes, url;
-  selectedIndexes = grid.getSelectedRows();
-  name = grid.name;
-  scope = $('#' + name + '_form');
+  /**
+   * Opens the edit form and initializes batch update logic.
+   */
+  batchUpdateByAjax: function (grid, version) {
+    const selectedIndexes = grid.getSelectedRows();
+    const name = grid.name;
 
-  if (!selectedIndexes || selectedIndexes.length === 0) {
-    displayErrorMessage('Please select a record');
-  } else {
-    ids = grid.getSelectedIds();
-    if (ids.length > 350) {
-      displayErrorMessage(
-        'You select too many rows, please select less than 350 rows.'
-      );
+    if (!selectedIndexes || selectedIndexes.length === 0) {
+      window.displayErrorMessage('Please select a record', 'Selection Error');
       return;
     }
-    url = grid.path + '/wulin_master_edit_form' + grid.query;
-    if (version) url = url + '&update_version=' + version;
-    $.get(url, function (data) {
-      Ui.createModelModal(grid, data, {
-        dismissible: false,
-        onOpenEnd: function (modal, trigger) {
-          Ui.setupForm(grid, true, selectedIndexes);
-          Ui.setupComponents(grid);
-          showFlagCheckBox(modal, ids);
-          checkTheBox(name);
-          submitForm(grid, ids, selectedIndexes);
-          grid.onOpenEditModalEnd.notify({modal});
-        },
-        onCloseStart: function (modal, trigger) {
-          $(".materialnote", modal).materialnote('destroy');
-          $(".note-popover").remove();
-        }
-      });
-    });
-  }
-};
 
-window.fillValues = function (scope, grid, selectedIndexes) {
-  var data,
-    inputBox,
-    dataArr,
-    comm = {};
-  if (selectedIndexes.length == 1) {
-    data = grid.loader.data[selectedIndexes[0]];
-
-    const cols = grid.options["needDuplicateColumns"]
-    if (cols && cols.length > 0) {
-      data = Object.fromEntries(Object.entries(data).filter(([key]) => cols.indexOf(key) > -1 ))
+    const ids = grid.getSelectedIds();
+    if (ids.length > 350) {
+      window.displayErrorMessage('You selected too many rows, please select less than 350 rows.', 'Selection Error');
+      return;
     }
-    loadValue(scope, data);
-  } else {
-    dataArr = $.map(selectedIndexes, function (n, i) {
-      return grid.loader.data[n];
-    });
-    $.each(dataArr, function (index, n) {
-      for (var k in n) {
-        if (index === 0) {
-          if (k != 'id' && k != 'slick_index') comm[k] = n[k];
-        } else {
-          if ($.type(n[k]) != 'object' && comm[k] !== n[k]) {
-            delete comm[k];
-          } else if (
-            $.type(n[k]) === 'object' &&
-            $.type(comm[k]) === 'object' &&
-            !compareArray(comm[k]['id'], n[k]['id'])
-          ) {
-            delete comm[k];
+
+    let url = `${grid.path}/wulin_master_edit_form${grid.query}`;
+    if (version) url += `&update_version=${version}`;
+
+    fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+      .then(response => response.text())
+      .then(html => {
+        window.Ui.createModelModal(grid, html, {
+          dismissible: false,
+          onOpenEnd: (modal) => {
+            window.Ui.setupForm(grid, true, selectedIndexes);
+            window.Ui.setupComponents(grid);
+            this.showFlagCheckBox(modal, ids);
+            this.checkTheBox(name, modal);
+            this.submitForm(grid, ids, selectedIndexes, modal);
+            grid.onOpenEditModalEnd.notify({ modal });
+          },
+          onCloseStart: (modal) => {
+            if (typeof jQuery !== 'undefined' && jQuery.fn.materialnote) {
+              $(modal).find(".materialnote").materialnote('destroy');
+            }
+            document.querySelectorAll(".note-popover").forEach(el => el.remove());
           }
+        });
+      });
+  },
+
+  /**
+   * Shows/hides update flags based on selection count.
+   */
+  showFlagCheckBox: function (scope, ids) {
+    const container = scope.querySelectorAll('.target_flag_container');
+    container.forEach(el => el.style.display = ids.length > 1 ? 'block' : 'none');
+  },
+
+  /**
+   * Binds events to automatically check the "update" flag when a field is modified.
+   */
+  checkTheBox: function (name, modal) {
+    const form = modal.querySelector('form');
+    if (!form) return;
+
+    const markAsChanged = (e) => {
+      const targetId = e.target.dataset.targetId;
+      if (!targetId) return;
+      const flag = form.querySelector(`input.target_flag:checkbox[data-target-id="${targetId}"]`);
+      if (flag) flag.checked = true;
+    };
+
+    form.addEventListener('keyup', (e) => {
+      if (e.target.matches('input:not([type="checkbox"]), textarea')) markAsChanged(e);
+    });
+
+    form.addEventListener('change', (e) => {
+      if (e.target.matches('input:not(.target_flag), select, textarea')) markAsChanged(e);
+    });
+
+    // Handle flag unchecking
+    form.addEventListener('change', (e) => {
+      if (e.target.classList.contains('target_flag') && !e.target.checked) {
+        const targetId = e.target.dataset.targetId;
+        const inputs = form.querySelectorAll(`[data-target-id="${targetId}"]:not(.target_flag)`);
+        inputs.forEach(input => {
+          if (['button', 'submit', 'reset', 'hidden'].includes(input.type)) return;
+          input.value = '';
+          if (input.type === 'checkbox' || input.type === 'radio') input.checked = false;
+          input.dispatchEvent(new Event('change'));
+        });
+      }
+    });
+  },
+
+  /**
+   * Handles form submission for batch updates.
+   */
+  submitForm: function (grid, ids, selectedIndexes, modal) {
+    const form = modal.querySelector('form');
+    const submitBtn = modal.querySelector('.update_btn');
+    if (!submitBtn || !form) return;
+
+    submitBtn.onclick = (e) => {
+      e.preventDefault();
+      
+      const gridParams = Object.fromEntries(grid.loader.getParams());
+      const formData = new FormData(form);
+      
+      // Filter out fields that aren't flagged for update (in batch mode)
+      if (ids.length > 1) {
+        const flaggedIds = Array.from(form.querySelectorAll('input.target_flag:checked')).map(f => f.dataset.targetId);
+        // This is tricky with FormData, we might need to manually construct the body
+        // or remove unflagged fields from FormData if possible.
+        // For now, let's assume the backend handles it or we use a plain object.
+      }
+
+      submitBtn.disabled = true;
+      const url = `${grid.path}/${ids.join(',')}.json${grid.query}`;
+      
+      // Construct body with gridParams
+      const bodyObj = { 
+        _method: 'PUT', 
+        gridParams: gridParams,
+        authenticity_token: decodeURIComponent(window._token || '')
+      };
+      
+      // Add form data to bodyObj
+      for (let [key, value] of formData.entries()) {
+        // Only include if flagged or if it's a single record update
+        const input = form.querySelector(`[name="${key}"]`);
+        const targetId = input?.dataset.targetId;
+        if (ids.length === 1 || !targetId || form.querySelector(`input.target_flag:checkbox[data-target-id="${targetId}"]`)?.checked) {
+          bodyObj[key] = value;
         }
       }
-    });
-    loadValue(scope, comm);
-  }
 
-  // Avoid label overlapping input to MD textfield
-  $('#' + grid.name + '_form .field')
-    .filter(function () {
-      return !!$(this).find('input').val();
-    })
-    .find('label')
-    .addClass('active');
-};
-
-var loadValue = function (scope, data) {
-  for (var i in data) {
-    if ($('input:text[data-field="' + i + '"]', scope).size() > 0) {
-      $('input[data-field="' + i + '"]', scope).val(data[i]);
-      if (data[i]) {
-        $('input[data-field="' + i + '"]', scope)
-          .siblings('label')
-          .addClass('active');
-      }
-    } else if ($('textarea[data-field="' + i + '"]', scope).size() > 0) {
-      $('textarea[data-field="' + i + '"]', scope).val(data[i]);
-      if (data[i]) {
-        $('textarea[data-field="' + i + '"]', scope)
-          .siblings('label')
-          .addClass('active');
-        if ($('.materialnote[data-field="' + i + '"]', scope).size() > 0) {
-          $('.materialnote[data-field="' + i + '"]', scope).materialnote('code', data[i]);
-        }
-      }
-  } else if ($('input:checkbox[data-field="' + i + '"]', scope).size() > 0) {
-      if (data[i]) {
-        $('input:checkbox[data-field="' + i + '"]', scope)
-          .prop('checked', true);
-      } else {
-        $('input:checkbox[data-field="' + i + '"]', scope)
-          .removeAttr('checked');
-      }
-    } else if ($('select[data-field="' + i + '"]', scope).size() > 0) {
-      inputBox = $('select[data-field="' + i + '"]', scope);
-      inputBox.siblings('label').addClass('active');
-      if ($.type(data[i]) === 'string') {
-        inputBox.val(data[i]);
-      } else if ($.type(data[i]) === 'object') {
-        if ($.type(data[i]['id']) === 'array') {
-          inputBox.val(data[i]['id']);
-        } else {
-          inputBox.val(data[i]['id']);
-        }
-      } else if ($.type(data[i]) === 'array') {
-        inputBox.val(data[i]);
-      }
-      inputBox.trigger('change');
-      // inputBox.trigger('chosen:updated');
-    }
-  }
-};
-
-var showFlagCheckBox = function (scope, ids) {
-  if (ids.length > 1) {
-    $('.target_flag_container', scope).show();
-  } else {
-    $('.target_flag_container', scope).hide();
-  }
-};
-
-var checkTheBox = function (name, scope) {
-  var scope = scope || `#${name}_form`;
-  var $scope = $(scope);
-  // Check flag when change value of the box
-  $scope
-    .off('keyup', 'input:text, input:password, textarea')
-    .on('keyup', 'input:text, input:password, textarea', function (e) {
-      $(
-        'input.target_flag:checkbox[data-target-id="' +
-          $(e.currentTarget).attr('data-target-id') +
-          '"]'
-      ).prop('checked', true);
-    });
-
-  $('.materialnote', $scope).off('materialnote.change').on('materialnote.change', function(e) {
-    $(e.currentTarget).val($(e.currentTarget).materialnote('code'));
-    $('input.target_flag:checkbox[data-target-id="' +
-        $(e.currentTarget).attr('data-target-id') +
-        '"]'
-    ).prop('checked', true);
-    return true;
-  });
-
-  $scope
-    .off('change', 'input:checkbox, input:file')
-    .on('change', 'input:checkbox:not(.target_flag), input:file', function (e) {
-      $(
-        'input.target_flag:checkbox[data-target-id="' +
-          $(e.currentTarget).attr('data-target-id') +
-          '"]'
-      ).prop('checked', true);
-    });
-
-  // Date picker \ datetime picker \ time picker
-  $scope
-    .off('change', 'input.flatpickr-input')
-    .on('change', 'input.flatpickr-input', function (e) {
-      $(
-        'input.target_flag:checkbox[data-target-id="' +
-          $(e.currentTarget).attr('data-target-id') +
-          '"]'
-      ).prop('checked', true);
-    });
-
-  // Empty input box when flag change to unchecked
-  $scope
-    .off('change', 'input.target_flag:visible')
-    .on('change', 'input.target_flag:visible', function () {
-      if ($(this).prop('checked') == false) {
-        $('input[data-target-id="' + $(this).attr('data-target-id') + '"]')
-          .not(':button, :submit, :reset, :hidden, .target_flag')
-          .val('')
-          .removeAttr('checked')
-          .removeAttr('selected');
-        $('select[data-target-id="' + $(this).attr('data-target-id') + '"]')
-          .val('')
-          .trigger('change');
-          // .trigger('chosen:updated')
-      }
-    });
-};
-
-var grepValues = function (formData, jqForm, options) {
-  var flagDom;
-  for (var i = formData.length - 1; i >= 0; i--) {
-    flagDom = $(
-      'input.target_flag:checkbox[data-target-id="' +
-        $('[name="' + formData[i].name + '"]')
-          .not('[type="hidden"]')
-          .attr('data-target-id') +
-        '"]',
-      jqForm
-    );
-    if (flagDom.is(':visible') && flagDom.not(':checked').size() > 0) {
-      formData.splice(i, 1);
-    }
-  }
-};
-
-var submitForm = function (grid, ids, selectedIndexes) {
-  var name = grid.name,
-    $scope = $('#' + name + '_form'),
-    $form = $('form', $scope);
-  var submitButton = $form.find("input[type='submit']");
-  $scope.off('click', '.update_btn').on('click', '.update_btn', function () {
-    const gridParams = Object.fromEntries(
-      grid.loader.getParams().map(param => [param[0], param[1]])
-    );
-
-    var options = {
-      dateType: 'json',
-      url: grid.path + '/' + ids + '.json' + grid.query,
-      data: { _method: 'PUT', gridParams: gridParams },
-      beforeSubmit: grepValues,
-      beforeSend: function () {
-        submitButton.prop('disabled', 'disabled');
-      },
-      success: function (msg) {
+      fetch(url, {
+        method: 'POST', // Rails uses _method: 'PUT' in body
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': decodeURIComponent(window._token || ''),
+          'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: JSON.stringify(bodyObj)
+      })
+      .then(r => r.json())
+      .then(msg => {
         if (msg.success) {
-          Ui.resetForm(grid.name);
+          window.Ui.resetForm(grid.name);
           grid.loader.reloadData();
           if ((grid.reloadMasterAfterUpdates || grid.options.reloadMasterAfterUpdates) && grid.master_grid) {
             grid.master_grid.loader.reloadData();
           }
-          if (selectedIndexes.length > 1) {
-            displayNewNotification(
-              selectedIndexes.length +
-                ' ' +
-                grid.model.toLowerCase() +
-                's updated'
-            );
-          } else {
-            displayNewNotification(
-              '1 ' + grid.model.toLowerCase() + ' updated'
-            );
-          }
+          const count = selectedIndexes.length;
+          const message = count > 1 ? `${count} ${grid.model.toLowerCase()}s updated` : `1 ${grid.model.toLowerCase()} updated`;
+          window.displayNewNotification(message, 'success');
+          window.M.Modal.getInstance(modal).close();
         } else {
-          displayErrorMessage(msg.error_message);
-          saveMessage('Error updating ' + grid.model.toLowerCase(), 'error');
+          window.displayErrorMessage(msg.error_message || 'Update failed', 'Error');
           grid.loader.reloadData();
         }
-        // Destroy material note
-        $(".materialnote").materialnote('destroy');
-        $(".note-popover").remove();
-        $scope.closest('.modal').modal('close');
-      },
-      complete: function () {
-        submitButton.prop('disabled', null);
-      },
+      })
+      .catch(err => {
+        console.error('Update error:', err);
+        window.displayErrorMessage('An error occurred during update.', 'Network Error');
+      })
+      .finally(() => {
+        submitBtn.disabled = false;
+      });
     };
-    $form.ajaxSubmit(options);
-    return false;
+  }
+});
+
+/**
+ * Fills form values from grid data.
+ */
+window.fillValues = function (scope, grid, selectedIndexes) {
+  const container = scope instanceof jQuery ? scope[0] : scope;
+  if (!container) return;
+
+  let data = {};
+  if (selectedIndexes.length === 1) {
+    data = grid.loader.data[selectedIndexes[0]];
+    const cols = grid.options["needDuplicateColumns"];
+    if (cols && cols.length > 0) {
+      data = Object.fromEntries(Object.entries(data).filter(([key]) => cols.includes(key)));
+    }
+  } else {
+    // Find common values for batch update
+    const dataArr = selectedIndexes.map(i => grid.loader.data[i]);
+    if (dataArr.length > 0) {
+      const first = dataArr[0];
+      for (let k in first) {
+        if (k === 'id' || k === 'slick_index') continue;
+        const val = first[k];
+        const allMatch = dataArr.every(d => {
+          if (typeof val === 'object' && val !== null) {
+            return JSON.stringify(val) === JSON.stringify(d[k]);
+          }
+          return d[k] === val;
+        });
+        if (allMatch) data[k] = val;
+      }
+    }
+  }
+
+  window.loadValue(container, data);
+
+  // Activate labels for fields with values
+  container.querySelectorAll('.field').forEach(field => {
+    if (field.querySelector('input')?.value) {
+      field.querySelector('label')?.classList.add('active');
+    }
   });
 };
 
-var compareArray = function (x, y) {
-  if ($.type(x) == 'array' && $.type(y) == 'array') {
-    if (x.length != y.length) {
-      return false;
-    }
-
-    for (var k in x) {
-      if (x[k] != y[k]) {
-        //!== So that the the values are not converted while comparison
-        return false;
+/**
+ * Loads values into form inputs.
+ */
+window.loadValue = function (scope, data) {
+  for (let i in data) {
+    const value = data[i];
+    const inputs = scope.querySelectorAll(`[data-field="${i}"]`);
+    
+    inputs.forEach(input => {
+      if (input.tagName === 'SELECT') {
+        const val = (typeof value === 'object' && value !== null) ? value.id : value;
+        input.value = Array.isArray(val) ? val : [val].flat();
+        input.dispatchEvent(new Event('change'));
+        input.nextElementSibling?.classList.add('active');
+      } else if (input.type === 'checkbox') {
+        input.checked = !!value;
+      } else {
+        input.value = value || '';
+        input.labels?.forEach(l => l.classList.toggle('active', !!value));
+        
+        // Handle materialnote (legacy)
+        if (input.classList.contains('materialnote') && typeof jQuery !== 'undefined' && jQuery.fn.materialnote) {
+          $(input).materialnote('code', value);
+        }
       }
-    }
-    return true;
-  } else {
-    return x === y;
+    });
   }
 };
 

@@ -1,70 +1,75 @@
 // Toolbar Item 'Create'
-jQuery.event.props.push("cancel");
-
-WulinMaster.actions.Create = $.extend({}, WulinMaster.actions.BaseAction, {
+WulinMaster.actions.Create = Object.assign({}, WulinMaster.actions.BaseAction, {
   name: 'create',
 
-  handler: function(e) {
-    var self = this;
-    var grid = this.getGrid();
-    var hiddenColumns = this.hidden_columns;
+  handler: function() {
+    const self = this;
+    const grid = this.getGrid();
+    const hiddenColumns = this.hidden_columns;
 
-    Ui.openDialog(grid, 'wulin_master_new_form', grid.options);
+    window.Ui.openDialog(grid, 'wulin_master_new_form', grid.options);
 
-    // register 'Create' button click event, need to remove to dialog action later
-    $('body').off("click", '#' + grid.name + '_submit').on('click', '#' + grid.name + '_submit', function(evt) {
-      if(hiddenColumns) self.fillHiddenColumns(grid, hiddenColumns);
+    // Register 'Create' button click event
+    const submitHandler = (evt) => {
+      const btn = evt.target;
+      if (btn.id !== `${grid.name}_submit` && btn.id !== `${grid.name}_submit_continue`) return;
 
-      var e = jQuery.Event('beforesubmit.wulin', {target: this});
+      evt.preventDefault();
+      const form = btn.closest('form');
+      if (!form) return;
 
-      var _cancel = false;
-      cancel = function() { _cancel = true; }
+      if (hiddenColumns) self.fillHiddenColumns(grid, hiddenColumns);
 
-      $(this).parents('form').trigger(e, cancel);
+      let cancel = false;
+      const beforeSubmitEvent = new CustomEvent('beforesubmit.wulin', {
+        detail: { 
+          target: btn,
+          cancel: () => { cancel = true; }
+        },
+        bubbles: true,
+        cancelable: true
+      });
 
-      if(_cancel) {
-        return false;
-      }
+      form.dispatchEvent(beforeSubmitEvent);
 
-      Requests.createByAjax(grid, false);
-      return false;
-    });
-    // register 'Create and Continue' button click event, need to remove to dialog action later
-    $('body').off("click", '#' + grid.name + '_submit_continue').on('click', '#' + grid.name + '_submit_continue', function(evt) {
-      if(hiddenColumns) self.fillHiddenColumns(grid, hiddenColumns);
+      if (cancel) return false;
 
-      var e = jQuery.Event('beforesubmit.wulin', {target: this});
+      const continueOn = btn.id === `${grid.name}_submit_continue`;
+      window.Requests.createByAjax(grid, continueOn);
+    };
 
-      var _cancel = false;
-      cancel = function() { _cancel = true; }
-
-      $(this).parents('form').trigger(e, cancel);
-
-      if(_cancel) {
-        return false;
-      }
-
-      Requests.createByAjax(grid, true);
-      return false;
-    });
+    // Use a single listener on body for dynamic elements
+    document.body.removeEventListener('click', submitHandler);
+    document.body.addEventListener('click', submitHandler);
   },
 
   fillHiddenColumns: function(grid, hiddenColumns) {
-    var self = this;
-    if (!(hiddenColumns instanceof Array)) return false;
+    if (!Array.isArray(hiddenColumns)) return false;
 
-    var currentFilters = grid.loader.getFilters();
-    $.each(currentFilters, function(index, filter) {
-      if(hiddenColumns.indexOf(filter[0]) != -1) {
-        self.addHiddenColumn(filter[0], filter[1]);
+    const currentFilters = grid.loader.getFilters();
+    currentFilters.forEach(filter => {
+      if (hiddenColumns.includes(filter[0])) {
+        this.addHiddenColumn(filter[0], filter[1]);
       }
     });
   },
 
   addHiddenColumn: function(column, value) {
-    var $createForm = $(".create_form form");
-    var model = $createForm.attr("id").replace("new_", "");
-    $('<input/>').attr("id", model + "_" + column).attr("type", "hidden").attr("value", value).attr("name", model + '[' + column + ']').appendTo($createForm);
+    const createForm = document.querySelector(".create_form form");
+    if (!createForm) return;
+
+    const model = createForm.id.replace("new_", "");
+    const inputId = `${model}_${column}`;
+    
+    let input = document.getElementById(inputId);
+    if (!input) {
+      input = document.createElement('input');
+      input.id = inputId;
+      input.type = 'hidden';
+      input.name = `${model}[${column}]`;
+      createForm.appendChild(input);
+    }
+    input.value = value;
   }
 });
 

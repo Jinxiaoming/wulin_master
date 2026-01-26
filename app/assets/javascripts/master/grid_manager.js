@@ -1,19 +1,24 @@
-(function($) {
-  function GridManager() {
-    var gridElementPrefix = "#grid_",
-    gridElementSuffix = " .grid",
-    pagerElementSuffix = " .pager",
+import RemoteModel from './remotemodel.js';
 
-    grids = [],
+/**
+ * GridManager manages the collection of SlickGrid instances on the page.
+ * It handles grid creation, retrieval, and global resizing.
+ */
+export default class GridManager {
+  constructor() {
+    this.gridElementPrefix = "#grid_";
+    this.gridElementSuffix = " .grid";
+    this.pagerElementSuffix = " .pager";
+    this.grids = [];
 
-    defaultOptions = {
+    this.defaultOptions = {
       enableAddRow: false,
       enableCellNavigation: true,
       asyncEditorLoading: false,
       autoEdit: false,
       cellFlashingCssClass: "master_flashing",
       rowHeight: 26,
-      checkbox: { // Can be set by grid option 'checkbox: true, triggerAfterCheck: ".trigger-dom", triggerEventName: "click", maxSelectRows: 20'
+      checkbox: {
         enable: false,
         triggerAfterCheck: null,
         triggerEventName: null,
@@ -21,405 +26,294 @@
       }
     };
 
-    function getEditorForType(type) {
-      switch (type.toLowerCase()) {
-        case "enum":
-          return SelectEditor;
-        case "string":
-          return TextEditor;
-        case "text":
-          return TextAreaEditor;
-        case "datetime":
-          return DateTimeEditor;
-        case "time":
-          return TimeEditor;
-        case "date":
-          return DateEditor;
-        case "integer":
-          return IntegerEditor;
-        case "decimal":
-          return DecimalEditor;
-        case "boolean":
-          return YesNoCheckboxEditor;
-        case "belongs_to":
-          return OtherRelationEditor;
-        case "has_one":
-          return OtherRelationEditor;
-        case "has_and_belongs_to_many":
-          return OtherRelationEditor;
-        case "has_many":
-          return HasManyEditor;
-        default:
-          return TextEditor;
-      }
-    }
-
-    function appendEditor(columns) {
-      var i, type_str;
-      for (i = 0; i < columns.length; i++) {
-        // skip checkbox, it's type is underfined
-        if (columns[i].id == "_checkbox_selector") {
-          continue
-        }
-        type_str = columns[i].type.toLowerCase();
-
-        // 1. append editor
-
-        if (typeof columns[i].editor === 'string') {
-          columns[i].editor = eval(columns[i].editor);
-        } else if (typeof columns[i].editor === 'object') {
-          columns[i].editor = columns[i].editor;
-        } else if (columns[i].distinct) {
-          columns[i].editor = DistinctEditor;
-        } else {
-          columns[i].editor = getEditorForType(columns[i].type);
-        }
-
-        // 2. append cssClass
-
-        if (type_str == "boolean") {
-          columns[i].cssClass = 'cell-effort-driven';
-        }
-
-        // 3. append formatter
-
-        if (type_str == "boolean") {
-          if (!columns[i].formatter) {
-            columns[i].formatter = GraphicBoolCellFormatter;
-          }
-        }
-
-        if (!columns[i].formatter) {
-          columns[i].formatter = BaseFormatter;
-        }
-
-        columns[i].formatter = eval(columns[i].formatter);
-        continue;
-      }
-    }
-
-    function createNewGrid(name, model, screen, path, filters, columns, states, actions, behaviors, extend_options, select_toolbar_items, user_id) {
-      var gridElement, options, loader, grid, pagerElement, pager, gridAttrs, originColumns;
-
-      options = $.extend({}, defaultOptions, extend_options);
-      // --------------add checkbox to column----------------------------------
-      if (options.checkbox.enable) {
-        checkboxSelector = new Slick.CheckboxSelectColumn({
-          cssClass: "slick-cell-checkboxsel"
-        })
-        checkboxColumn = checkboxSelector.getColumnDefinition()
-        checkboxColumn.style_class = "slick-cell-checkboxsel"
-        checkboxColumn.width = options.checkbox.columnWidth || 70
-
-        columns = [checkboxColumn].concat(columns)
-      }
-
-      originColumns = deep_clone(columns);
-
-      gridElement = $(gridElementPrefix + name + gridElementSuffix);
-
-      // Append editor attribute to columns
-      appendEditor(columns);
-
-      // Apply current filters
-      filters = GridStatesManager.applyFilters(filters, states["filter"]);
-      pathWithoutQuery = path.split(".json")[0];
-      query = path.split(".json")[1];
-
-      // Set Loader
-      loader = new WulinMaster.Data.RemoteModel(path, filters, columns);
-
-      // Restore the order states to columns
-      columns = GridStatesManager.restoreOrderStates(columns, states["order"]);
-      // Restore the visibility states to columns
-      GridStatesManager.restoreVisibilityStates(columns, states["visibility"]);
-      // Restore the width states to columns
-      GridStatesManager.restoreWidthStates(columns, states["width"]);
-
-      // create the row detail plugin
-      if (options.rowDetail) {
-        rowDetailView = new Slick.Plugins.RowDetailView({
-          loadOnce: "loadOnce" in options.rowDetail ? options.rowDetail.loadOnce : true,
-          useRowClick: options.rowDetail.useRowClick,
-          panelRows: options.rowDetail.panelRows,
-          hideRow: options.rowDetail.hideRow,
-          cssClass: options.rowDetail.cssClass,
-          preTemplate: options.rowDetail.loadingTemplate,
-          postTemplate: window['RowDetailTemplates'][options.rowDetail.postTemplate],
-          process: asyncRespDetailView
-        });
-
-        // push the plugin as the first column
-        var triggerColumn = rowDetailView.getColumnDefinition();
-        if (!options.rowDetail.showTriggerColumn) {
-          triggerColumn.rowDetailIconVisible = false;
-          triggerColumn.width = 0;
-          triggerColumn.minWidth = 1;
-        }
-        columns.unshift(triggerColumn);
-      }
-
-      // ------------------------- Create Grid ------------------------------------
-      grid = new Slick.Grid(gridElement, loader.data, columns, options);
-
-      grid.onContextMenu.subscribe(function (e) {
-        e.preventDefault();
-        let $contextMenu = $(`<ul id='contextMenu' class="context-menu" style='display:none;position:absolute' tabindex='0' />`)
-        $contextMenu.appendTo($('body'));
-
-        var cell = grid.getCellFromEvent(e);
-
-        var $node = $(grid.getCellNode(cell.row, cell.cell));
-        var text = $.trim($node.text());
-
-        // https://gitlab.ekohe.com/ekohe/wulin/wulin_master/-/issues/180
-        // disable the active cell and row
-        $(grid.getContainerNode()).find(".slick-cell").removeClass("active")
-        $(grid.getContainerNode()).find(".slick-row").removeClass("active")
-
-        if (!$node.hasClass("selected")) {
-          grid.setActiveCell(cell.row, cell.cell)
-        } else {
-          // https://gitlab.ekohe.com/ekohe/wulin/wulin_master/-/issues/180
-          // disable the active cell and row
-          $node.addClass("active");
-          $node.parent(".slick-row").addClass("active")
-
-          grid.setActiveRow(cell.row)
-          grid.setActiveCellPosX(cell.cell)
-          grid.setActiveCellNode(cell)
-        }
-
-        $contextMenu
-          .empty()
-          .data({ row: cell.row, copiedText: text })
-          .css('top', e.pageY)
-          .css('left', e.pageX)
-          .show()
-          .focus();
-
-        let copyItem = `<li id='contextMenuCopy'><i class='material-icons'>content_copy</i>Copy Cell</li>`;
-        $(copyItem).appendTo($contextMenu);
-        let contextActions = grid.select_toolbar_items
-        // Put Edit in front of Delete
-        let revertContextActions = contextActions.sort((a, b) => a.title[1].localeCompare(b.title[1]))
-
-        for (let action of revertContextActions) {
-          var gridAction = grid.actions.find(function (item) {
-            return (
-              action.title === (item.title ||
-              item.name[0].toUpperCase() + item.name.slice(1))
-            );
-          });
-
-          let actionName = action.title.toLowerCase();
-          $contextMenuItem = $(`<li data-action-id=${gridAction.name}_action_on_${
-            grid.name
-          }><i class='material-icons'>${action.icon || 'help'}</i>${
-            actionName[0].toUpperCase() + actionName.slice(1)
-          }</li>`);
-          $contextMenuItem.appendTo($contextMenu);
-        }
-        // For copy cell, and actions
-        $('#contextMenu li').off('click').on('click', function () {
-          if (this.id === 'contextMenuCopy') {
-            copyStringToClipboard(text);
-
-            M.toast({html: `${text} copied.`})
-          } else {
-            $('#' + $(this).data('action-id')).trigger('click');
-          }
-        });
-
-        $("ul.context-menu").not($contextMenu).remove()
-        $('body').one('click',function(){
-          $("ul.context-menu").remove();
-        })
-
-      });
-
-      // Append necessary attributes to the grid
-      gridAttrs = {
-        name: name,
-        model: model,
-        screen: screen,
-        loader: loader,
-        path: pathWithoutQuery,
-        columns: columns,
-        originColumns: originColumns,
-        query: query,
-        container: gridElement.parent(),
-        pager: pager,
-        states: states,
-        actions: actions,
-        behaviors: behaviors,
-        select_toolbar_items: select_toolbar_items,
-        options: options
-      };
-      for(var attr in gridAttrs) {
-        grid[attr] = gridAttrs[attr];
-      }
-
-      // Set rowDetailView
-      if (options.rowDetail) { grid.rowDetailView = rowDetailView; }
-
-      // Set selection model
-      grid.setSelectionModel(new Slick.RowSelectionModel());
-
-      // Set ColumnPicker
-      var columnpicker = new Slick.Controls.ColumnPicker(columns, grid, user_id, options);
-      grid.columnpicker = columnpicker;
-      grid.allColumns = columnpicker.getAllColumns();
-
-      // Set FilterPanel
-      var filterPanel = new WulinMaster.FilterPanel(grid, grid.loader, grid.states["filter"]);
-      grid.filterPanel = filterPanel;
-
-      // Load data into grid
-      loader.setGrid(grid);
-
-      // Set Pager
-      pagerElement = $(gridElementPrefix + name + pagerElementSuffix);
-      pager = new Slick.Controls.Pager(loader, grid, pagerElement);
-      grid.pager = pager;
-
-      // Ekohe Delete: Stop setting indicator (Create progress bar as indicator in connection instead)
-      // Create loading indicator on the activity panel, if not eager loading, hide the indicator
-      // var isHide = (grid.options.eagerLoading === false);
-      // loader.setLoadingIndicator(createLoadingIndicator(gridElement, isHide));
-
-      // Set default sorting state
-      if (options.defaultSortingState) {
-        grid.setSortColumn(options.defaultSortingState.column, options.defaultSortingState.direction == 'ASC');
-        if(options.eagerLoading !== false){
-          grid.loader.setSort(options.defaultSortingState.column, options.defaultSortingState.direction == 'ASC');
-        }
-      }
-
-      // Restore the sorting states to grid
-      GridStatesManager.restoreSortingStates(grid, loader, states["sort"]);
-
-      // Dispatch actions
-      WulinMaster.ActionManager.dispatchActions(grid, actions);
-      // Dispatch behaviors, should come first than grid.resizeCanvas, otherwise some event like onRendered can't be triggered
-      WulinMaster.BehaviorManager.dispatchBehaviors(grid, behaviors);
-
-      // Set grid body height after rendering
-      setGridBodyHeight(gridElement);
-      grid.initialRender();
-
-      // Load the first page
-      grid.onViewportChanged.notify();
-
-      // Delete old grid if exsisting, then add grid
-      for(var i in grids){
-        if(grid.name == grids[i].name){
-          grids.splice(i, 1);
-        }
-      }
-      grids.push(grid);
-
-      // ------------------------------ Register callbacks for handling grid states ------------------------
-      if(states)
-        GridStatesManager.onStateEvents(grid);
-
-      // ------------------------------ Install some plugins -----------------------------------
-      grid.registerPlugin(new Slick.AutoTooltips());
-      if (options.rowDetail) { grid.registerPlugin(rowDetailView); }
-
-      if (options.checkbox.enable) {
-        grid.setSelectionModel(
-          new Slick.RowSelectionModel({ selectActiveRow: false })
-        )
-        grid.registerPlugin(checkboxSelector)
-      }
-    } // createNewGrid
-
-    function asyncRespDetailView(item) {
-      rowDetailView.onAsyncResponse.notify({
-        'itemDetail': item
-      }, undefined, this);
-    }
-
-    function createLoadingIndicator(gridElement, isHide) {
-      var truncateThreshold = 35,
-          parent = gridElement.parent(".grid_container"),
-          id = parent.attr("id"),
-          title = $.trim(parent.find(".grid-header h2").text()),
-          indicators = $("#activity #indicators"),
-          indicator;
-
-      if (title.length > truncateThreshold) {
-        title = title.substring(0, truncateThreshold-2) + "...";
-      }
-
-      // Remove init indicator if it exists.
-      indicators.find("#init_menu_indicator").remove();
-      indicator = indicators.find(".loading_indicator#" + id);
-
-      if (indicator.length === 0) {
-        indicator = $(buildIndicatorHtml(id, title, isHide)).appendTo(indicators);
-        // Init counter
-        indicator.data("requestCount", 0);
-      }
-
-      return indicator;
-    }
-
-    function buildIndicatorHtml(id, title, isHide){
-      return "<div class='loading_indicator' id='" + id + "_indicator' style='" + (isHide ? "display:none" : '') + "'><div class='loading_text'>"+ title +"</div><div class='loading_bar' /><div class='loading_stats' /></div>";
-    }
-
-    function getGrid(name) {
-      var theGrid = null;
-
-      $.each(grids, function() {
-        if (this.name == name)
-        theGrid = this;
-      });
-
-      return theGrid;
-    }
-
-    copyStringToClipboard = function(str){
-      navigator.clipboard.writeText(str);
-    }
-
-    function setGridBodyHeight(gridElement) {
-      var container = gridElement.parent(".grid_container"),
-      ch = container.height(),
-      hh = container.find(".grid-header").height(),
-      ph = container.find(".pager").height(),
-      gh = ch - hh - ph;
-
-      gridElement.css("height", gh - 1);
-    }
-
-    function resizeGrids() {
-      var gridElement;
-      $.each(grids, function() {
-        gridElement = $(gridElementPrefix + this.name + gridElementSuffix);
-        setGridBodyHeight(gridElement);
-        this.resizeCanvas();
-      });
-    }
-
-    return {
-      // properties
-      "grids": grids,
-
-      // methods
-      "getEditorForType": getEditorForType,
-      "createNewGrid": createNewGrid,
-      "getGrid": getGrid,
-      "resizeGrids": resizeGrids,
-      "buildIndicatorHtml": buildIndicatorHtml
-    };
+    // Global resize listener
+    window.addEventListener('resize', () => this.resizeGrids());
   }
 
-  $.extend(true, window, { GridManager: GridManager });
-})(jQuery);
+  /**
+   * Returns the appropriate editor class for a given data type.
+   */
+  getEditorForType(type) {
+    switch (type.toLowerCase()) {
+      case "enum": return window.SelectEditor;
+      case "string": return window.TextEditor;
+      case "text": return window.TextAreaEditor;
+      case "datetime": return window.DateTimeEditor;
+      case "time": return window.TimeEditor;
+      case "date": return window.DateEditor;
+      case "integer": return window.IntegerEditor;
+      case "decimal": return window.DecimalEditor;
+      case "boolean": return window.YesNoCheckboxEditor;
+      case "belongs_to":
+      case "has_one":
+      case "has_and_belongs_to_many": return window.OtherRelationEditor;
+      case "has_many": return window.HasManyEditor;
+      default: return window.TextEditor;
+    }
+  }
 
+  /**
+   * Appends editor and formatter information to column definitions.
+   */
+  appendEditor(columns) {
+    columns.forEach(column => {
+      if (column.id === "_checkbox_selector") return;
+
+      const typeStr = (column.type || "").toLowerCase();
+
+      // 1. Append editor
+      if (typeof column.editor === 'string') {
+        column.editor = eval(column.editor);
+      } else if (typeof column.editor !== 'object') {
+        if (column.distinct) {
+          column.editor = window.DistinctEditor;
+        } else {
+          column.editor = this.getEditorForType(column.type);
+        }
+      }
+
+      // 2. Append cssClass
+      if (typeStr === "boolean") {
+        column.cssClass = 'cell-effort-driven';
+      }
+
+      // 3. Append formatter
+      if (typeStr === "boolean" && !column.formatter) {
+        column.formatter = window.GraphicBoolCellFormatter;
+      }
+
+      if (!column.formatter) {
+        column.formatter = window.BaseFormatter;
+      }
+
+      if (typeof column.formatter === 'string') {
+        column.formatter = eval(column.formatter);
+      }
+    });
+  }
+
+  /**
+   * Creates a new SlickGrid instance and initializes its components.
+   */
+  createNewGrid(name, model, screen, path, filters, columns, states, actions, behaviors, extend_options, select_toolbar_items, user_id) {
+    const options = Object.assign({}, this.defaultOptions, extend_options);
+    
+    // Add checkbox column if enabled
+    if (options.checkbox.enable) {
+      const checkboxSelector = new Slick.CheckboxSelectColumn({
+        cssClass: "slick-cell-checkboxsel"
+      });
+      const checkboxColumn = checkboxSelector.getColumnDefinition();
+      checkboxColumn.style_class = "slick-cell-checkboxsel";
+      checkboxColumn.width = options.checkbox.columnWidth || 70;
+      columns = [checkboxColumn, ...columns];
+      options.checkboxSelector = checkboxSelector; // Store for registration
+    }
+
+    const originColumns = JSON.parse(JSON.stringify(columns));
+    const gridSelector = `${this.gridElementPrefix}${name}${this.gridElementSuffix}`;
+    const gridElement = document.querySelector(gridSelector);
+
+    if (!gridElement) {
+      console.error(`Grid element not found: ${gridSelector}`);
+      return;
+    }
+
+    this.appendEditor(columns);
+
+    // Apply states
+    filters = window.GridStatesManager.applyFilters(filters, states["filter"]);
+    const pathWithoutQuery = path.split(".json")[0];
+    const query = path.split(".json")[1];
+
+    const loader = new RemoteModel(path, filters, columns);
+    columns = window.GridStatesManager.restoreOrderStates(columns, states["order"]);
+    window.GridStatesManager.restoreVisibilityStates(columns, states["visibility"]);
+    window.GridStatesManager.restoreWidthStates(columns, states["width"]);
+
+    // Row detail plugin
+    let rowDetailView;
+    if (options.rowDetail) {
+      rowDetailView = new Slick.Plugins.RowDetailView({
+        loadOnce: options.rowDetail.loadOnce !== false,
+        useRowClick: options.rowDetail.useRowClick,
+        panelRows: options.rowDetail.panelRows,
+        hideRow: options.rowDetail.hideRow,
+        cssClass: options.rowDetail.cssClass,
+        preTemplate: options.rowDetail.loadingTemplate,
+        postTemplate: window['RowDetailTemplates'][options.rowDetail.postTemplate],
+        process: (item) => rowDetailView.onAsyncResponse.notify({ 'itemDetail': item })
+      });
+
+      const triggerColumn = rowDetailView.getColumnDefinition();
+      if (!options.rowDetail.showTriggerColumn) {
+        triggerColumn.rowDetailIconVisible = false;
+        triggerColumn.width = 0;
+        triggerColumn.minWidth = 1;
+      }
+      columns.unshift(triggerColumn);
+    }
+
+    // Create Grid
+    const grid = new Slick.Grid(gridElement, loader.data, columns, options);
+
+    // Context Menu (Native implementation)
+    grid.onContextMenu.subscribe((e) => {
+      e.preventDefault();
+      this.showContextMenu(grid, e);
+    });
+
+    // Attach attributes
+    Object.assign(grid, {
+      name, model, screen, loader, columns, originColumns, query,
+      path: pathWithoutQuery,
+      container: gridElement.parentElement,
+      states, actions, behaviors, select_toolbar_items, options
+    });
+
+    if (options.rowDetail) grid.rowDetailView = rowDetailView;
+
+    grid.setSelectionModel(new Slick.RowSelectionModel());
+
+    const columnpicker = new Slick.Controls.ColumnPicker(columns, grid, user_id, options);
+    grid.columnpicker = columnpicker;
+    grid.allColumns = columnpicker.getAllColumns();
+
+    grid.filterPanel = new window.WulinMaster.FilterPanel(grid, loader, states["filter"]);
+    loader.setGrid(grid);
+
+    const pagerElement = document.querySelector(`${this.gridElementPrefix}${name}${this.pagerElementSuffix}`);
+    if (pagerElement) {
+      grid.pager = new Slick.Controls.Pager(loader, grid, $(pagerElement)); // Pager still might need jQuery
+    }
+
+    // Sorting
+    if (options.defaultSortingState) {
+      grid.setSortColumn(options.defaultSortingState.column, options.defaultSortingState.direction === 'ASC');
+      if (options.eagerLoading !== false) {
+        loader.setSort(options.defaultSortingState.column, options.defaultSortingState.direction === 'ASC');
+      }
+    }
+    window.GridStatesManager.restoreSortingStates(grid, loader, states["sort"]);
+
+    // Dispatch
+    window.WulinMaster.ActionManager.dispatchActions(grid, actions);
+    window.WulinMaster.BehaviorManager.dispatchBehaviors(grid, behaviors);
+
+    this.setGridBodyHeight(gridElement);
+    grid.initialRender();
+    grid.onViewportChanged.notify();
+
+    // Manage grid collection
+    this.grids = this.grids.filter(g => g.name !== name);
+    this.grids.push(grid);
+
+    if (states) window.GridStatesManager.onStateEvents(grid);
+
+    // Plugins
+    grid.registerPlugin(new Slick.AutoTooltips());
+    if (options.rowDetail) grid.registerPlugin(rowDetailView);
+    if (options.checkbox.enable) {
+      grid.setSelectionModel(new Slick.RowSelectionModel({ selectActiveRow: false }));
+      grid.registerPlugin(options.checkboxSelector);
+    }
+  }
+
+  /**
+   * Native implementation of the grid context menu.
+   */
+  showContextMenu(grid, e) {
+    let contextMenu = document.getElementById('contextMenu');
+    if (!contextMenu) {
+      contextMenu = document.createElement('ul');
+      contextMenu.id = 'contextMenu';
+      contextMenu.className = 'context-menu';
+      contextMenu.style.display = 'none';
+      contextMenu.style.position = 'absolute';
+      contextMenu.tabIndex = 0;
+      document.body.appendChild(contextMenu);
+    }
+
+    const cell = grid.getCellFromEvent(e);
+    const node = grid.getCellNode(cell.row, cell.cell);
+    const text = (node.textContent || "").trim();
+
+    // Reset active states
+    grid.getContainerNode().querySelectorAll(".slick-cell, .slick-row").forEach(el => el.classList.remove("active"));
+
+    if (!node.classList.contains("selected")) {
+      grid.setActiveCell(cell.row, cell.cell);
+    } else {
+      node.classList.add("active");
+      node.parentElement.classList.add("active");
+      grid.setActiveRow(cell.row);
+      grid.setActiveCellPosX(cell.cell);
+      grid.setActiveCellNode(cell);
+    }
+
+    contextMenu.innerHTML = '';
+    contextMenu.style.top = `${e.pageY}px`;
+    contextMenu.style.left = `${e.pageX}px`;
+    contextMenu.style.display = 'block';
+    contextMenu.focus();
+
+    // Copy item
+    const copyItem = document.createElement('li');
+    copyItem.innerHTML = `<i class='material-icons'>content_copy</i>Copy Cell`;
+    copyItem.onclick = () => {
+      navigator.clipboard.writeText(text);
+      M.toast({ html: `${text} copied.` });
+      contextMenu.style.display = 'none';
+    };
+    contextMenu.appendChild(copyItem);
+
+    // Dynamic actions
+    const contextActions = [...grid.select_toolbar_items].sort((a, b) => a.title[1].localeCompare(b.title[1]));
+    contextActions.forEach(action => {
+      const gridAction = grid.actions.find(item => action.title === (item.title || item.name[0].toUpperCase() + item.name.slice(1)));
+      if (!gridAction) return;
+
+      const item = document.createElement('li');
+      const actionName = action.title.toLowerCase();
+      item.innerHTML = `<i class='material-icons'>${action.icon || 'help'}</i>${actionName[0].toUpperCase() + actionName.slice(1)}`;
+      item.onclick = () => {
+        const triggerBtn = document.getElementById(`${gridAction.name}_action_on_${grid.name}`);
+        if (triggerBtn) triggerBtn.click();
+        contextMenu.style.display = 'none';
+      };
+      contextMenu.appendChild(item);
+    });
+
+    const closeMenu = () => {
+      contextMenu.style.display = 'none';
+      document.removeEventListener('click', closeMenu);
+    };
+    setTimeout(() => document.addEventListener('click', closeMenu), 10);
+  }
+
+  getGrid(name) {
+    return this.grids.find(g => g.name === name) || null;
+  }
+
+  setGridBodyHeight(gridElement) {
+    const container = gridElement.parentElement;
+    const ch = container.offsetHeight;
+    const hh = container.querySelector(".grid-header")?.offsetHeight || 0;
+    const ph = container.querySelector(".pager")?.offsetHeight || 0;
+    gridElement.style.height = `${ch - hh - ph - 1}px`;
+  }
+
+  resizeGrids() {
+    this.grids.forEach(grid => {
+      const gridElement = document.querySelector(`${this.gridElementPrefix}${grid.name}${this.gridElementSuffix}`);
+      if (gridElement) {
+        this.setGridBodyHeight(gridElement);
+        grid.resizeCanvas();
+      }
+    });
+  }
+}
+
+// Global exposure for legacy compatibility
+window.GridManager = GridManager;
 window.gridManager = new GridManager();
-
-$(window).resize(function() { window.gridManager.resizeGrids(); });

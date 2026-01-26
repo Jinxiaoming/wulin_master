@@ -63,8 +63,7 @@ end
 Cucumber::Rails::Database.javascript_strategy = :truncation
 
 require "capybara/rails"
-require "capybara/poltergeist"
-Capybara.javascript_driver = :poltergeist
+require_relative "../../spec/support/capybara"
 
 require "factory_bot"
 World(FactoryBot::Syntax::Methods)

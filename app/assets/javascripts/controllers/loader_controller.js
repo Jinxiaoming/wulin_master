@@ -17,4 +17,16 @@ export default class extends Controller {
       loader.remove()
     }
   }
+
+  /**
+   * Toggles the debug information panel.
+   */
+  toggleDebug(event) {
+    event.preventDefault()
+    const debugInfo = document.getElementById('debug_info')
+    if (debugInfo) {
+      const isHidden = debugInfo.style.display === 'none'
+      debugInfo.style.display = isHidden ? 'block' : 'none'
+    }
+  }
 }

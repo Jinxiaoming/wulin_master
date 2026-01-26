@@ -34,6 +34,7 @@ import GridController from "./controllers/grid_controller"
 import FormController from "./controllers/form_controller"
 import InclusionExclusionController from "./controllers/inclusion_exclusion_controller"
 import GridStatesController from "./controllers/grid_states_controller"
+import ToolbarController from "./controllers/toolbar_controller"
 
 application.register("notification", NotificationController)
 application.register("modal", ModalController)
@@ -46,6 +47,7 @@ application.register("grid", GridController)
 application.register("form", FormController)
 application.register("inclusion-exclusion", InclusionExclusionController)
 application.register("grid-states", GridStatesController)
+application.register("toolbar", ToolbarController)
 
 // SlickGrid dependencies from NPM
 import 'jquery.event.drag'

@@ -1,5 +1,5 @@
 - current_grid = toolbar_items.first ? toolbar_items.first.anchor_tag_options[:id].gsub(/.*_action_on_/, '') : nil
-.toolbar-select{hidden: WulinMaster.config.split_button_mode?, 'data-mode': WulinMaster.config.button_mode}(data-grid="#{@grid_name}")
+.toolbar-select{hidden: WulinMaster.config.split_button_mode?, 'data-mode': WulinMaster.config.button_mode, data: { controller: "toolbar", toolbar_grid_id_value: current_grid } }
   %ul
     - toolbar_items.each do |item|
       %li.toolbar_item
@@ -11,17 +11,7 @@
     %ul.dropdown-content.collection{:id => "more_vert_#{current_grid}"}
       - toolbar_items.each do |item|
         %li
-          = link_to 'javascript:void(0);', **item.anchor_tag_options_without_waves, 'data-id' => item.anchor_tag_options_without_waves[:id], 'data-type' => 'more_vert_item'  do
+          = link_to 'javascript:void(0);', **item.anchor_tag_options_without_waves, 'data-id' => item.anchor_tag_options_without_waves[:id], 'data-type' => 'more_vert_item', data: { action: "click->toolbar#proxyClick" }  do
             %span.material-icons
               = item.icon.presence || 'help'
             = item.title
-
-:javascript
-  if ("#{current_grid.nil?}" !== 'true') {
-    $(function(){
-      $("##{current_grid}").dropdown({alignment: 'right'});
-      $("[data-type='more_vert_item']").off('click').on('click', function(e) {
-        $("#" + $(e.target).data('id')).click()
-      })
-    })
-  }

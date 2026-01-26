@@ -1,5 +1,10 @@
 # rails new wulin_app --skip-hotwire --database=postgresql -j esbuild -m ./wulin_master_template.rb
 
+# Configure Yarn to use node-modules linker (avoids PnP compatibility issues with esbuild and dartsass)
+file ".yarnrc.yml", <<~YAML
+  nodeLinker: node-modules
+YAML
+
 run "git submodule add -b v3 https://github.com/ekohe/wulin_master.git vendor/gems/wulin_master"
 run "git config -f .gitmodules submodule.vendor/gems/wulin_master.branch v3"
 
@@ -24,11 +29,12 @@ CSS
 # Remove application.html.erb
 remove_file "app/views/layouts/application.html.erb"
 
-# Setup package.json
+# Setup package.json with all required dependencies and Workspace support
 file "package.json", <<~JSON
   {
     "name": "app",
     "private": true,
+    "packageManager": "yarn@4.0.0",
     "workspaces": [
       "vendor/gems/wulin_master"
     ],
@@ -40,7 +46,16 @@ file "package.json", <<~JSON
       "copy-icons": "node script/copy_material_icons.js"
     },
     "dependencies": {
-      "rails-ujs": "^5.2.0"
+      "rails-ujs": "^5.2.8",
+      "jquery": "^1.12.4",
+      "jquery-ui": "^1.14.1",
+      "materialize-css": "^1.0.0",
+      "material-icons": "^0.7.7",
+      "flatpickr": "^4.6.13",
+      "select2": "^4.1.0-rc.0",
+      "sortablejs": "^1.15.2",
+      "jquery-form": "^4.3.0",
+      "inputmask": "^5.0.9"
     }
   }
 JSON
@@ -62,22 +77,31 @@ initializer "assets.rb", <<~RB
   Rails.application.config.assets.paths << Rails.root.join("app/assets/fonts")
 RB
 
-# Setup script/copy_material_icons.js
+# Setup script/copy_material_icons.js (uses require.resolve for better compatibility)
 file "script/copy_material_icons.js", <<~JS
   const fs = require("fs");
   const path = require("path");
 
-  const srcDir = path.join(__dirname, "..", "node_modules", "material-icons", "iconfont");
-  const dstDir = path.join(__dirname, "..", "app", "assets", "fonts");
+  try {
+    // Use require.resolve to locate material-icons package path
+    const iconPkgPath = require.resolve("material-icons/package.json");
+    const srcDir = path.join(path.dirname(iconPkgPath), "iconfont");
+    const dstDir = path.join(__dirname, "..", "app", "assets", "fonts");
 
-  fs.mkdirSync(dstDir, { recursive: true });
+    fs.mkdirSync(dstDir, { recursive: true });
 
-  for (const name of [
-    "material-icons.woff2",
-    "material-icons.woff"
-  ]) {
-    fs.copyFileSync(path.join(srcDir, name), path.join(dstDir, name));
-    console.log(`Copied ${name}`);
+    for (const name of ["material-icons.woff2", "material-icons.woff"]) {
+      const srcFile = path.join(srcDir, name);
+      if (fs.existsSync(srcFile)) {
+        fs.copyFileSync(srcFile, path.join(dstDir, name));
+        console.log(`Copied ${name}`);
+      } else {
+        console.warn(`Warning: ${name} not found at ${srcFile}`);
+      }
+    }
+  } catch (e) {
+    console.error("Error copying icons:", e.message);
+    process.exit(1);
   }
 JS
 
@@ -114,15 +138,137 @@ initializer "wulin_master_assets.rb", <<~RB
   end
 RB
 
-after_bundle do
-  rails_command "generate wulin_master:install"
+# --- Docker & Environment Setup ---
 
-  # Run yarn install
+# Create .env.example
+file ".env.example", <<~ENV
+  # Database configuration
+  POSTGRES_USER=postgres
+  POSTGRES_PASSWORD=password
+  DATABASE_URL=postgresql://postgres:password@db:5432/postgres
+
+  # Redis configuration
+  REDIS_URL=redis://redis:6379/1
+
+  # Rails configuration
+  RAILS_ENV=development
+  SECRET_KEY_BASE=#{SecureRandom.hex(64)}
+ENV
+
+# Create .env (local development, ignored by git)
+copy_file ".env.example", ".env"
+append_to_file ".gitignore", ".env\n"
+
+# Create Dockerfile
+file "Dockerfile", <<~DOCKERFILE
+  # syntax=docker/dockerfile:1
+  ARG RUBY_VERSION=3.3.0
+  FROM ruby:$RUBY_VERSION-slim as base
+
+  WORKDIR /rails
+
+  # Install system dependencies
+  RUN apt-get update -qq && \
+      apt-get install --no-install-recommends -y \
+      build-essential \
+      git \
+      libpq-dev \
+      curl \
+      gnupg2
+
+  # Install Node.js and Yarn
+  RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
+      apt-get install -y nodejs && \
+      corepack enable
+
+  # Install Gem dependencies
+  COPY Gemfile Gemfile.lock ./
+  COPY vendor/gems/wulin_master ./vendor/gems/wulin_master
+  RUN bundle install
+
+  # Install JS dependencies
+  COPY package.json yarn.lock .yarnrc.yml ./
+  RUN yarn install
+
+  # Copy project files
+  COPY . .
+
+  EXPOSE 3000
+
+  CMD ["./bin/dev"]
+DOCKERFILE
+
+# Create docker-compose.yml
+file "docker-compose.yml", <<~YAML
+  services:
+    db:
+      image: postgres:16-alpine
+      volumes:
+        - postgres_data:/var/lib/postgresql/data
+      env_file:
+        - .env
+      healthcheck:
+        test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER"]
+        interval: 5s
+        timeout: 5s
+        retries: 5
+
+    redis:
+      image: redis:7-alpine
+      volumes:
+        - redis_data:/var/lib/redis/data
+
+    app:
+      build: .
+      command: ./bin/dev
+      volumes:
+        - .:/rails
+      ports:
+        - "3000:3000"
+      env_file:
+        - .env
+      depends_on:
+        db:
+          condition: service_healthy
+        redis:
+          condition: service_started
+
+  volumes:
+    postgres_data:
+    redis_data:
+YAML
+
+# Update database.yml to use environment variables
+file "config/database.yml", <<~YAML, force: true
+  default: &default
+    adapter: postgresql
+    encoding: unicode
+    pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
+    url: <%= ENV.fetch("DATABASE_URL") { nil } %>
+    username: <%= ENV.fetch("POSTGRES_USER") { "postgres" } %>
+    password: <%= ENV.fetch("POSTGRES_PASSWORD") { "password" } %>
+
+  development:
+    <<: *default
+
+  test:
+    <<: *default
+    database: app_test
+YAML
+
+after_bundle do
+  # Install npm dependencies (node-modules mode)
   run "yarn install"
 
-  # Run copy fonts
+  # Run wulin_master install generator
+  rails_command "generate wulin_master:install"
+
+  # Copy material icons fonts
   run "yarn run copy-icons"
 
-  # Run generate color theme
+  # Build JavaScript assets
+  run "yarn build"
+
+  # Generate theme color CSS
   run "bundle exec rake wulin_master:generate_theme_color_css"
 end

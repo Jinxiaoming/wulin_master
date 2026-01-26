@@ -2,10 +2,11 @@
   "name": "wulin_master",
   "version": "3.0.0",
   "private": true,
-  "main": "app/assets/javascripts/master/master.js",
+  "peerDependencies": {
+    "jquery": ">=1.12.4",
+    "jquery-ui": ">=1.14.1"
+  },
   "dependencies": {
-    "jquery": "^1.12.4",
-    "jquery-ui": "^1.14.1",
     "rails-ujs": "^5.2.8",
     "materialize-css": "^1.0.0",
     "material-icons": "^0.7.7",

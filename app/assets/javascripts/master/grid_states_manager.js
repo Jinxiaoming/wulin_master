@@ -1,186 +1,196 @@
-window.GridStatesManager = {
-  // do ajax save
-  saveStates: function(gridName, type, value){
-    if(gridName) {
-      var state_value = {}
-      var url = "/wulin_master/grid_states_manages/save"
+/**
+ * GridStatesManager handles saving and restoring grid states (width, order, visibility, sorting, filters).
+ * Modernized to use Fetch API and native JS.
+ */
+const GridStatesManager = {
+  /**
+   * Saves the current state of a grid to the server.
+   */
+  saveStates: async function(gridName, type, value) {
+    if (!gridName) return;
 
-      if (!type) { state_value['order'] = {} }
-      else if (typeof type == 'string') { state_value[type] = value }
-      else if (typeof type == 'object' && !$.isArray(type)) { state_value = type }
+    let stateValue = {};
+    const url = "/wulin_master/grid_states_manages/save";
 
-      return $.post(url, {
-        grid_name: gridName,
-        state_value: state_value,
-        authenticity_token: window._token
+    if (!type) {
+      stateValue['order'] = {};
+    } else if (typeof type === 'string') {
+      stateValue[type] = value;
+    } else if (typeof type === 'object' && !Array.isArray(type)) {
+      stateValue = type;
+    }
+
+    const payload = {
+      grid_name: gridName,
+      state_value: stateValue,
+      authenticity_token: window._token
+    };
+
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: JSON.stringify(payload)
       });
+
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      return await response.json();
+    } catch (error) {
+      console.error('Error saving grid states:', error);
     }
   },
 
-  // grid events
+  /**
+   * Binds state-related events to a grid instance.
+   */
   onStateEvents: function(grid) {
-    var self = this;
-
-    // save columns width when columns resized
-    grid.onColumnsResized.subscribe(function(){
-      var widthJson = {};
-      $.each(this.getColumns(), function(index, column){
+    // Save columns width when columns resized
+    grid.onColumnsResized.subscribe(() => {
+      const widthJson = {};
+      grid.getColumns().forEach(column => {
         widthJson[column.id] = column.width;
       });
-      self.saveStates(grid.name, "width", widthJson);
+      this.saveStates(grid.name, "width", widthJson);
     });
 
-    // save columns sorting info when columns sorted
-    grid.onSort.subscribe(function(e, args){
-      var loader = grid.loader, sortJson = {};
-      sortJson["sortCol"] = loader.getSortColumn();
-      sortJson["sortDir"] = loader.getSortDirection();
-      // update sort state and save it to db
-      grid.states["sort"] = {sortCol: sortJson["sortCol"], sortDir: sortJson["sortDir"]};
-      self.saveStates(grid.name, "sort", sortJson);
+    // Save columns sorting info when columns sorted
+    grid.onSort.subscribe(() => {
+      const loader = grid.loader;
+      const sortJson = {
+        sortCol: loader.getSortColumn(),
+        sortDir: loader.getSortDirection()
+      };
+      // Update sort state and save it to db
+      grid.states["sort"] = sortJson;
+      this.saveStates(grid.name, "sort", sortJson);
     });
 
-    // save columns order when columns re-ordered
-    grid.onColumnsReordered.subscribe(function(e, args){
-      var orderJson = {};
-      $.each(this.getColumns(), function(index, column){
+    // Save columns order when columns re-ordered
+    grid.onColumnsReordered.subscribe(() => {
+      const orderJson = {};
+      grid.getColumns().forEach((column, index) => {
         orderJson[index] = column.id;
       });
-
-      self.saveStates(grid.name, "order", orderJson);
+      this.saveStates(grid.name, "order", orderJson);
     });
 
-    // save filter states when input filter value
-    if(grid.filterPanel) {
-      grid.filterPanel.onFilterLoaded.subscribe(function(e, args){
-        if (args.filterData.length == 0) {
-          self.saveStates(grid.name, "filter", null);
+    // Save filter states
+    if (grid.filterPanel) {
+      grid.filterPanel.onFilterLoaded.subscribe((e, args) => {
+        if (args.filterData.length === 0) {
+          this.saveStates(grid.name, "filter", null);
         } else {
-          var filterJson = {};
-          $.each(args.filterData, function(index,data){
-            filterJson[data['id']] = data['value'];
+          const filterJson = {};
+          args.filterData.forEach(data => {
+            filterJson[data.id] = data.value;
           });
-          self.saveStates(grid.name, "filter", filterJson);
+          this.saveStates(grid.name, "filter", filterJson);
         }
       });
 
-      grid.filterPanel.onFilterPanelClosed.subscribe(function(e, args){
-        $(grid.getHeaderRow()).find('input[type="text"]').val('');
-        self.saveStates(grid.name, "filter", {});
+      grid.filterPanel.onFilterPanelClosed.subscribe(() => {
+        const headerRow = grid.getHeaderRow();
+        if (headerRow) {
+          headerRow.querySelectorAll('input[type="text"]').forEach(input => input.value = '');
+        }
+        this.saveStates(grid.name, "filter", {});
       });
     }
 
-    // save columns visibility when pick columns
-    if(grid.picker){
-      grid.picker.onColumnsPick.subscribe(function(e, args){
-        var hiddenArr = [], hiddenJson = {}, visibilityColumns = grid.getColumns();
-
-        // Regenerate Filter panel
-        if(grid.filterPanel) {
+    // Save columns visibility
+    if (grid.picker) {
+      grid.picker.onColumnsPick.subscribe(() => {
+        if (grid.filterPanel) {
           grid.filterPanel.generateFilters();
         }
 
-        visibilityColumns = $.map(visibilityColumns, function(n, i){
-            return n.id;
-        });
-        allColumns = $.map(grid.columns, function(n, i){
-            return n.id;
-        });
+        const visibleIds = grid.getColumns().map(c => c.id);
+        const allIds = grid.columns.map(c => c.id);
+        const hiddenIds = allIds.filter(id => !visibleIds.includes(id));
 
-        hiddenArr = $.grep(allColumns, function(n, i){
-            return visibilityColumns.indexOf(n) < 0;
-        });
-
-        $.each(hiddenArr, function(index, column){
-            hiddenJson[index] = column;
-        });
-        self.saveStates(grid.name, "visibility", hiddenArr);
+        this.saveStates(grid.name, "visibility", hiddenIds);
       });
     }
   },
 
-  // Restore columns order states
-  restoreOrderStates: function(columns, orderStates){
-    if(!orderStates) return columns;
+  /**
+   * Restores columns order from saved states.
+   */
+  restoreOrderStates: function(columns, orderStates) {
+    if (!orderStates) return columns;
 
-    var new_columns = [], i, j, k;
-    // push other columns according to states
-    for(j in orderStates){
-      for(k in columns) {
-        if(columns[k].id == orderStates[j]){
-          new_columns.push(columns[k]);
-          break;
-        }
+    const newColumns = [];
+    const orderValues = Object.values(orderStates);
+
+    orderValues.forEach(id => {
+      const col = columns.find(c => c.id === id);
+      if (col) newColumns.push(col);
+    });
+
+    // Push columns that are not in the state
+    columns.forEach(col => {
+      if (!newColumns.some(nc => nc.id === col.id)) {
+        newColumns.push(col);
       }
-    }
-    // push columns that are not in the state in abritrary order
-    for(i in columns) {
-      var found = false;
-      for(j in new_columns) {
-        if (columns[i].id == new_columns[j].id) {
-          found = true;
-        }
-      }
-      if (found === false) {
-        new_columns.push(columns[i]);
-      }
-    }
-    return new_columns;
+    });
+
+    return newColumns;
   },
 
-  // Restore columns visibility states
+  /**
+   * Restores columns visibility from saved states.
+   */
   restoreVisibilityStates: function(columns, visibilityStates) {
-    if(!visibilityStates) return false;
+    if (!visibilityStates) return;
 
-    // push visible columns according to states
-    for(var i in columns){
-      var visible = true;
-      for(var j in visibilityStates){
-        if(columns[i].id == visibilityStates[j]){
-          visible = false;
-          break;
-        }
-      }
-      columns[i].visible = visible;
-    }
+    columns.forEach(col => {
+      col.visible = !visibilityStates.includes(col.id);
+    });
   },
 
-  // Restore columns width states
+  /**
+   * Restores columns width from saved states.
+   */
   restoreWidthStates: function(columns, widthStates) {
-    if(!widthStates) return false;
+    if (!widthStates) return;
 
-    // restore width
-    for(var i in widthStates){
-      for(var j in columns){
-        if(columns[j].id == i){
-          columns[j].width = parseInt(widthStates[i], 10);
-          break;
-        }
+    Object.entries(widthStates).forEach(([id, width]) => {
+      const col = columns.find(c => c.id === id);
+      if (col) {
+        col.width = parseInt(width, 10);
       }
-    }
+    });
   },
 
-  // Restore columns sorting states
+  /**
+   * Restores columns sorting from saved states.
+   */
   restoreSortingStates: function(grid, loader, sortingStates) {
-    if(sortingStates){
-      grid.setSortColumn(sortingStates["sortCol"], sortingStates["sortDir"] == 1);
-      if(grid.options.eagerLoading !== false){
-        loader.setSort(sortingStates["sortCol"], sortingStates["sortDir"]);
+    if (sortingStates) {
+      grid.setSortColumn(sortingStates.sortCol, sortingStates.sortDir === 1);
+      if (grid.options.eagerLoading !== false) {
+        loader.setSort(sortingStates.sortCol, sortingStates.sortDir);
       }
     }
   },
 
-  // Attach state filters
+  /**
+   * Merges saved filter states into original filters.
+   */
   applyFilters: function(originalFilters, filterStates) {
+    const filters = originalFilters || [];
     if (filterStates) {
-      originalFilters = originalFilters || [];
-      $.each(filterStates, function(k, v){
-        originalFilters.push({column: k, value: v, operator: 'equals'});
-        //path += "&filters[][column]=" + encodeURIComponent(k) + "&filters[][value]=" + encodeURIComponent(v);
+      Object.entries(filterStates).forEach(([column, value]) => {
+        filters.push({ column, value, operator: 'equals' });
       });
     }
-    return originalFilters;
+    return filters;
   }
-
 };
 
+// Global exposure for legacy compatibility
+window.GridStatesManager = GridStatesManager;
+export default GridStatesManager;

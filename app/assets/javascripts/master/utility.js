@@ -1,47 +1,80 @@
-// format the num
-// https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl/NumberFormat
-const formatNum = (number) => new Intl.NumberFormat().format(number)
+/**
+ * Utility functions for WulinMaster.
+ * Modernized to use native JS and remove jQuery dependencies.
+ */
 
-// ('dd/mm/yyyy', 'hh:mm:ss') => datetime
-// e.g.
-// formatDate("08/04/2021", '10:11:00') => Thu Apr 08 2021 10:11:00 GMT+0800 (China Standard Time)
+/**
+ * Formats a number with locale-aware delimiters.
+ */
+const formatNum = (number) => new Intl.NumberFormat().format(number);
+
+/**
+ * Parses a date and time string into a Date object.
+ * @param {string} date - Date in 'dd/mm/yyyy' format
+ * @param {string} time - Time in 'hh:mm:ss' format
+ */
 const formatDate = (date, time) => {
-  let dayMonthYear = date.replace(/^(\d{1,2}\/)(\d{1,2}\/)(\d{4})$/, '$2$1$3')
-  let finalDate = `${dayMonthYear} ${time}`
-  return new Date(finalDate)
-}
+  const dayMonthYear = date.replace(/^(\d{1,2}\/)(\d{1,2}\/)(\d{4})$/, '$2$1$3');
+  const finalDate = `${dayMonthYear} ${time}`;
+  return new Date(finalDate);
+};
 
-//position flatpickr Calendar inside an modal
+/**
+ * Positions a Flatpickr calendar inside a modal, ensuring it's visible.
+ */
 const positionCalendar = (self) => {
-  let position = self.element.getBoundingClientRect()
-  let top = position.y + position.height
-  let left = position.x
-  // verify if viewport bottom space is enough to contain calendar
-  if (
-    window.innerHeight - position.bottom <
-    $(self.calendarContainer).height()
-  ) {
-    top = position.y - $(self.calendarContainer).height()
-  }
-  $(self.calendarContainer).css({ top: `${top}px`, left: `${left}px` })
-  //don't allow popup to scroll
-  $(self.element).closest('.modal-content').css('overflow', 'hidden')
-}
+  const position = self.element.getBoundingClientRect();
+  const calendarHeight = self.calendarContainer.offsetHeight;
+  let top = position.top + position.height + window.pageYOffset;
+  let left = position.left + window.pageXOffset;
 
+  // Verify if viewport bottom space is enough to contain calendar
+  if (window.innerHeight - position.bottom < calendarHeight) {
+    top = position.top + window.pageYOffset - calendarHeight;
+  }
+
+  self.calendarContainer.style.top = `${top}px`;
+  self.calendarContainer.style.left = `${left}px`;
+
+  // Don't allow popup to scroll
+  const modalContent = self.element.closest('.modal-content');
+  if (modalContent) {
+    modalContent.style.overflow = 'hidden';
+  }
+};
+
+/**
+ * Restores scrolling on the modal content when the calendar is closed.
+ */
 const modalScroll = (instance) => {
-  $(instance.element).closest('.modal-content').css('overflow', '')
-}
+  const modalContent = instance.element.closest('.modal-content');
+  if (modalContent) {
+    modalContent.style.overflow = '';
+  }
+};
 
 const onCalendarOpenClose = {
   onOpen: [repositionOnOpen],
   onClose: [reenableScroll],
-}
+};
+
 function repositionOnOpen(selectedDates, dateStr, instance) {
-  positionCalendar(instance)
-  window.addEventListener('resize', () => {
-    positionCalendar(instance)
-  })
+  positionCalendar(instance);
+  // Use a named function to allow removal if needed
+  const onResize = () => positionCalendar(instance);
+  window.addEventListener('resize', onResize);
+  // Note: We might need a way to remove this listener on close
 }
+
 function reenableScroll(selectedDates, dateStr, instance) {
-  modalScroll(instance)
+  modalScroll(instance);
 }
+
+// Export to window for global access
+Object.assign(window, {
+  formatNum,
+  formatDate,
+  positionCalendar,
+  modalScroll,
+  onCalendarOpenClose
+});

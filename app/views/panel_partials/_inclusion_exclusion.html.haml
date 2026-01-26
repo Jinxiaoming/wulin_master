@@ -1,81 +1,13 @@
 %fieldset.panel_wrapper
-  .panel_btns.center-align{:"data-inclusion-grid" => panel.inclusion_grid, :"data-exclusion-grid" => panel.exclusion_grid }
+  .panel_btns.center-align{ data: { |
+    controller: "inclusion-exclusion", |
+    inclusion_exclusion_inclusion_grid_value: panel.inclusion_grid, |
+    inclusion_exclusion_exclusion_grid_value: panel.exclusion_grid |
+  } }
     - component_names = panel.screen.components.map(&:name)
     - if component_names.index(panel.inclusion_grid) < component_names.index(panel.exclusion_grid)
-      %span#add_btn.material-icons.disabled arrow_back
-      %span#remove_btn.material-icons.disabled arrow_forward
+      %span#add_btn.material-icons.disabled{ data: { action: "click->inclusion-exclusion#include" } } arrow_back
+      %span#remove_btn.material-icons.disabled{ data: { action: "click->inclusion-exclusion#exclude" } } arrow_forward
     - else
-      %span#add_btn.material-icons.disabled arrow_forward
-      %span#remove_btn.material-icons.disabled arrow_back
-
-:javascript
-  $(function(){
-    // Include record
-    $(".panel_btns #add_btn").off('click').on('click', function(){
-      btnHander('add');
-    });
-
-    // Exclude record
-    $(".panel_btns #remove_btn").off('click').on('click', function(){
-      btnHander('remove');
-    });
-
-    function btnHander(type) {
-      var ids;
-      var inclusionGridName = $(".panel_btns").data("inclusion-grid");
-      var exclusionGridName = $(".panel_btns").data("exclusion-grid");
-
-      var inclusionGrid = gridManager.getGrid(inclusionGridName);
-      var exclusionGrid = gridManager.getGrid(exclusionGridName);
-
-      if(!inclusionGrid || !exclusionGrid) return false;
-
-      if (type == 'add') {
-        ids = exclusionGrid.getSelectedIds();
-      } else if (type == 'remove') {
-        ids = inclusionGrid.getSelectedIds();
-      }
-
-      if (ids.length > 0) {
-        setupRequest(type, ids, inclusionGrid, exclusionGrid);
-      }
-    }
-
-    function setupRequest(type, ids, inclusionGrid, exclusionGrid) {
-      var groupGrid;
-      for(var i in inclusionGrid.behaviors) {
-        if(inclusionGrid.behaviors[i].name == 'affiliation') {
-          groupGrid = gridManager.getGrid(inclusionGrid.behaviors[i].master_grid_name);
-          break;
-        }
-      }
-      if(!groupGrid) return false;
-
-      var groupId = groupGrid.getSelectedIds()[0];
-      if(!groupId) return false;
-
-      // Start the request
-      $('.panel_btns button').attr('disabled', 'disabled');
-
-      var url;
-      if(type == 'add') {
-        url = '/wulin_master/include';
-      } else {
-        url = '/wulin_master/exclude';
-      }
-      var data = {group_model: groupGrid.model, group_id: groupId, include_model: inclusionGrid.model, exclude_model: exclusionGrid.model,
-                  ids: ids, authenticity_token: window._token};
-
-      $.post(url, data, function(response) {
-        if(response.status == 'OK') {
-          inclusionGrid.loader.reloadData();
-          exclusionGrid.loader.reloadData();
-          inclusionGrid.resetActiveCell();
-          exclusionGrid.resetActiveCell();
-          displayNewNotification(response.message);
-        } else {
-          displayErrorMessage(response.message);
-        }
-     });
-    }
-  })
+      %span#add_btn.material-icons.disabled{ data: { action: "click->inclusion-exclusion#include" } } arrow_forward
+      %span#remove_btn.material-icons.disabled{ data: { action: "click->inclusion-exclusion#exclude" } } arrow_back

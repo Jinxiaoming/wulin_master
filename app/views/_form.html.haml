@@ -13,7 +13,7 @@
     title = modal_title_action[:modal_title]
   end
 
-.create_form{:id => "#{grid.name}_form", data: {action: action}}
+.create_form{:id => "#{grid.name}_form", data: { action: action, controller: "form" }}
   %h5.title= title
   = form_for object, :url => grid.path do |form|
     = hidden_field_tag :grid, grid.class.to_s
@@ -33,12 +33,23 @@
           - unless is_new
             .switch.target_flag_container
               %label
-                %input.target_flag{type: 'checkbox', "data-target" => "#{column_name}_target_flag", "data-target-id" => "#{column_name}_target_flag"}
+                %input.switch.target_flag{type: 'checkbox', "data-target" => "#{column_name}_target_flag", "data-target-id" => "#{column_name}_target_flag"}
                 %span.lever
           .field{:name => column_name}
             - if (column.sql_type.to_s == 'belongs_to' || column.sql_type.to_s == 'enum')
               .input-field.input-outlined
                 %label{:for => "#{model_name}_#{column_name}"}= label
+                :ruby
+                  select_data = {}
+                  if column.options[:depend_column].present? && column.options[:choices].present? && column.options[:choices].is_a?(String)
+                    select_data = { |
+                      action: "form#initDependentSelect", |
+                      depend_select_id: "#{model_name}_#{column.options[:depend_column]}_id", |
+                      target_select_id: "#{model_name}_#{column_name}", |
+                      fetch_url: column.options[:choices], |
+                      master_model: column.options[:depend_column] |
+                    } |
+                  end
                 = form.select column_name,                                      |
                   select_options(column),                                       |
                   { include_blank: !column.presence_required? },                |
@@ -48,32 +59,8 @@
                   "data-source"      => source,                                 |
                   "data-target"      => "#{column_name}_target_flag",           |
                   "data-target-id"   => "#{column_name}_target_flag",           |
-                  "data-field"       => field                                    |
-                - if column.options[:depend_column].present? && column.options[:choices].present? && column.options[:choices].is_a?(String)
-                  :javascript
-                    $(function(){
-                      const depend_select_id = "#{model_name}_#{column.options[:depend_column]}_id", depend_select = "select#"+depend_select_id;
-                      const target_select_id = "#{model_name}_#{column_name}", target_select = "select#"+target_select_id;
-
-                      $(depend_select).on("select2:select select2:clear", function(){
-                        const master_id = $(depend_select).select2('data')[0].id, master_model = "#{column.options[:depend_column]}";
-                        const fetch_option_url = "#{column.options[:choices]}";
-
-                        $.getJSON(`${fetch_option_url}&master_model=${master_model}&master_id=${master_id}`, function(items) {
-                          const previous_selection = $(target_select).val();
-                          $(target_select).empty();
-                          items.forEach(function({id, name}) {
-                            $(target_select).append(new Option(name, id, false, false));
-                          })
-
-                          if (items.find(item => item.id === previous_selection)) {
-                            $(target_select).val(previous_selection).change();
-                          } else {
-                            $(target_select).val(null).change();
-                          }
-                        })
-                      });
-                    });
+                  "data-field"       => field,                                  |
+                  data: select_data                                             |
 
             - elsif (column.sql_type.to_s == 'has_and_belongs_to_many' or column.sql_type.to_s == 'has_many')
               .input-field.input-outlined
@@ -93,6 +80,11 @@
             - elsif (select_tag_field?(column) || column.sql_type.to_s == 'has_one')
               .input-field.input-outlined
                 %label{:for => "#{model_name}_#{column_name}"}= label
+                :ruby
+                  select_data = {}
+                  if column.options[:depend_column].present?
+                    select_data = { action: "form#initDependentSelect" } # Simplified for legacy
+                  end
                 = select_tag "#{model_name}[#{column_name}]",                   |
                   select_tag_options(column),                                   |
                   :class             => 'chzn-select select2',                  |
@@ -102,34 +94,8 @@
                   "data-target"      => "#{column_name}_target_flag",           |
                   "data-target-id"   => "#{column_name}_target_flag",           |
                   "data-source"      => source,                                 |
-                  "data-field"       => field                                   |
-                - if (column.options[:select_default_value].present?)
-                  :javascript
-                    var current_select_id = "#{model_name}_#{column_name}";
-                    var current_select = $("select#" + current_select_id);
-                    current_select.val("#{column.options[:select_default_value]}").change()
-                    current_select.parents(".field").find("label").addClass("active")
-                - if (column.options[:depend_column].present?)
-                  :javascript
-                    $(function(){
-                      var depend_select_id = "#{model_name}_#{column.options[:depend_column]}";
-                      var depend_select = $("select#" + depend_select_id);
-                      var current_select_id = "#{model_name}_#{column_name}";
-                      var current_select = $("select#" + current_select_id);
-                      $(document).on("change", "select#"+depend_select_id, function(){
-                        var key = $(this).val();
-                        $(current_select).select2({
-                            templateResult: resultState
-                        });
-                        //select2 display need to be added on the container
-                        function resultState(data, container) {
-                          if($(data.element).data("key") !== key ) {
-                              $(container).addClass("optInvisible");
-                          }
-                          return data.text;
-                         }
-                      });
-                    });
+                  "data-field"       => field,                                  |
+                  data: select_data                                             |
 
             - elsif column.options[:file]
               %label{:for => "#{model_name}_#{column_name}"}= label
@@ -140,35 +106,25 @@
             - elsif (column.sql_type.to_s == 'string')
               .input-field.input-outlined
                 %label{:for => "#{model_name}_#{column_name}"}= label
-                = form.text_field column_name, :class => "auto-complete-text-field-#{column_name}", :value => column.value(object), "data-target" => "#{column_name}_target_flag", "data-field" => field, "data-target-id" => "#{column_name}_target_flag"
-
-              :javascript
-                if(window.__globalWillAppend) {
-                  var choices = "/wulin_master/fetch_distinct_options?"
-                                      + "column=#{column_name}"
-                                      + "&grid=#{grid.class}"
-                                      + "&klass=#{grid.model.name}"
-                                      + "&screen=#{screen.class}"
-                                      + "&source=#{column_name}";
-                  var container = $(".auto-complete-text-field-#{column_name}");
-                  //check if column has autocomplete options
-                  let hide_autocomplete = "#{hide_autocomplete}"
-                  let autocomplete_minlength = "#{autocomplete_minlength}"
-                  var column = {
-                    auto_complete: true,
-                    width: container.width(),
-                    choices: choices,
-                    hide_autocomplete: hide_autocomplete,
-                    autocomplete_minlength: autocomplete_minlength
-                  };
-                  var args = {
-                    column: column,
-                    container: container
-                  };
-
-                  carbonCopyNewEditor = TextEditorForForm.bind({})
-                  carbonCopyNewEditor(args);
-                }
+                :ruby
+                  choices = "/wulin_master/fetch_distinct_options?" |
+                            + "column=#{column_name}" |
+                            + "&grid=#{grid.class}" |
+                            + "&klass=#{grid.model.name}" |
+                            + "&screen=#{screen.class}" |
+                            + "&source=#{column_name}" |
+                = form.text_field column_name,                                  |
+                  :class => "auto-complete-text-field-#{column_name}",          |
+                  :value => column.value(object),                               |
+                  "data-target" => "#{column_name}_target_flag",                |
+                  "data-field" => field,                                        |
+                  "data-target-id" => "#{column_name}_target_flag",             |
+                  data: { |
+                    action: "form#initAutocomplete", |
+                    choices: choices, |
+                    hide_autocomplete: hide_autocomplete.to_s, |
+                    autocomplete_minlength: autocomplete_minlength |
+                  } |
 
             - else
               - if column.sql_type.to_s.downcase == 'boolean'
@@ -179,35 +135,13 @@
               - elsif column.options[:editor]=='RichTextEditor'
                 .input-field.input-outlined
                   %label{:for => "#{model_name}_#{column_name}"}= label
-                  %textarea{name: "#{model_name}[#{column_name}]", id: "#{model_name}_#{column_name}_rich_text_editor", "data-field" => field, "data-target-id" => "#{column_name}_target_flag", class: 'materialnote'}= column.value(object)
-                  :javascript
-                    window.materialNoteIndex = (window.materialNoteIndex ? window.materialNoteIndex + 1 : 1);
-                    $('##{model_name}_#{column_name}_rich_text_editor').materialnote({
-                      height: 300,
-                      toolbar: [
-                        ['style', ['bold', 'italic', 'underline', 'clear']],
-                        ['font', ['strikethrough']],
-                        ['fontsize', ['fontsize']],
-                        ['color', ['color']],
-                        ['table', ['table']],
-                        ['para', ['ul', 'ol', 'paragraph']],
-                        ['insert', ['link', 'picture', 'video']],
-                        ['view', ['fullscreen', 'codeview']]
-                      ],
-                      callbacks: {
-                        onFocus: function() {
-                          $('##{model_name}_#{column_name}_rich_text_editor').parent().addClass('focused');
-                        },
-                        onBlur: function() {
-                          $('##{model_name}_#{column_name}_rich_text_editor').parent().removeClass('focused');
-                        }
-                      },
-                      defaultColors: {
-                        text: 'red',
-                        background: 'transparent'
-                      },
-                      posIndex: window.materialNoteIndex
-                    });
+                  %textarea{name: "#{model_name}[#{column_name}]", |
+                    id: "#{model_name}_#{column_name}_rich_text_editor", |
+                    "data-field" => field, |
+                    "data-target-id" => "#{column_name}_target_flag", |
+                    class: 'materialnote', |
+                    data: { action: "form#initRichTextEditor" } |
+                  }= column.value(object)
               - elsif column.sql_type.to_s.downcase == 'text'
                 .input-field.input-outlined
                   %label.textarea-label{:for => "#{model_name}_#{column_name}"}= label
@@ -229,6 +163,3 @@
         %input.btn.waves-effect{id: "#{grid.name}_submit", name: "commit", type: "submit", value: " Create "}
       - else
         %input.btn.waves-effect{id: "#{grid.name}_batch_#{name}", class: "#{name}_btn", name: "commit", type: "submit", value: " #{button_name} "}
-
-:javascript
-  $('.input-outlined').first().children("input").focus()

@@ -7,8 +7,8 @@
   custom_states.sort_by! { |state| state[1] }
   current_state = WulinMaster::GridState.current(current_user.id, grid.name)
 
-.grid-states-switcher
-  %a.dropdown-trigger.btn.grey.lighten-3{"data-target" => "grid_states_#{grid.name}", "data-coverTrigger" => "true", href: "#", id: "current-state-#{grid.name}"}
+.grid-states-switcher{ data: { controller: "grid-states", grid_states_grid_name_value: grid.name, grid_states_current_id_value: current_state.id } }
+  %a.dropdown-trigger.btn.grey.lighten-3{"data-target" => "grid_states_#{grid.name}", "data-coverTrigger" => "true", href: "#", id: "current-state-#{grid.name}", data: { action: "click->grid-states#toggleIcon" } }
     %span= current_state.name
     %span.material-icons.right arrow_drop_down
   %ul.dropdown-content{id: "grid_states_#{grid.name}"}
@@ -19,143 +19,31 @@
     - custom_states.each do |option|
       %li
         %a.grid-state-item.grid-state-option-wide{id: "grid-state-#{option[1]}", "data-state-id" => option[1], href: '#!'}= option[0]
-        %a.edit-icon-container.right{"data-state-id" => option[1], "data-state-name" => option[0]}
+        %a.edit-icon-container.right{ data: { action: "click->grid-states#openEdit", state_id: option[1], state_name: option[0] } }
           %span.material-icons.right mode_edit
       %li.divider
     %li
-      %a.grid-state-option-parent-wide{id: "add-view-btn-#{grid.name}"}
+      %a.grid-state-option-parent-wide{id: "add-view-btn-#{grid.name}", data: { action: "click->modal#open" }, href: "#create-state-modal-#{grid.name}"}
         %span.material-icons.left add_box
         ADD VIEW
 
-.grid-states-modal.modal{id: "create-state-modal-#{grid.name}"}
-  .modal-content
-    %h5 Create a new view
-    .input-field
-      %input{type: 'text', id: "view-name-input-create-#{grid.name}"}
-      %label{for: "view-name-input-create-#{grid.name}", id: "view-name-label-create-#{grid.name}"} View Name
-  .modal-footer
-    .btn.right.disabled{id: "create-btn-#{grid.name}"} Create
-    .modal-close.btn-flat Cancel
+  .grid-states-modal.modal{id: "create-state-modal-#{grid.name}"}
+    .modal-content
+      %h5 Create a new view
+      .input-field
+        %input{type: 'text', id: "view-name-input-create-#{grid.name}", data: { grid_states_target: "createInput", action: "input->grid-states#validateCreate keydown->grid-states#handleCreateKey" }}
+        %label{for: "view-name-input-create-#{grid.name}"} View Name
+    .modal-footer
+      .btn.right.disabled{ data: { grid_states_target: "createBtn", action: "click->grid-states#create" } } Create
+      .modal-close.btn-flat Cancel
 
-#edit-state-modal.grid-states-modal.modal
-  .modal-content
-    %h5 Edit view
-    .input-field
-      %input#view-name-input-edit{type: 'text'}
-      %label#view-name-label-edit{for: 'view-name-input-edit'} View Name
-  .modal-footer
-    #update-btn.btn.right.disabled Update
-    #delete-btn.btn-flat.red-text.modal-close.right Delete
-    .modal-close.btn-flat Cancel
-
-:javascript
-
-  $(function(){
-    const gridName = "#{grid.name}"
-    const currentState = `#current-state-${gridName}`
-    const viewNameInputCreate = `#view-name-input-create-${gridName}`
-    const createBtn = `#create-btn-${gridName}`
-    const createStateModal = `#create-state-modal-${gridName}`
-
-    $(currentState).dropdown();
-    $('.modal').modal();
-
-    var id;
-    var oldName;
-    var newName;
-
-    $(`#add-view-btn-${gridName}`).on('click', function() {
-      $(createStateModal).modal('open');
-    });
-
-    $(currentState).on('click', function() {
-      var $icon = $(this).children('.material-icons');
-      var up = 'arrow_drop_up'
-      var down = 'arrow_drop_down'
-      $icon.html($icon.text() == up ? down : up);
-    });
-
-    $(viewNameInputCreate).on('input', function() {
-      $(createBtn).toggleClass('disabled', !$(this).val());
-    });
-
-    $(viewNameInputCreate).on('keydown', function(e) {
-      if(e.keyCode == 13 && !$(createBtn).hasClass('disabled')) {
-        $(createBtn).click();
-      }
-    });
-
-    $(createBtn).on('click', () => {
-      var data = {
-        grid_name: `${gridName}`,
-        state_name: $(viewNameInputCreate).val()
-      };
-
-      $.post('/wulin_master/grid_states_manages/create', data, function(response){
-        if (response == 'success') {
-          $(createStateModal).modal('close');
-          location.reload();
-        } else {
-          displayErrorMessage(response)
-        }
-      });
-    });
-
-    $('.edit-icon-container').on('click', function() {
-      $('#edit-state-modal').modal('open');
-      id = $(this).attr('data-state-id');
-      oldName = $(this).attr('data-state-name');
-      $('#view-name-label-edit').addClass('active');
-      $('#view-name-input-edit').val(oldName);
-    });
-
-    $('#grid_states li').on({
-      mouseenter: function () {
-        $(this).children('.edit-icon-container').removeClass('hide');
-      },
-      mouseleave: function () {
-        $(this).children('.edit-icon-container').addClass('hide');
-      }
-    });
-
-    $("#view-name-input-edit").on('keydown', function(e) {
-      if(e.keyCode == 13 && !$('#update-btn').hasClass('disabled')) {
-        $('#update-btn').click();
-      }
-    });
-
-    $("#view-name-input-edit").on('input', function() {
-      newName = $('#view-name-input-edit').val();
-      $('#update-btn').toggleClass('disabled', !newName || oldName == newName);
-    });
-
-    $('#update-btn').on('click', function() {
-      var data = { id: id, name: newName }
-      $.post('/wulin_master/grid_states_manages/update', data, function(response){
-        if (response == 'success') {
-          $('#view-name-input-edit').text(newName);
-          $('#grid-state-' + id).text(newName);
-          if ("#{current_state.id}" == id) {
-            $(`${currentState} span`).text(newName);
-          }
-          $('#edit-state-modal').modal('close');
-          displayNewNotification('View is updated successfully!')
-        } else {
-          displayErrorMessage(response)
-        }
-      });
-    });
-
-    $('#delete-btn').on('click', function() {
-      var data = { id: id }
-      $.post('/wulin_master/grid_states_manages/destroy', data, function(response){
-        if (response == 'success') {
-          $('#edit-state-modal').modal('close');
-          location.reload();
-        } else {
-          displayErrorMessage(response)
-        }
-      });
-    });
-
-  });
+  #edit-state-modal.grid-states-modal.modal
+    .modal-content
+      %h5 Edit view
+      .input-field
+        %input#view-name-input-edit{type: 'text', data: { grid_states_target: "editInput", action: "input->grid-states#validateUpdate keydown->grid-states#handleEditKey" }}
+        %label#view-name-label-edit{for: 'view-name-input-edit'} View Name
+    .modal-footer
+      #update-btn.btn.right.disabled{ data: { grid_states_target: "updateBtn", action: "click->grid-states#update" } } Update
+      #delete-btn.btn-flat.red-text.modal-close.right{ data: { action: "click->grid-states#delete" } } Delete
+      .modal-close.btn-flat Cancel

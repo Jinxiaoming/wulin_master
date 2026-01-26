@@ -30,6 +30,10 @@ import MaterializeController from "./controllers/materialize_controller"
 import PanelController from "./controllers/panel_controller"
 import NavigationController from "./controllers/navigation_controller"
 import ScreenController from "./controllers/screen_controller"
+import GridController from "./controllers/grid_controller"
+import FormController from "./controllers/form_controller"
+import InclusionExclusionController from "./controllers/inclusion_exclusion_controller"
+import GridStatesController from "./controllers/grid_states_controller"
 
 application.register("notification", NotificationController)
 application.register("modal", ModalController)
@@ -38,6 +42,10 @@ application.register("materialize", MaterializeController)
 application.register("panel", PanelController)
 application.register("navigation", NavigationController)
 application.register("screen", ScreenController)
+application.register("grid", GridController)
+application.register("form", FormController)
+application.register("inclusion-exclusion", InclusionExclusionController)
+application.register("grid-states", GridStatesController)
 
 // SlickGrid dependencies from NPM
 import 'jquery.event.drag'

@@ -1,10 +1,5 @@
-.panel_container{:id => "panel_#{panel.name}", :class => screen.name, :style => panel.style}
+.panel_container{ id: "panel_#{panel.name}", class: screen.name, style: panel.style, data: { controller: "panel" } }
   - if panel.title
     .panel-header
       %h2=panel.title
   = render :partial => "panel_partials/#{panel.partial}", :locals => {:panel => panel}
-
-:javascript
-  $(function(){
-    adjustPanelButtons("panel_#{panel.name}");
-  })

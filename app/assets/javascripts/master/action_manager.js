@@ -76,9 +76,15 @@ WulinMaster.actions.BaseAction = {
 
   // Handle delete confirm with dialog
   deleteGridRecords: function(grid, ids) {
-    var self = this;
+    const self = this;
+    const modelName = grid.model || 'record';
+    const recordCount = ids.length;
+    const message = recordCount > 1 
+      ? `Are you sure you want to delete these ${recordCount} ${modelName.toLowerCase()}s?`
+      : `Are you sure you want to delete this ${modelName.toLowerCase()}?`;
+
     displayCustomizedConfirmModal({
-      message: "Are you sure you want to delete the selected records?",
+      message: message,
       title: "Delete Confirmation",
       confirmCallBack: function() {
         Requests.deleteByAjax(grid, ids);

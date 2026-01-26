@@ -55,97 +55,140 @@ var Requests = {
     createFormElement.ajaxSubmit(ajaxOptions);
   },
 
+  /**
+   * Performs an AJAX request using the modern Fetch API.
+   * This is a step towards removing the jQuery dependency.
+   * 
+   * @param {string} url - The endpoint URL
+   * @param {Object} options - Fetch options (method, body, etc.)
+   * @returns {Promise<Object>} The JSON response
+   */
+  async fetchJson(url, options = {}) {
+    const defaultOptions = {
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': decodeURIComponent(window._token || ''),
+        'X-Requested-With': 'XMLHttpRequest'
+      }
+    };
+
+    const response = await fetch(url, { ...defaultOptions, ...options });
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    return await response.json();
+  },
+
   // Record update by ajax
   updateByAjax: function(grid, item, editCommand) {
     delete item.slick_index;
-    var currentRow = this.getCurrentRows(grid, [item.id])[1];
+    const currentRow = this.getCurrentRows(grid, [item.id])[1];
 
-    var gridParams = {}
+    const gridParams = {};
     $.each(grid.loader.getParams(), function(_, value) {
-      gridParams[value[0]] = value[1]
-    })
+      gridParams[value[0]] = value[1];
+    });
 
-    $.ajax({
-      type: "POST",
-      dateType: 'json',
-      url: grid.path + "/" + item.id + ".json" + grid.query,
-      data: {_method: 'PUT', item: item, authenticity_token: decodeURIComponent(window._token), gridParams: gridParams},
-      success: function(msg) {
+    const url = `${grid.path}/${item.id}.json${grid.query}`;
+    const body = JSON.stringify({
+      _method: 'PUT',
+      item: item,
+      authenticity_token: decodeURIComponent(window._token),
+      gridParams: gridParams
+    });
+
+    this.fetchJson(url, { method: 'POST', body })
+      .then(msg => {
         if(msg.success) {
           grid.onUpdatedByAjax.notify({item, msg});
-
-          var from = parseInt(currentRow / 200, 10) * 200;
+          const from = parseInt(currentRow / 200, 10) * 200;
           grid.loader.reloadData(from, currentRow);
         } else {
-          displayErrorMessage(msg.error_message);
+          displayErrorMessage(msg.error_message || 'Update failed', 'Error');
           if(editCommand) {
             editCommand.undo();
           } else {
             grid.loader.reloadData();
           }
         }
-      }
-    });
+      })
+      .catch(error => {
+        console.error('Update error:', error);
+        displayErrorMessage('An error occurred during update.', 'Network Error');
+        if(editCommand) editCommand.undo();
+      });
   },
 
   // Delete rows along ajax
-  deleteByAjax: function(grid, ids, force) {
+  deleteByAjax: function(grid, ids, force = false) {
     if (ids.length > 350) {
-      displayErrorMessage('You select too many rows, please select less than 350 rows.');
+      displayErrorMessage('You selected too many rows, please select less than 350 rows.', 'Selection Error');
       return;
     }
-    if(force === undefined) force = false;
-    var range = this.getCurrentRows(grid, ids);
-    if (ids.length == 0) return;
-    $.ajax({
-      type: 'POST',
-      url: grid.path + '/' + ids + '.json' + grid.query + '&force=' + force,
-      data: decodeURIComponent($.param({_method: 'DELETE', authenticity_token: window._token})),
-      success: function(msg) {
+    
+    const range = this.getCurrentRows(grid, ids);
+    if (ids.length === 0) return;
+
+    const url = `${grid.path}/${ids}.json${grid.query}&force=${force}`;
+    const body = JSON.stringify({
+      _method: 'DELETE',
+      authenticity_token: window._token
+    });
+
+    this.fetchJson(url, { method: 'POST', body })
+      .then(msg => {
         if(msg.success) {
           grid.onDeletedByAjax.notify({ids, msg});
           grid.resetActiveCell();
-          var from = parseInt(range[0] / 200, 10) * 200;
-          var to = range[1]+1;
+          const from = parseInt(range[0] / 200, 10) * 200;
+          const to = range[1] + 1;
           grid.loader.reloadData(from, to);
           if ((grid.reloadMasterAfterUpdates || grid.options.reloadMasterAfterUpdates) && grid.master_grid) {
             grid.master_grid.loader.reloadData();
           }
 
-          var buttonMode = grid.container.find('.toolbar-select').data('mode');
-          var isSplitMode = buttonMode === 'split';
-          var toolbarSelect = grid.container.find('.toolbar-select');
-          if(isSplitMode) {
-            toolbarSelect.attr('hidden', true);
-          } else {
-            toolbarSelect
-              .find('.specific')
-              .addClass('toolbar_icon_disabled')
-              .removeClass('specific')
-              .addClass('static-waves-effect')
-              .removeClass('waves-effect');
-          }
+          this.updateToolbarState(grid, ids);
 
-          var recordSize = $.isArray(ids) ? ids.length : ids.split(',').length;
-          var message;
-          if (recordSize > 1) {
-            message = recordSize + ' ' + grid.model.toLowerCase() + 's deleted';
-          } else {
-            message = '1 ' + grid.model.toLowerCase() + ' deleted';
-          }
-          displayNewNotification(message);
+          const recordSize = $.isArray(ids) ? ids.length : ids.split(',').length;
+          const modelName = grid.model ? grid.model.toLowerCase() : 'record';
+          const message = recordSize > 1 ? `${recordSize} ${modelName}s deleted` : `1 ${modelName} deleted`;
+          displayNewNotification(message, 'success');
         } else if(msg.confirm) {
-          if(msg.warning_message) $('#confirm-content').text(msg.warning_message);
-          $('#confirm-modal').modal('open');
-          $('#confirmed-btn').off('click').on('click', function() {
-            Requests.deleteByAjax(grid, ids, true);
+          displayCustomizedConfirmModal({
+            message: msg.warning_message || "Are you sure?",
+            title: "Delete Confirmation",
+            confirmCallBack: () => {
+              Requests.deleteByAjax(grid, ids, true);
+            }
           });
         } else {
-          displayErrorMessage(msg.error_message);
-          saveMessage('Error deleting ' + grid.model.toLowerCase(), 'error');
+          displayErrorMessage(msg.error_message || 'Delete failed', 'Error');
+          saveMessage('Error deleting ' + (grid.model ? grid.model.toLowerCase() : 'record'), 'error');
         }
-      }
-    });
+      })
+      .catch(error => {
+        console.error('Delete error:', error);
+        displayErrorMessage('An error occurred during deletion.', 'Network Error');
+      });
+  },
+
+  /**
+   * Updates the toolbar state after a deletion.
+   */
+  updateToolbarState: function(grid, ids) {
+    const toolbarSelect = grid.container.find('.toolbar-select');
+    const buttonMode = toolbarSelect.data('mode');
+    
+    if(buttonMode === 'split') {
+      toolbarSelect.attr('hidden', true);
+    } else {
+      toolbarSelect
+        .find('.specific')
+        .addClass('toolbar_icon_disabled')
+        .removeClass('specific')
+        .addClass('static-waves-effect')
+        .removeClass('waves-effect');
+    }
   },
 
   getCurrentRows: function(grid, ids) {

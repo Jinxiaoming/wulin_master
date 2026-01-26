@@ -1,135 +1,113 @@
-(function($) {
-  function ConnectionManager(remoteModel) {
-    // Keeps all the requests available in an array
-    var requests = [];
-
-    function createConnection(grid, url, indicator, clientOnSuccess, clientOnError, currentRequestVersionNumber) {
-      var existingRequest = getConnection(url);
-
-      // Just return if connection already exists.
-      if (existingRequest !== null) { return; }
-
-      // Ekohe Add: Use progress bar in grid header as indicator
-      var $header = grid.container.find('.slick-header');
-      $header.find('~ .progress').remove();
-      var $progress_bar = $('<div class="progress"><div class="indeterminate"></div></div>').insertAfter($header);
-      if ($('.slick-row').length == 0) {
-        grid.renderLoadingRows({top: 0, bottom: 30});
-      }
-      grid.container.find('.slick-pager-status').text('Loading...');
-      var $loadingRows = grid.container.find('.slick-row.loading');
-
-      var newRequest = $.ajax({url: url,
-                           success: onSuccess,
-                           complete: complete,
-                           dataType: 'json',
-                           error: onError});
-
-      newRequest.clientOnSuccess = clientOnSuccess;
-      newRequest.clientOnError = clientOnError;
-      // Ekohe Edit: Use progress bar in grid header as indicator
-      // newRequest.indicator = indicator;
-      newRequest.indicator = $progress_bar;
-      newRequest.loadingRows = $loadingRows;
-      newRequest.url = url;
-      newRequest.loader = grid.loader;
-      newRequest.versionNumber = currentRequestVersionNumber; // Set the version number
-
-      // Ekohe Delete: Use progress bar in grid header as indicator
-      // showIndicator(indicator);
-
-      requests.push(newRequest);
-    }
-
-    function complete(request, textStatus) {
-      // Remove request
-      // var requestIndex = requests.indexOf(request);
-      // if(requestIndex!=-1) requests.splice(requestIndex, 1);
-      requests = $.grep(requests, function(n, i){
-        return n.url != request.url;
-      });
-    }
-
-    function onSuccess(data, textStatus, request) {
-      // Ekohe Edit: Use progress bar in grid header as indicator
-      // hideIndicator(request.indicator);
-      request.indicator.remove();
-      request.loadingRows.remove();
-      if (request.versionNumber < request.loader.lastRequestVersionNumber) {
-        return;
-      }
-      request.loader.lastRequestVersionNumber = request.versionNumber; // Update lastRequestVersionNumber
-      request.clientOnSuccess(data, textStatus, request);
-    }
-
-    function onError(request, textStatus, errorThrown) {
-      request.clientOnError(request, textStatus, errorThrown);
-      // Remove request
-      var requestIndex = requests.indexOf(request);
-      if(requestIndex!=-1) requests.splice(requestIndex, 1);
-    }
-
-    function is_empty(){
-      return requests.length === 0;
-    }
-
-    function showIndicator(indicator) {
-      var requestCount = indicator.data('requestCount');
-      if (requestCount > -1) { indicator.show(); }
-      indicator.data('requestCount', requestCount+1);
-      updateIndicatorStats(indicator);
-    }
-
-    function hideIndicators(indicators) {
-      for (var i = 0;i < indicators.length;i++) {
-        hideIndicator(indicators[i]);
-      }
-    }
-
-    function hideIndicator(indicator) {
-      var requestCount = indicator.data('requestCount');
-      if (requestCount == 1) { indicator.fadeOut(); }
-      indicator.data('requestCount', requestCount-1);
-      updateIndicatorStats(indicator);
-    }
-
-    function updateIndicatorStats(indicator) {
-      var requestCount = indicator.data('requestCount');
-      var stats = indicator.find(".loading_stats");
-
-      if (requestCount === 0) {
-        stats.text("");
-      } else {
-        stats.text("Loading " + (indicator.loadingSize * requestCount) + " rows");
-      }
-    }
-
-    function getConnection(url) {
-      for (var i = 0; i < requests.length; i++){
-        if (requests[i].url == url)
-          return requests[i];
-      }
-      return null;
-    }
-
-    function removeConnection(url){
-      for (var i = 0; i < requests.length; i++){
-        if (requests[i].url == url)
-          return requests.splice(i,1);
-      }
-      return null;
-    }
-
-    return {
-      // properties
-      "requests": requests,
-      "remoteModel": remoteModel,
-
-      // functions
-      "createConnection": createConnection,
-      "is_empty": is_empty,
-      "removeConnection": removeConnection
-    };
+/**
+ * ConnectionManager handles the lifecycle of network requests for a RemoteModel.
+ * It manages request deduplication, cancellation, and loading indicators.
+ */
+export default class ConnectionManager {
+  constructor(remoteModel) {
+    this.remoteModel = remoteModel;
+    this.requests = new Map(); // Map of URL -> AbortController
   }
-  $.extend(true, window, { ConnectionManager: ConnectionManager});
-})(jQuery);
+
+  /**
+   * Creates a new connection (request) to the server.
+   * 
+   * @param {Object} grid - The SlickGrid instance
+   * @param {string} url - The request URL
+   * @param {Object} indicator - Legacy indicator (unused but kept for signature)
+   * @param {Function} clientOnSuccess - Success callback
+   * @param {Function} clientOnError - Error callback
+   * @param {number} currentRequestVersionNumber - Version number to prevent out-of-order updates
+   */
+  async createConnection(grid, url, indicator, clientOnSuccess, clientOnError, currentRequestVersionNumber) {
+    // If a request for this URL is already in progress, don't start a new one
+    if (this.requests.has(url)) return;
+
+    // UI: Show progress bar in grid header
+    const container = grid.container instanceof jQuery ? grid.container[0] : grid.container;
+    const header = container.querySelector('.slick-header');
+    
+    // Cleanup old progress bars
+    const oldProgress = header.nextElementSibling;
+    if (oldProgress && oldProgress.classList.contains('progress')) {
+      oldProgress.remove();
+    }
+
+    // Create new progress bar
+    const progressBar = document.createElement('div');
+    progressBar.className = 'progress';
+    progressBar.innerHTML = '<div class="indeterminate"></div>';
+    header.insertAdjacentElement('afterend', progressBar);
+
+    // Initial loading state for rows
+    if (container.querySelectorAll('.slick-row').length === 0) {
+      grid.renderLoadingRows({ top: 0, bottom: 30 });
+    }
+    
+    const pagerStatus = container.querySelector('.slick-pager-status');
+    if (pagerStatus) pagerStatus.textContent = 'Loading...';
+
+    const loadingRows = container.querySelectorAll('.slick-row.loading');
+
+    // Setup AbortController for cancellation
+    const controller = new AbortController();
+    this.requests.set(url, controller);
+
+    try {
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest'
+        },
+        signal: controller.signal
+      });
+
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      
+      const data = await response.json();
+      
+      // Cleanup UI
+      progressBar.remove();
+      loadingRows.forEach(row => row.remove());
+
+      // Version check: only process if this is the latest requested version
+      const loader = grid.loader;
+      if (currentRequestVersionNumber >= loader.lastRequestVersionNumber) {
+        loader.lastRequestVersionNumber = currentRequestVersionNumber;
+        clientOnSuccess(data, "success", { url, loader, versionNumber: currentRequestVersionNumber });
+      }
+    } catch (error) {
+      if (error.name === 'AbortError') {
+        console.log('Fetch aborted');
+      } else {
+        // Cleanup UI on error
+        progressBar.remove();
+        loadingRows.forEach(row => row.remove());
+        clientOnError({ url }, "error", error.message);
+      }
+    } finally {
+      this.requests.delete(url);
+    }
+  }
+
+  /**
+   * Checks if there are any active requests.
+   */
+  isEmpty() {
+    return this.requests.size === 0;
+  }
+
+  /**
+   * Cancels a specific connection by URL.
+   */
+  removeConnection(url) {
+    const controller = this.requests.get(url);
+    if (controller) {
+      controller.abort();
+      this.requests.delete(url);
+    }
+  }
+}
+
+// Global exposure for legacy compatibility
+window.ConnectionManager = ConnectionManager;

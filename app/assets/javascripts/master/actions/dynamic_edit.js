@@ -1,13 +1,20 @@
-WulinMaster.actions.DynamicEdit = $.extend({}, WulinMaster.actions.BaseAction, {
+/**
+ * Dynamic Edit Action
+ * Triggers a batch update with a specific version.
+ */
+WulinMaster.actions.DynamicEdit = Object.assign({}, WulinMaster.actions.BaseAction, {
   name: 'dynamic_edit',
   triggerElementIdentifier: '.dynamic_toolbar',
 
-  handler: function(e, args) {
-    var grid = this.getGrid();
-    var version = $(e.currentTarget).data('version');
+  handler: function(e) {
+    const grid = this.getGrid();
+    const btn = e.currentTarget;
+    const version = btn.dataset.version;
 
-    // Batch update action
-    batchUpdateByAjax(grid, version);
+    // Use the modernized batch update from Edit action
+    if (WulinMaster.actions.Edit?.batchUpdateByAjax) {
+      WulinMaster.actions.Edit.batchUpdateByAjax(grid, version);
+    }
     return false;
   }
 });

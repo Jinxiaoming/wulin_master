@@ -1,25 +1,22 @@
-WulinMaster.actions.FilterDefaultGridStates = $.extend(
-  {},
-  WulinMaster.actions.BaseAction,
-  {
-    name: "filter_default_grid_states",
+/**
+ * Filter Default Grid States Action
+ * Toggles filtering of default grid states.
+ */
+WulinMaster.actions.FilterDefaultGridStates = Object.assign({}, WulinMaster.actions.BaseAction, {
+  name: "filter_default_grid_states",
 
-    activate: function () {
-      var grid = this.getGrid();
-      if (!grid) return false;
+  activate: function () {
+    const grid = this.getGrid();
+    if (!grid) return false;
 
-      var $switcher = $(".filter_default_grid_state input");
-      if ($switcher.length == 0) return false;
+    const switcher = document.querySelector(".filter_default_grid_state input");
+    if (!switcher) return false;
 
-      $switcher.on("click", function () {
-        if ($switcher.is(":checked")) {
-          grid.loader.setParam("default_grids", "true", true);
-        } else {
-          grid.loader.setParam("default_grids", "", true);
-        }
-      });
-    },
-  }
-);
+    switcher.onclick = () => {
+      const value = switcher.checked ? "true" : "";
+      grid.loader.setParam("default_grids", value, true);
+    };
+  },
+});
 
 WulinMaster.ActionManager.register(WulinMaster.actions.FilterDefaultGridStates);

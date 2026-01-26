@@ -1,37 +1,48 @@
-// Toolbar Item 'Export Role Permission'
-
-WulinMaster.actions.ExportRolePermission = $.extend({}, WulinMaster.actions.BaseAction, {
+/**
+ * Export Role Permission Action
+ * Exports selected roles' permissions as a JSON file.
+ */
+WulinMaster.actions.ExportRolePermission = Object.assign({}, WulinMaster.actions.BaseAction, {
   name: 'export_role_permission',
 
-  handler: function(e) {
+  handler: async function() {
     const grid = this.getGrid();
     const ids = grid.getSelectedIds();
 
-    const query = $.param({ ids: ids });
-    const url = `/roles/export_role_permission${query ? `?${query}` : ''}`;
+    const params = new URLSearchParams();
+    ids.forEach(id => params.append('ids[]', id));
+    
+    const url = `/roles/export_role_permission?${params.toString()}`;
 
-    const req = new XMLHttpRequest();
-    req.open('GET', url, true);
-    req.responseType = 'blob';
+    try {
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+      });
 
-    req.onload = function() {
-      const blob = req.response;
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      
+      const blob = await response.blob();
       let filename = 'roles_permissions.json';
-      const cd = req.getResponseHeader('Content-Disposition');
-      if (cd) {
-        const match = cd.match(/filename="?([^";]+)"?/);
-        if (match && match[1]) filename = match[1];
+      
+      const contentDisposition = response.headers.get('Content-Disposition');
+      if (contentDisposition) {
+        const match = contentDisposition.match(/filename="?([^";]+)"?/);
+        if (match?.[1]) filename = match[1];
       }
 
       const link = document.createElement('a');
       link.href = window.URL.createObjectURL(blob);
       link.download = filename;
+      document.body.appendChild(link);
       link.click();
 
       window.URL.revokeObjectURL(link.href);
       link.remove();
-    };
-    req.send();
+    } catch (error) {
+      console.error('Export error:', error);
+      window.displayErrorMessage('Failed to export permissions.', 'Error');
+    }
   },
 });
 

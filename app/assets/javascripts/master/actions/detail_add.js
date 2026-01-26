@@ -1,35 +1,41 @@
-// Detail grid Toolbar Item 'Add'
-jQuery.event.props.push("cancel");
-
-WulinMaster.actions.DetailAdd = $.extend({}, WulinMaster.actions.BaseAction, {
+/**
+ * Detail Add Action
+ * Opens a creation dialog for a detail grid and attempts to pre-fill the master association.
+ */
+WulinMaster.actions.DetailAdd = Object.assign({}, WulinMaster.actions.BaseAction, {
   name: 'detail_add',
 
-  handler: function(e) {
-    var grid = this.getGrid();
+  handler: function() {
+    const grid = this.getGrid();
     this.grid = grid;
-    var self = this;
 
-    Ui.openDialog(grid, 'wulin_master_new_form', grid.options, function() {setTimeout(function(){
-      self.assignMaster(grid);
-    }, 1000);});
+    window.Ui.openDialog(grid, 'wulin_master_new_form', grid.options);
 
-    // register 'Create' button click event, need to remove to dialog action later
-    $('body').off("click", '#' + grid.name + '_submit').on('click', '#' + grid.name + '_submit', function() {
-      Requests.createByAjax(grid, false);
-      return false;
-    });
-    // register 'Create and Continue' button click event, need to remove to dialog action later
-    $('body').off("click", '#' + grid.name + '_submit_continue').on('click', '#' + grid.name + '_submit_continue', function() {
-      Requests.createByAjax(grid, true);
-      return false;
-    });
+    // Attempt to assign master after dialog opens
+    setTimeout(() => this.assignMaster(grid), 1000);
+
+    // Register button click events
+    const submitHandler = (evt) => {
+      const btn = evt.target;
+      if (btn.id !== `${grid.name}_submit` && btn.id !== `${grid.name}_submit_continue`) return;
+
+      evt.preventDefault();
+      const continueOn = btn.id === `${grid.name}_submit_continue`;
+      window.Requests.createByAjax(grid, continueOn);
+    };
+
+    document.body.removeEventListener('click', submitHandler);
+    document.body.addEventListener('click', submitHandler);
   },
 
-  assignMaster: function(){
-    // TODO
-    // 1. find the master grid and the selected record in master grid
-    // 2. in the create dialog, find the master id dropdown
-    // 3. set the dropdown value as the selected record in master grid, and disable it
+  /**
+   * Logic to pre-fill the master association in the creation form.
+   */
+  assignMaster: function(grid) {
+    // TODO: Implementation for pre-filling master ID
+    // 1. Find the master grid and the selected record in master grid
+    // 2. In the create dialog, find the master id dropdown
+    // 3. Set the dropdown value as the selected record in master grid, and disable it
   }
 });
 

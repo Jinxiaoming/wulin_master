@@ -1,7 +1,5 @@
-// Import jQuery setup FIRST to ensure global availability
+// Import jQuery setup FIRST to ensure global availability for legacy plugins
 import './jquery_setup.js'
-
-// Import jQuery UI setup to ensure global availability
 import './jquery_ui_setup.js'
 
 // External dependencies
@@ -24,6 +22,7 @@ import { Application } from "@hotwired/stimulus"
 const application = Application.start()
 window.Stimulus = application
 
+// Register Stimulus Controllers
 import NotificationController from "./controllers/notification_controller"
 import ModalController from "./controllers/modal_controller"
 import LoaderController from "./controllers/loader_controller"
@@ -31,6 +30,7 @@ import MaterializeController from "./controllers/materialize_controller"
 import PanelController from "./controllers/panel_controller"
 import NavigationController from "./controllers/navigation_controller"
 import ScreenController from "./controllers/screen_controller"
+
 application.register("notification", NotificationController)
 application.register("modal", ModalController)
 application.register("loader", LoaderController)
@@ -38,9 +38,6 @@ application.register("materialize", MaterializeController)
 application.register("panel", PanelController)
 application.register("navigation", NavigationController)
 application.register("screen", ScreenController)
-
-$(function(){
-});
 
 // SlickGrid dependencies from NPM
 import 'jquery.event.drag'
@@ -87,9 +84,6 @@ import RemoteModel from './remotemodel.js'
 import './row_detail_templates.js'
 import './ui_helper.js'
 import './grid_manager.js'
-
-// SlickGrid extensions (contains deep_clone function)
-import '../jquery_plugins/SlickGrid/lib/extension.js'
 
 // Managers
 import './behavior_manager.js'
@@ -141,7 +135,6 @@ import '../dropzone.min.js'
 window.__globalWillAppend = false
 
 // Expose deep_clone globally for backward compatibility
-// The deep_clone function is defined in extension.js but needs to be globally accessible
 window.deep_clone = window.deep_clone || function(myObj){
   if(typeof(myObj) != 'object' || myObj instanceof Array) return myObj;
   if(myObj == null) return myObj;

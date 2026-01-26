@@ -5,24 +5,26 @@
  * to modern Turbo Drive.
  */
 
-let currentUrl = null;
-
-$(document).ready(function() {
-  // Initialize legacy menu behaviors that haven't been moved to Stimulus yet
-  initialize_menu();
+document.addEventListener("DOMContentLoaded", () => {
+  // Initialize legacy menu behaviors
+  initializeMenu();
 
   // Bridge for side-navigation resize (Legacy jQuery UI Resizable)
-  $("#navigation").resizable({ 
-    handles: 'e, w', 
-    minWidth: 199, 
-    maxWidth: 500 
-  });
+  const nav = document.getElementById("navigation");
+  const content = document.getElementById("content");
 
-  // Handle navigation resize events to adjust main content area
-  $("#navigation").bind("resize", function() {
-    $("#content").css('left', $("#navigation").width() + 1);
-    $("#navigation").css('height', 'auto');
-  });
+  if (nav && typeof jQuery !== 'undefined' && jQuery.fn.resizable) {
+    $(nav).resizable({ 
+      handles: 'e, w', 
+      minWidth: 199, 
+      maxWidth: 500 
+    }).on("resize", () => {
+      if (content) {
+        content.style.left = `${nav.offsetWidth + 1}px`;
+      }
+      nav.style.height = 'auto';
+    });
+  }
 
   // --- Turbo Integration ---
   
@@ -38,48 +40,55 @@ $(document).ready(function() {
   });
 
   // Handle menu toggle via Stimulus bridge
-  $("#menu-toggle").click(function() {
-    const nav = document.querySelector('[data-controller~="navigation"]');
-    if (nav) {
-      const controller = window.Stimulus.getControllerForElementAndIdentifier(nav, "navigation");
-      if (controller) {
-        controller.toggle();
-        return;
+  const menuToggle = document.getElementById("menu-toggle");
+  if (menuToggle) {
+    menuToggle.onclick = () => {
+      const navElement = document.querySelector('[data-controller~="navigation"]');
+      if (navElement) {
+        const controller = window.Stimulus.getControllerForElementAndIdentifier(navElement, "navigation");
+        if (controller) {
+          controller.toggle();
+          return;
+        }
       }
-    }
-    $('#content').toggleClass('extended-panel');
-    $("#navigation").toggle();
-  });
+      // Fallback
+      if (content) content.classList.toggle('extended-panel');
+      if (nav) nav.style.display = (nav.style.display === 'none' ? 'block' : 'none');
+    };
+  }
 });
 
 /**
  * Legacy Menu Initialization
  * Note: Links are now primarily handled by Turbo Drive.
  */
-function initialize_menu() {
-  // Click handler for menu items
-  $("#menu li.item a").on('click', function(e) {
-    const url = $(this).attr('href');
+function initializeMenu() {
+  const menuItems = document.querySelectorAll("#menu li.item a");
+  menuItems.forEach(item => {
+    item.addEventListener('click', (e) => {
+      const url = item.getAttribute('href');
 
-    // Handle absolute URLs
-    if (/^https?:\/\//i.test(url)) {
-      window.open(url);
+      if (/^https?:\/\//i.test(url)) {
+        window.open(url);
+        e.preventDefault();
+        return;
+      }
+
+      selectMenuItem(url);
+    });
+  });
+
+  const submenus = document.querySelectorAll("#menu li.submenu a");
+  submenus.forEach(item => {
+    item.onclick = (e) => {
       e.preventDefault();
-      return;
-    }
-
-    // Turbo will handle the navigation automatically if not an absolute URL.
-    // We just need to manage the 'active' state.
-    selectMenuItem(url);
+      const ul = item.nextElementSibling;
+      if (ul && ul.tagName === 'UL') {
+        ul.style.display = (ul.style.display === 'none' || ul.style.display === '') ? 'block' : 'none';
+      }
+    };
   });
 
-  // Submenu toggle (Legacy)
-  $("#menu li.submenu a").click(function() {
-    $(this).siblings("ul").toggle();
-    return false;
-  });
-
-  // Expand/Collapse/Focus toolbar actions
   setupMenuToolbar();
 }
 
@@ -88,52 +97,58 @@ function initialize_menu() {
  */
 function selectMenuItem(url) {
   const relativeUrl = url.replace(window.location.origin, '');
-  $("#menu .active").removeClass("active");
-  const $currentLink = $(`#menu li.item a[href="${relativeUrl}"]`);
-  $currentLink.parent().addClass('active');
+  document.querySelectorAll("#menu .active").forEach(el => el.classList.remove("active"));
+  
+  const currentLink = document.querySelector(`#menu li.item a[href="${relativeUrl}"]`);
+  if (currentLink) {
+    currentLink.parentElement.classList.add('active');
+  }
 }
 
 /**
  * Sets up the menu toolbar actions (Expand, Collapse, Focus).
  */
 function setupMenuToolbar() {
-  // Focus on current active item
-  $("#menu-toolbar li a#focus").click(function() {
+  const getNavController = () => {
     const nav = document.querySelector('[data-controller~="navigation"]');
     if (nav) {
-      const controller = window.Stimulus.getControllerForElementAndIdentifier(nav, "navigation");
-      if (controller) controller.focusActive();
+      return window.Stimulus.getControllerForElementAndIdentifier(nav, "navigation");
     }
-  });
+    return null;
+  };
 
-  // Expand all submenus
-  $("#menu-toolbar li a#expand").click(function() {
-    const nav = document.querySelector('[data-controller~="navigation"]');
-    if (nav) {
-      const controller = window.Stimulus.getControllerForElementAndIdentifier(nav, "navigation");
-      if (controller) controller.expandAll();
-    }
-  });
+  const focusBtn = document.querySelector("#menu-toolbar li a#focus");
+  if (focusBtn) {
+    focusBtn.onclick = (e) => {
+      e.preventDefault();
+      getNavController()?.focusActive();
+    };
+  }
 
-  // Collapse all submenus
-  $("#menu-toolbar li a#collapse").click(function() {
-    const nav = document.querySelector('[data-controller~="navigation"]');
-    if (nav) {
-      const controller = window.Stimulus.getControllerForElementAndIdentifier(nav, "navigation");
-      if (controller) controller.collapseAll();
-    }
-  });
+  const expandBtn = document.querySelector("#menu-toolbar li a#expand");
+  if (expandBtn) {
+    expandBtn.onclick = (e) => {
+      e.preventDefault();
+      getNavController()?.expandAll();
+    };
+  }
+
+  const collapseBtn = document.querySelector("#menu-toolbar li a#collapse");
+  if (collapseBtn) {
+    collapseBtn.onclick = (e) => {
+      e.preventDefault();
+      getNavController()?.collapseAll();
+    };
+  }
 }
 
 /**
  * Global cleanup for SlickGrid editors.
  */
-function cleanUpEditors(id = false) {
+window.cleanUpEditors = function(id = false) {
   if (id) {
-    $(`.select-editor[data-id="${id}"]`).remove();
-    $(`.textarea-wrapper[data-id="${id}"]`).remove();
+    document.querySelectorAll(`.select-editor[data-id="${id}"], .textarea-wrapper[data-id="${id}"]`).forEach(el => el.remove());
   } else {
-    $(".select-editor").remove();
-    $(".textarea-wrapper").remove();
+    document.querySelectorAll(".select-editor, .textarea-wrapper").forEach(el => el.remove());
   }
-}
+};

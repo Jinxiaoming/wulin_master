@@ -1,261 +1,280 @@
-(function($) {
+/**
+ * SlickGrid Formatters for WulinMaster.
+ * Modernized to use ES6 and native DOM APIs.
+ */
 
-  var SlickFormatter = {
+const SlickFormatter = {
+  /**
+   * Helper to apply styles and classes to a node or string.
+   */
+  applyStyle: function(node, styleClass, style) {
+    if (node === null || node === undefined) return '';
 
-    ///////////////////////////////////////////////////////////////////////////
-    // Helpers
-    ///////////////////////////////////////////////////////////////////////////
+    const span = document.createElement('span');
+    if (styleClass) span.className = styleClass;
+    if (style) span.style.cssText = style;
 
-    applyStyle: function(node, styleClass, style) {
-      if (node === null) { return ''; }
+    if (node instanceof Node) {
+      span.appendChild(node);
+    } else {
+      span.textContent = String(node);
+    }
 
-      if (typeof node === 'string' || node instanceof String) {
-        node = document.createTextNode(node);
+    return span.outerHTML;
+  },
+
+  /**
+   * Parses a date-time string into its components.
+   */
+  parseDateTime: function(dateTimeStr) {
+    try {
+      const REGEX_DATE = '(\\d{2})\\/(\\d{2})\\/(\\d{4})';
+      const REGEX_TIME = '(\\d{2}):(\\d{2})';
+      const matchedArr = dateTimeStr.match(new RegExp(`^${REGEX_DATE}[ \\t]${REGEX_TIME}$`));
+
+      if (!matchedArr) return null;
+
+      return {
+        day: matchedArr[1],
+        month: matchedArr[2],
+        year: matchedArr[3],
+        hour: matchedArr[4],
+        minute: matchedArr[5]
+      };
+    } catch (err) {
+      return null;
+    }
+  },
+
+  /**
+   * Default formatter for grid cells.
+   */
+  BaseFormatter: function(row, cell, value, columnDef, dataContext) {
+    const source = columnDef.source;
+    const innerFormatter = columnDef.inner_formatter;
+
+    // Retrieve info for relation columns
+    if (source && value && typeof value === 'object') {
+      value = value[source];
+    }
+
+    // Apply format for relation columns
+    if (innerFormatter) {
+      if (innerFormatter === 'boolean') {
+        return SlickFormatter.TextBoolCellFormatter(row, cell, !!value, columnDef, dataContext);
+      } else if (typeof window[innerFormatter] === 'function') {
+        return window[innerFormatter](row, cell, value, columnDef, dataContext);
       }
+    }
 
-      var span = document.createElement('span');
+    // Filter `null` value for 'has_many' columns
+    if (columnDef.type === 'has_many' && value === 'null') {
+      value = '';
+    }
 
-      if (styleClass!=null) {
-        span.setAttribute('class', styleClass);
-      }
-      if ((style !== null) && (style !== '')) {
-        span.setAttribute('style', style);
-      }
+    // Apply Format based on value type
+    if (Array.isArray(value)) {
+      const delimiter = columnDef.delimiter || ', ';
+      value = value.join(delimiter);
+    }
 
-      span.append(node)
-      return span.outerHTML;
-    },
+    // Set default text-align
+    let textAlign = '';
+    if (['datetime', 'date', 'time'].includes(columnDef.type)) {
+      textAlign = 'center';
+    }
+    const defaultStyle = textAlign ? `text-align: ${textAlign}` : '';
 
-    parseDateTime: function(dateTimeStr) {
-      try {
-        var REGEX_DATE = '(\\d{2})\\/(\\d{2})\\/(\\d{4})'; // 'yyyy-mm-dd'
-        var REGEX_TIME = '(\\d{2}):(\\d{2})'; // 'hh:mm'
-        var matchedArr = dateTimeStr.match(new RegExp('^' + REGEX_DATE + '[ \\t]' + REGEX_TIME + '$'));
+    return SlickFormatter.applyStyle(value, columnDef.style_class, columnDef.style || defaultStyle);
+  },
 
-        return {
-          day: matchedArr[1],
-          month: matchedArr[2],
-          year: matchedArr[3],
-          hour: matchedArr[4],
-          minute: matchedArr[5]
-        };
-      } catch (err) {
-        return null;
-      }
-    },
+  /**
+   * Formats numbers with delimiters and precision.
+   */
+  NumberWithDelimiterFormatter: function(row, cell, value, columnDef) {
+    const { precision = 0, prefix = "", suffix = "", fallback = "" } = columnDef;
 
-    ///////////////////////////////////////////////////////////////////////////
-    // Formatters
-    ///////////////////////////////////////////////////////////////////////////
+    if (value === null || value === undefined || value === "") return fallback;
 
-    BaseFormatter: function(row, cell, value, columnDef, dataContext) {
-      var source = columnDef.source;
-      var inner_formatter = columnDef.inner_formatter;
+    const num = parseFloat(value);
+    const formatted = num.toLocaleString(undefined, {
+      minimumFractionDigits: precision,
+      maximumFractionDigits: precision
+    });
 
-      // Retrive info for relation columns
-      if (source && value && typeof value === 'object') {
-        value = value[source];
-      }
+    return SlickFormatter.applyStyle(`${prefix}${formatted}${suffix}`, columnDef.style_class, columnDef.style || '');
+  },
 
-      // Apply format for relation columns
-      if (inner_formatter) {
-        if (inner_formatter == 'boolean') {
-          return TextBoolCellFormatter(row, cell, eval(value), columnDef, dataContext);
-        } else if (typeof(window[inner_formatter]) == 'function') {
-          return window[inner_formatter](row, cell, value, columnDef, dataContext);
-        }
-      }
+  /**
+   * Formats a value as a blue underlined link.
+   */
+  URLFormatter: function(row, cell, value, columnDef) {
+    const span = document.createElement("span");
+    span.style.display = "inline-block";
+    span.style.color = "#1068bf";
+    span.style.textDecoration = "underline";
+    span.textContent = value;
 
-      // Filter `null` value for 'has_many' columns
-      value = (columnDef.type === 'has_many' && value === 'null') ? '' : value;
+    return SlickFormatter.applyStyle(span, columnDef.style_class, columnDef.style || '');
+  },
 
-      // Apply Format based on value type
-      if ($.isArray(value)) {
-        // Convert Array to String for present in Grid Cell
-        // Example of default delimiter: ['one', 'two', 'three', ['four']] => 'one, two, three, four'
-        var delimiter = columnDef.delimiter || ', ';
-        value = value.join().replace(/\,(?=[^\s])/g, delimiter);
-      }
+  /**
+   * Formats a value as currency.
+   */
+  MoneyFormatter: function(row, cell, value, columnDef) {
+    const currency = columnDef.currency || "$";
+    const precision = columnDef.precision === undefined ? 2 : columnDef.precision;
 
-      // Set default text-align
-      var textAlign, default_style;
-      if (columnDef.type == 'datetime' ||
-        columnDef.type == 'date' ||
-        columnDef.type == 'time') {
-        textAlign = 'center';
-      }
-      default_style = textAlign ? 'text-align:' + textAlign : ''
+    if (value === null || value === undefined || value === '') return '';
 
-      // Apply style
-      return applyStyle(value, columnDef.style_class, columnDef.style || default_style);
-    },
+    const num = parseFloat(value);
+    const formatted = num.toLocaleString(undefined, {
+      minimumFractionDigits: precision,
+      maximumFractionDigits: precision
+    });
 
-    NumberWithDelimiterFormatter: function(row, cell, value, columnDef, dataContext) {
-      const { precision = 0, prefix = "", suffix = "", fallback = "" } = columnDef;
+    const text = columnDef.position_of_currency === 'before' ? `${currency} ${formatted}` : `${formatted} ${currency}`;
+    return SlickFormatter.applyStyle(text, columnDef.style_class, columnDef.style || '');
+  },
 
-      const formatWithPrecision = (value, precision) => parseInt(precision) === 0
-        ? parseInt(value).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",")
-        : parseFloat(value).toFixed(precision).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  /**
+   * Formats boolean values as Yes/No text.
+   */
+  TextBoolCellFormatter: function(row, cell, value, columnDef) {
+    let text = '';
+    if (Array.isArray(value)) {
+      text = value.filter(e => e != null).map(e => (e ? 'Yes' : 'No')).join(', ');
+    } else {
+      text = value === null ? '' : (value ? 'Yes' : 'No');
+    }
 
-      const text = (value => {
-        const isEmpty = value === null || value === undefined || value === "";
-        if (isEmpty) return fallback;
-        return `${prefix}${formatWithPrecision(value, precision)}${suffix}`;
-      })(value);
+    return SlickFormatter.applyStyle(text, columnDef.style_class, columnDef.style || 'text-align: center');
+  },
 
-      return applyStyle(text, columnDef.style_class, columnDef.style || '');
-    },
+  /**
+   * Formats boolean values as a graphical checkbox.
+   */
+  GraphicBoolCellFormatter: function(row, cell, value, columnDef) {
+    if (!value) return '';
 
-    URLFormatter: function(row, cell, value, columnDef, dataContext) {
-      var element = document.createElement("span")
-      element.setAttribute("style", "display: inline-block;color: #1068bf; text-decoration: underline;")
-      element.innerText = value
+    const label = document.createElement('label');
+    label.style.textAlign = 'center';
+    label.style.display = 'inline-block';
 
-      return applyStyle(element, columnDef.style_class, columnDef.style || '');
-    },
+    const input = document.createElement('input');
+    input.disabled = true;
+    input.type = 'checkbox';
+    input.className = 'filled-in';
+    input.checked = true;
+    input.id = `show-checkbox-${row}-${cell}`;
 
-    MoneyFormatter: function(row, cell, value, columnDef, dataContext) {
-      var currency = columnDef.currency || "$";
-      if (columnDef.precision == undefined) {
-        var precision = 2;
-      } else {
-        var precision = columnDef.precision;
-      }
+    const span = document.createElement('span');
+    span.setAttribute('for', input.id);
 
-      var text = (value === null || value === undefined || value === '') ? '' : parseFloat(value).toMoney(precision, '.', ',')
-      if (text !== '') {
-        text = (columnDef.position_of_currency === 'before' ? currency + ' ' + text : text + ' ' + currency);
-      }
-      return applyStyle(text, columnDef.style_class, columnDef.style || '');
-    },
+    label.appendChild(input);
+    label.appendChild(span);
 
-    TextBoolCellFormatter: function(row, cell, value, columnDef, dataContext) {
-      var text = value === null ? '' : (value ? 'Yes' : 'No');
+    return SlickFormatter.applyStyle(label, columnDef.style_class, columnDef.style || 'text-align: center');
+  },
 
-      if( Array.isArray(value) ) {
-        text = value.filter(e => e != null).map( e => ( e ? 'Yes' : 'No' )).join(', ')
-      }
+  /**
+   * Formats zero values as empty strings.
+   */
+  ZeroFormatter: function(row, cell, value, columnDef) {
+    const text = value === 0 ? "" : value;
+    return SlickFormatter.applyStyle(text, columnDef.style_class, columnDef.style || 'text-align: right');
+  },
 
-      return applyStyle(text, columnDef.style_class, columnDef.style || 'text-align:center');
-    },
+  /**
+   * Adds a tooltip to the cell content.
+   */
+  TooltipFormatter: function(row, cell, value, columnDef, dataContext) {
+    const tooltip = columnDef.tooltips ? columnDef.tooltips[value] : '';
+    const content = SlickFormatter.applyStyle(value, columnDef.style_class, columnDef.style || 'text-align: center');
+    return `<div title='${tooltip}'>${content}</div>`;
+  },
 
-    GraphicBoolCellFormatter: function(row, cell, value, columnDef, dataContext) {
-      if (!value) { return ''; }
+  /**
+   * Formats a value as an image tag.
+   */
+  ImageFormatter: function(row, cell, value, columnDef) {
+    if (value == null) return "";
 
-      var label = document.createElement('label');
-      label.setAttribute('style', 'text-align: center; display: inline-block;');
+    const style = columnDef.style || 'text-align: center';
+    return `<div style='${style}'><img src='${value}' /></div>`;
+  },
 
-      var input = document.createElement('input');
-      input.setAttribute('disabled', 'disabled');
-      input.setAttribute('type', 'checkbox');
-      input.setAttribute('class', 'filled-in');
-      input.setAttribute('checked', 'checked');
-      input.setAttribute('id', `show-checkbox-${row}-${cell}`);
+  /**
+   * Formats a value as a percentage.
+   */
+  PercentageFormatter: function(row, cell, value, columnDef) {
+    const sign = columnDef.percentageSign || "%";
+    const precision = columnDef.precision === undefined ? 0 : columnDef.precision;
 
-      var span = document.createElement('span');
-      span.setAttribute('for', `show-checkbox-${row}-${cell}`);
+    if (value === null || value === undefined) return '';
 
-      label.append(input);
-      label.append(span);
+    const num = parseFloat(value);
+    const text = `${num.toFixed(precision)}${sign}`;
 
-      return applyStyle(label, columnDef.style_class, columnDef.style || 'text-align:center');
-    },
+    return SlickFormatter.applyStyle(text, columnDef.style_class, columnDef.style || '');
+  },
 
-    ZeroFormatter: function(row, cell, value, columnDef, dataContext) {
-      var text = value === 0 ? "" : value;
-      return applyStyle(text, columnDef.style_class, columnDef.style || 'text-align:right');
-    },
+  /**
+   * Formats a decimal value as a percentage (e.g., 0.12 -> 12%).
+   */
+  DecimalPercentageFormatter: function(row, cell, value, columnDef) {
+    const sign = columnDef.percentageSign || "%";
+    const precision = columnDef.precision || 0;
 
-    TooltipFormatter: function(row, cell, value, columnDef, dataContext) {
-      return "<div title='" + columnDef.tooltips[value] + "'>" + applyStyle(value, columnDef.style_class, columnDef.style || 'text-align:center') + "</div>";
-    },
+    if (Number(value) === 0) return "";
 
-    // Support image tag on grid
-    ImageFormatter: function(row, cell, value, columnDef, dataContext) {
-      if (value == null) { return ""; }
+    const num = Number(value) * 100;
+    const text = `${num.toFixed(precision)}${sign}`;
 
-      var style = columnDef.style || 'text-align:center';
-      return "<div style='" + style + "'><img src='" + value + "' /></div>";
-    },
+    return SlickFormatter.applyStyle(text, columnDef.style_class, columnDef.style || '');
+  },
 
-    // Support growth values
-    PercentageFormatter: function(row, cell, value, columnDef, dataContext) {
-      const {percentageSign = "%"} = columnDef
+  /**
+   * Formats a number and removes redundant trailing zeros.
+   */
+  DeleteRedundantDecimals: function(row, cell, value, columnDef) {
+    if (!value) return '';
 
-      if (columnDef.precision == undefined) {
-        var precision = 0;
-      } else {
-        var precision = columnDef.precision;
-      }
+    const precision = columnDef.precision || 0;
+    let text = parseFloat(value).toFixed(precision).toString();
 
-      if (precision == 0) {
-        value = (value === null) ? '' : (parseInt(value) + percentageSign);
-      } else {
-        value = (value === null) ? '' : (parseFloat(value).toFixed(precision) + percentageSign);
-      }
+    const regexp = new RegExp(`(\\.0{${precision}}$)`);
+    text = text.replace(regexp, '');
 
-      return applyStyle(value, columnDef.style_class, columnDef.style || '');
-    },
+    return SlickFormatter.applyStyle(text, columnDef.style_class, columnDef.style || '');
+  },
 
-    // stored in decimal, rendered in percentage, e.g. 0.12 -> 12%
-    DecimalPercentageFormatter: function(row, cell, value, columnDef, dataContext) {
-      let {precision, style_class, style, percentageSign = "%"} = columnDef;
-      precision = precision || 0;
+  /**
+   * Formats a date using the ISO format (YYYY-MM-DD).
+   */
+  DateFormatter: function(row, cell, value, columnDef) {
+    if (value === null) return '';
+    
+    // Note: format() is a legacy extension on Date. 
+    // We'll try to use it if available, otherwise fallback to native.
+    const date = new Date(value);
+    const text = typeof date.format === 'function' ? date.format('isoDate') : date.toISOString().split('T')[0];
 
-      if(Number(value) === 0) {
-        value = ""
-      } else {
-        const parsedNum = Number(value) * 100
+    return SlickFormatter.applyStyle(text, columnDef.style_class, columnDef.style || '');
+  },
 
-        if (precision === 0) {
-          value = parseInt(parsedNum) + percentageSign
-        } else {
-          value = parseFloat(parsedNum).toFixed(precision) + percentageSign
-        }
-      }
+  /**
+   * Replaces null values with a custom string.
+   */
+  NullOverrideFormatter: function(row, cell, value, columnDef) {
+    if (value === null && columnDef.value_to_replace_null !== undefined) {
+      value = columnDef.value_to_replace_null;
+    }
 
-      return applyStyle(value, style_class, style || '');
-    },
+    return SlickFormatter.applyStyle(value, columnDef.style_class, columnDef.style || '');
+  },
+};
 
-    DeleteRedundantDecimals: function (
-      row,
-      cell,
-      value,
-      columnDef,
-      dataContext
-    ) {
-      if (!value) { return '' }
-
-      let precision = columnDef.precision || 0
-
-      value = parseFloat(value).toFixed(precision).toString()
-
-      let regexp = new RegExp(`(.0{${precision}}$)`)
-      value = regexp.test(value) ? value.replace(RegExp.$1, '') : value
-      return this.applyStyle(
-        value,
-        columnDef.style_class,
-        columnDef.style || ''
-      )
-    },
-
-    // Depend on date.format.js
-    DateFormatter: function(row, cell, value, columnDef, dataContext) {
-      value = (value === null) ? '' : (new Date(value).format('isoDate')); // "YYYY-MM-DD"
-
-      return applyStyle(value, columnDef.style_class, columnDef.style || '');
-    },
-
-    NullOverrideFormatter: function(row, cell, value, columnDef) {
-      if (value === null && columnDef.value_to_replace_null !== undefined) {
-        value = columnDef.value_to_replace_null
-      }
-
-      return applyStyle(value, columnDef.style_class, columnDef.style || '');
-    },
-
-  };
-
-  $.extend(window, SlickFormatter);
-
-})(jQuery);
+// Export to window for SlickGrid compatibility
+Object.assign(window, SlickFormatter);
+export default SlickFormatter;

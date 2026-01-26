@@ -1,9 +1,43 @@
-var currentUrl = null;
+/**
+ * Menu and Navigation Logic
+ * 
+ * This file handles the transition from legacy History.js/Ajax loading
+ * to modern Turbo Drive.
+ */
+
+let currentUrl = null;
 
 $(document).ready(function() {
+  // Initialize legacy menu behaviors that haven't been moved to Stimulus yet
   initialize_menu();
 
-  // Navigation toggle handled by Stimulus if controller present
+  // Bridge for side-navigation resize (Legacy jQuery UI Resizable)
+  $("#navigation").resizable({ 
+    handles: 'e, w', 
+    minWidth: 199, 
+    maxWidth: 500 
+  });
+
+  // Handle navigation resize events to adjust main content area
+  $("#navigation").bind("resize", function() {
+    $("#content").css('left', $("#navigation").width() + 1);
+    $("#navigation").css('height', 'auto');
+  });
+
+  // --- Turbo Integration ---
+  
+  // Listen for Turbo before-render to perform cleanup
+  document.addEventListener("turbo:before-render", () => {
+    const screenContainer = document.getElementById("screen_content");
+    if (screenContainer) {
+      const controller = window.Stimulus.getControllerForElementAndIdentifier(screenContainer, "screen");
+      if (controller) {
+        controller.beforeRender();
+      }
+    }
+  });
+
+  // Handle menu toggle via Stimulus bridge
   $("#menu-toggle").click(function() {
     const nav = document.querySelector('[data-controller~="navigation"]');
     if (nav) {
@@ -16,191 +50,90 @@ $(document).ready(function() {
     $('#content').toggleClass('extended-panel');
     $("#navigation").toggle();
   });
-
-  $("#navigation").resizable({ handles: 'e, w', minWidth: 199, maxWidth: 500 });
-
-  // On resize of the left side panel, resize the grid
-  $("#navigation").bind("resize", function() {
-    $("#content").css('left', $("#navigation").width() + 1);
-    $("#navigation").css('height', 'auto');
-  });
-
-  History.Adapter.bind(window, 'statechange', function() {
-    loadPageForHistoryState();
-  });
-
-  // Initial
-  loadPageForHistoryState();
 });
 
-function loadPageForHistoryState() {
-  var url = History.getState().url;
-  if (url != currentUrl) {
-    if (url === undefined) {
-      $("#screen_content").empty();
-      deselectMenuItems();
-    } else {
-      currentUrl = url;
-      selectMenuItem(currentUrl);
-      load_page(currentUrl);
-    }
-  }
-}
-
-function load_page(url) {
-  // Empty the current screen content
-  $("#screen_content").empty();
-
-  // Remove all the context-menu
-  $("ul.context-menu").remove();
-
-  // Remove old columnpickers, tooltips when screen changes
-  $('.wulin-columnpicker').remove();
-  $('.material-tooltip').remove();
-  cleanUpEditors();
-
-  // Display the loading indicator
-  $('<div />').attr('id', 'screen_content_loader_container')
-  .append($('<div />').attr('id', 'screen_content_loader'))
-  .prependTo($('#content'));
-
-  // Fetch the new screen content
-  $.ajax({
-    type: 'GET',
-    dataType: 'html',
-    data: { xhr: 1 },
-    url: url,
-    success: function(html) {
-      // Remove Indicator
-      $('#screen_content_loader_container').remove();
-
-      // Inject screen content
-      $("#screen_content").html(html);
-
-      setTimeout(function() {
-        trackGoogleAnalytics();
-
-        let id = $("#screen_content > div").attr("id");
-        $("#screen_content").removeClass();
-        $("#screen_content").addClass(`content-${id}`);
-      }, 250);
-    },
-    error: function() {
-      // Ekohe Edit: Use screen_content_loader defined in content view as new indicator
-      // indicators.find("#init_menu_indicator").fadeOut();
-      $('#screen_content_loader_container').remove();
-      // displayErrorMessage("An error occured while trying to load page. Please try again.");
-    }
-  });
-}
-
-function cleanUpEditors(id = false) {
-  // we should cleanup open editors
-  if (id) {
-    $(".select-editor").data("id", id).remove();
-    $(".textarea-wrapper").data("id", id).remove();
-  } else {
-    $(".select-editor").remove();
-    $(".textarea-wrapper").remove();
-  }
-}
-
-function trackGoogleAnalytics() {
-  if (typeof (ga) != 'undefined') {
-    ga('send', 'pageview', currentUrl);
-  }
-}
-
-function deselectMenuItems() { $("#menu .active").removeClass("active"); }
-
-function selectMenuItem(url) {
-  rootUrl = History.getRootUrl(),
-    relativeUrl = url.replace(rootUrl, '/');
-  deselectMenuItems();
-  $currentLink = $('#menu li.item a[href="' + relativeUrl + '"]');
-  $currentLink.parent().addClass('active');
-}
-
+/**
+ * Legacy Menu Initialization
+ * Note: Links are now primarily handled by Turbo Drive.
+ */
 function initialize_menu() {
-  // Click to load screen page
-  $("#menu li.item a").on('click', function() {
-    currentUrl = $(this).attr('href');
+  // Click handler for menu items
+  $("#menu li.item a").on('click', function(e) {
+    const url = $(this).attr('href');
 
-    // If the item in the menu is an absolute URL, then go to the change password page.
-    if (/^https?:\/\//i.test(currentUrl)) {
-      window.open(currentUrl);
+    // Handle absolute URLs
+    if (/^https?:\/\//i.test(url)) {
+      window.open(url);
+      e.preventDefault();
       return;
     }
 
-    if ($(this).hasClass('reverse')) {
-      var currentWindowUrl = window.location.pathname + window.location.search;
-
-      if (currentUrl == currentWindowUrl) {
-        // go back to the original one
-        currentUrl = $("a:not(.reverse)", $(this).parent()).attr('href');
-      }
-    }
-
-    // State management
-    History.pushState(null, document.title, currentUrl);
-
-    return false;
+    // Turbo will handle the navigation automatically if not an absolute URL.
+    // We just need to manage the 'active' state.
+    selectMenuItem(url);
   });
 
-  // Click to toggle submenu
+  // Submenu toggle (Legacy)
   $("#menu li.submenu a").click(function() {
     $(this).siblings("ul").toggle();
     return false;
   });
 
-  function elementRelativeToScrollArea(element, scrollArea) {
-    const elementTop = $(element).offset().top;
-    const elementBottom = elementTop + $(element).outerHeight();
-    const scrollAreaTop = $(scrollArea).offset().top;
-    const scrollAreaBottom = scrollAreaTop + $(scrollArea).outerHeight();
+  // Expand/Collapse/Focus toolbar actions
+  setupMenuToolbar();
+}
 
-    return {
-      onTop: elementTop < scrollAreaTop,
-      onBottom: elementBottom > scrollAreaBottom
-    };
-  }
+/**
+ * Highlights the active menu item based on the current URL.
+ */
+function selectMenuItem(url) {
+  const relativeUrl = url.replace(window.location.origin, '');
+  $("#menu .active").removeClass("active");
+  const $currentLink = $(`#menu li.item a[href="${relativeUrl}"]`);
+  $currentLink.parent().addClass('active');
+}
 
+/**
+ * Sets up the menu toolbar actions (Expand, Collapse, Focus).
+ */
+function setupMenuToolbar() {
   // Focus on current active item
   $("#menu-toolbar li a#focus").click(function() {
-    const menu = "#menu";
-    const item = "#menu li.item.active";
-    $(item).parent('ul').show();
-
-    const itemPosition = elementRelativeToScrollArea(item, menu);
-
-    if (itemPosition.onBottom) {
-      $(menu).animate({
-        scrollTop: $(item).offset().top - $(menu).offset().top
-      }, 400);
-    } else if (itemPosition.onTop) {
-      $(menu).animate({
-        scrollTop: $(menu).scrollTop() - ($(menu).offset().top - $(item).offset().top)
-      }, 400);
+    const nav = document.querySelector('[data-controller~="navigation"]');
+    if (nav) {
+      const controller = window.Stimulus.getControllerForElementAndIdentifier(nav, "navigation");
+      if (controller) controller.focusActive();
     }
   });
 
-  // Expand all submenu
+  // Expand all submenus
   $("#menu-toolbar li a#expand").click(function() {
-    $("#menu li.submenu ul").show();
+    const nav = document.querySelector('[data-controller~="navigation"]');
+    if (nav) {
+      const controller = window.Stimulus.getControllerForElementAndIdentifier(nav, "navigation");
+      if (controller) controller.expandAll();
+    }
   });
 
-  // Collapse all submenu
+  // Collapse all submenus
   $("#menu-toolbar li a#collapse").click(function() {
-    $("#menu li.submenu ul").hide();
+    const nav = document.querySelector('[data-controller~="navigation"]');
+    if (nav) {
+      const controller = window.Stimulus.getControllerForElementAndIdentifier(nav, "navigation");
+      if (controller) controller.collapseAll();
+    }
   });
+}
 
-  // Click to go back to dashboard
-  $("#navigation h1 a").click(function() {
-    $("#menu .active").removeClass("active");
-    // State management
-    currentUrl = "/";
-    History.pushState(null, document.title, currentUrl);
-    load_page(currentUrl);
-    return false;
-  });
+/**
+ * Global cleanup for SlickGrid editors.
+ */
+function cleanUpEditors(id = false) {
+  if (id) {
+    $(`.select-editor[data-id="${id}"]`).remove();
+    $(`.textarea-wrapper[data-id="${id}"]`).remove();
+  } else {
+    $(".select-editor").remove();
+    $(".textarea-wrapper").remove();
+  }
 }

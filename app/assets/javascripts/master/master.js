@@ -5,6 +5,9 @@ import './jquery_setup.js'
 import './jquery_ui_setup.js'
 
 // External dependencies
+import * as Turbo from "@hotwired/turbo"
+window.Turbo = Turbo
+
 import 'rails-ujs'
 import 'materialize-css'
 
@@ -27,12 +30,14 @@ import LoaderController from "./controllers/loader_controller"
 import MaterializeController from "./controllers/materialize_controller"
 import PanelController from "./controllers/panel_controller"
 import NavigationController from "./controllers/navigation_controller"
+import ScreenController from "./controllers/screen_controller"
 application.register("notification", NotificationController)
 application.register("modal", ModalController)
 application.register("loader", LoaderController)
 application.register("materialize", MaterializeController)
 application.register("panel", PanelController)
 application.register("navigation", NavigationController)
+application.register("screen", ScreenController)
 
 $(function(){
 });

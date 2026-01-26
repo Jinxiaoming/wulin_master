@@ -17,6 +17,7 @@
     "inputmask": "^5.0.9",
     "6pac-slickgrid": "^5.10.0",
     "jquery.event.drag": "^2.2.2",
-    "@hotwired/stimulus": "^3.2.2"
+    "@hotwired/stimulus": "^3.2.2",
+    "@hotwired/turbo-rails": "^8.0.12"
   }
 }

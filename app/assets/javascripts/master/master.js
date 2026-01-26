@@ -23,8 +23,14 @@ window.Stimulus = application
 
 import NotificationController from "./controllers/notification_controller"
 import ModalController from "./controllers/modal_controller"
+import LoaderController from "./controllers/loader_controller"
+import MaterializeController from "./controllers/materialize_controller"
+import PanelController from "./controllers/panel_controller"
 application.register("notification", NotificationController)
 application.register("modal", ModalController)
+application.register("loader", LoaderController)
+application.register("materialize", MaterializeController)
+application.register("panel", PanelController)
 
 $(function(){
 });

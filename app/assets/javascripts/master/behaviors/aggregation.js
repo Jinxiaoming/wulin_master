@@ -1,4 +1,4 @@
-WulinMaster.behaviors.Aggregation = $.extend({}, WulinMaster.behaviors.BaseBehavior, {
+WulinMaster.behaviors.Aggregation = Object.assign({}, WulinMaster.behaviors.BaseBehavior, {
   events: ['onRendered', 'onDataLoaded'],
 
   subscribe: function (target) {
@@ -9,26 +9,37 @@ WulinMaster.behaviors.Aggregation = $.extend({}, WulinMaster.behaviors.BaseBehav
   },
 
   utils: function () {
-    const getPager = grid => $('.pager-item.extra', grid.container);
-    const addAggregationSpan = $pager => $("<span/>").attr('id', 'aggregation').appendTo($pager);
-    const getSpan = grid => $('span#aggregation', grid.container);
+    const getPager = grid => grid.container.querySelector('.pager-item.extra');
+    const addAggregationSpan = pager => {
+      if (!pager) return null;
+      let span = pager.querySelector('#aggregation');
+      if (!span) {
+        span = document.createElement('span');
+        span.id = 'aggregation';
+        pager.appendChild(span);
+      }
+      return span;
+    };
+    const getSpan = grid => grid.container.querySelector('span#aggregation');
     return {
       getPager, addAggregationSpan, getSpan,
     };
   },
 
   renderSpan: function (args) {
-    const {grid} = this;
-    const {getPager, addAggregationSpan} = this.utils();
+    const { grid } = this;
+    const { getPager, addAggregationSpan } = this.utils();
     return addAggregationSpan(getPager(grid));
   },
 
   fillSpan: async function (args) {
-    const {grid} = this;
-    const {getSpan} = this.utils();
+    const { grid } = this;
+    const { getSpan } = this.utils();
     const aggregation = grid.loader.getPagingInfo()['aggregation'] || '';
-    const $span = getSpan(grid);
-    $span.text(aggregation);
+    const span = getSpan(grid);
+    if (span) {
+      span.textContent = aggregation;
+    }
   },
 });
 

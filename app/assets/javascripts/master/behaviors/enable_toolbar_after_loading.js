@@ -1,25 +1,23 @@
 // Enable toolbar items after data loaded
 
-WulinMaster.behaviors.enableToolbarAfterLoading = $.extend({}, WulinMaster.behaviors.BaseBehavior, {
+WulinMaster.behaviors.enableToolbarAfterLoading = Object.assign({}, WulinMaster.behaviors.BaseBehavior, {
   event: "onDataLoaded",
 
   subscribe: function(target) {
     this.grid = target;
-    var self = this;
-    target.loader[this.event].subscribe(function(){ self.handler(); });
+    target.loader[this.event].subscribe(() => this.handler());
   },
 
-  unsubscribe: function() {
-
-  },
+  unsubscribe: function() {},
 
   handler: function() {
-    var $toolbar_items = this.grid.container.find(".toolbar_item a");
-    $.each($toolbar_items, function(){
-      if(!$(this).hasClass('toolbar_manually_enable')) $(this).removeClass("toolbar_icon_disabled");
+    const toolbarItems = this.grid.container.querySelectorAll(".toolbar_item a");
+    toolbarItems.forEach(item => {
+      if (!item.classList.contains('toolbar_manually_enable')) {
+        item.classList.remove("toolbar_icon_disabled");
+      }
     });
   }
-
 });
 
 WulinMaster.BehaviorManager.register("enable_toolbar_after_loading", WulinMaster.behaviors.enableToolbarAfterLoading);

@@ -16,6 +16,7 @@
     "jquery-form": "^4.3.0",
     "inputmask": "^5.0.9",
     "6pac-slickgrid": "^5.10.0",
-    "jquery.event.drag": "^2.2.2"
+    "jquery.event.drag": "^2.2.2",
+    "@hotwired/stimulus": "^3.2.2"
   }
 }

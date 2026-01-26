@@ -1,28 +1,44 @@
-var dialogIndex = 1;
-
-function displayErrorMessage(message, title, width) {
+// Dialog system using Stimulus bridge
+window.displayErrorMessage = (message, title) => {
   if (message === undefined) {
     message = 'An unexpected error occured.';
   }
-  escapedHtml = escapeHtml(message);
-  finalMessage = simpleFormat(escapedHtml);
+  const escapedHtml = typeof escapeHtml === 'function' ? escapeHtml(message) : message;
+  const finalMessage = typeof simpleFormat === 'function' ? simpleFormat(escapedHtml) : escapedHtml;
 
-  $('#error-content').html(finalMessage);
-  $('#error-modal .modal-title').text(title);
-  $('#error-modal').modal('open');
-}
+  const modalElement = document.getElementById('error-modal');
+  if (modalElement) {
+    const event = new CustomEvent("open-modal", {
+      detail: { message: finalMessage, title: title }
+    });
+    const controller = window.Stimulus.getControllerForElementAndIdentifier(modalElement, "modal");
+    if (controller) {
+      controller.open(event);
+    }
+  } else {
+    alert(title + ": " + message);
+  }
+};
 
-const displayCustomizedConfirmModal = (params) => {
+window.displayCustomizedConfirmModal = (params) => {
   const {
     message = 'Are you sure to do this ?',
     title = 'Confirmation',
     confirmCallBack,
   } = params;
-  $('#confirm-content').html(message);
-  $('#confirm-modal .modal-title').text(title);
-  $('#confirm-modal').modal('open');
-  $('#confirmed-btn').off('click').on('click', () => {
-    confirmCallBack && confirmCallBack();
-    $('#confirm-modal').modal('close');
-  });
+
+  const modalElement = document.getElementById('confirm-modal');
+  if (modalElement) {
+    const event = new CustomEvent("open-modal", {
+      detail: { message: message, title: title, confirmCallBack: confirmCallBack }
+    });
+    const controller = window.Stimulus.getControllerForElementAndIdentifier(modalElement, "modal");
+    if (controller) {
+      controller.open(event);
+    }
+  } else {
+    if (confirm(message)) {
+      confirmCallBack && confirmCallBack();
+    }
+  }
 };

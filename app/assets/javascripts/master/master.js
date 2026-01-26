@@ -16,6 +16,16 @@ import 'inputmask'
 import { Sortable } from 'sortablejs'
 window.Sortable = Sortable;
 
+// Initialize Stimulus
+import { Application } from "@hotwired/stimulus"
+const application = Application.start()
+window.Stimulus = application
+
+import NotificationController from "./controllers/notification_controller"
+import ModalController from "./controllers/modal_controller"
+application.register("notification", NotificationController)
+application.register("modal", ModalController)
+
 $(function(){
 });
 

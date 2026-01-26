@@ -1,227 +1,175 @@
-(function($) {
-  // WulinMaster.FilterPanel
-  $.extend(true, window, {
-    WulinMaster: {
-      FilterPanel: FilterPanel
-    }
-  });
+/**
+ * FilterPanel handles the grid's filter inputs and logic.
+ * Modernized to use ES6 class and native DOM APIs.
+ */
+export default class FilterPanel {
+  constructor(grid, loader, currentFilters) {
+    this.grid = grid;
+    this.loader = loader;
+    this.currentFilters = currentFilters || {};
+    this.currentFiltersApplied = [];
+    this.filterWidthOffset = -3;
 
-  // function FilterPanel(grid, loader, triggerElement, currentFilters) {
-  function FilterPanel(grid, loader, currentFilters) {
-    var filterWidthOffset = -3; // 2 pixels padding on the left and one pixel for the border on the left
-    // private
-    var $grid;
-    var $loader;
-    var self = this;
-    var currentFiltersApplied = [];
+    // Events
+    this.onFilterLoaded = new Slick.Event();
+    this.onFilterPanelClosed = new Slick.Event();
 
-    function init() {
-      $grid = grid;
-      $loader = loader;
+    this.init();
+  }
 
-      generateFilters();
+  init() {
+    this.generateFilters();
 
-      $grid.onColumnsReordered.subscribe(function(){
-        // Ekohe Add: Event hander defined in init() not works onColumnsReordered
-        setupEventHander();
-        $grid.setupColumnSort();
-        generateFilters();
-      });
-      $grid.onColumnsResized.subscribe(function(){
-        generateFilters();
-      });
-
-      // Ekohe Edit: Abstract event handers to method
-      setupEventHander();
-    }
-
-    // Ekohe Add
-    function setupEventHander() {
-
-      var delay = (function(){
-        var timer = 0;
-        return function(callback, ms){
-          clearTimeout (timer);
-          timer = setTimeout(callback, ms);
-        };
-      })();
-
-      // Ekohe Edit: Use new MD headers instead of headerRow
-      // $input = $("input", $($grid.getHeaderRow()));
-      $input = $($grid.getHeaders()).find('input');
-
-      // Hook between the filter input box and the data loader setFilter
-      // Applay filter after 1000ms
-      $($grid.getHeaders()).off('keyup', 'input').on('keyup', 'input', function(e) {
-        var containerWidth = $grid.container.innerWidth();
-        var $viewPort = $($grid.getCanvasNode()).parent();
-        var inputLeft = $(this).position().left + $(this).outerWidth();
-        var inputRight = $(this).position().left - $viewPort.scrollLeft() + $(this).outerWidth();
-        var ignoreKeyCodes = [9, 224, 13];
-
-        if ((containerWidth - inputRight) < 0) {
-          $viewPort.scrollLeft(inputLeft - containerWidth);
-        }
-
-        if (ignoreKeyCodes.indexOf(e.which) == -1) {
-          delay(function(){
-            updateCurrentFilters();
-            applyCurrentFilters(currentFilters);
-            setCurrentFilter();
-            trigger(self.onFilterLoaded, {filterData:currentFiltersApplied});
-          }, 1000);
-        }
-      });
-    }
-
-    function trigger(evt, args, e) {
-      e = e || new Slick.EventData();
-      args = args || {};
-      args.filterPanel = self;
-      return evt.notify(args, e, self);
-    }
-
-    function generateFilters() {
-      var inputWidth, columns, inputElement;
-      var $headerRow = $($grid.getHeaderRow());
-      // Ekohe Add: Use new MD headers instead of headerRow
-      var $headers = $($grid.getHeaders());
-      var headerWidth = $($grid.getCanvasNode()).width() + 16;      // 16 is the vertical scrollbar width
-      var ua = navigator.userAgent.toLowerCase();
-
-      html = "";
-      columns = $grid.getColumns();
-      totalColumnsCount = columns.length;
-
-      applyCurrentFilters(currentFilters);
-      setOriginalFilter();
-
-      // Ekohe Add: Use new MD headers instead of headerRow
-      if (currentFiltersApplied.length > 0) {
-        $.each(currentFiltersApplied, function(i, v) {
-          var filteredHeaderCol = $headers.find('input[data-id="'+ v.id +'"]');
-          // There will be a problem when two inputs need focus at the same time
-          // Now we are only focus last one input
-          filteredHeaderCol.focus();
-          filteredHeaderCol.val(v.value);
-        })
-      }
-
-      $.each(columns, function(i, v) {
-        var field = v.id, inputHtml = '', inputWidth, cssClass = "";
-        var value = '';
-        // Try to get the value of this filter if any
-        $.each(currentFiltersApplied, function() {
-          if (this.id==field)
-            value = this.value;
-        });
-
-        if (i==(totalColumnsCount-1)) {
-          cssClass = "lastColumn";
-        }
-
-        // inputWidth = $.browser.mozilla ? parseInt(this.width, 10)+filterWidthOffset + 1 : parseInt(this.width, 10)+filterWidthOffset - 1;
-        inputWidth = parseInt(this.width, 10)+filterWidthOffset - 1;
-
-        // if (!$.browser.msie && (ua.indexOf("windows") != -1 || ua.indexOf("win32") != -1 || ua.indexOf("linux") != -1)) {
-        //   inputWidth += 2;
-        // }
-
-        inputHtml += '<input type="text" id="' + field + '" style="width:' + inputWidth + 'px;border-width:1px;height:20px;border-bottom-color:#DDD;" value="' + value + '" class="' + cssClass + '"';
-
-        if (this.filterable === false) {
-          inputHtml += ' disabled="disabled"';
-        }
-
-        inputHtml += '></input>';
-        html += inputHtml;
-      });
-
-      $grid.renderFilteredInputs();
-    }
-
-    // This method update the current filters applied to the currentFiltersApplied array
-    // We store the filters value so that after resizing or reordering of the columns, we can
-    //  generate the filters boxes with the same values
-    function updateCurrentFilters() {
-      currentFilters = {};
-      // Ekohe Edit: Use new MD headers instead of headerRow
-      // $.each($("input", $($grid.getHeaderRow())), function() {
-      $.each($("input", $($grid.getHeaders())), function() {
-        if ($(this).val() !== '') {
-          currentFilters[$(this).attr('data-id')] = $(this).val();
-        }
-      });
-    }
-
-    function setOriginalFilter() {
-      var originalFilters = $loader.getFilters();
-      if (currentFiltersApplied.length !== 0) {
-        $.each(currentFiltersApplied, function() {
-          if(this['operator'] === undefined) this['operator'] = 'equals';
-          var newFilter = [this['id'], this['value'], this['operator']];
-          if(!$(originalFilters).arrayDeepInclude(newFilter)) {
-            originalFilters.push([this['id'], this['value'], this['operator']]);
-          }
-        });
-
-        $loader.setFilterWithoutRefresh(originalFilters);
-      }
-    }
-
-    function setCurrentFilter(){
-      var filters = [];
-      // add current filters
-      if (currentFiltersApplied.length > 0) {
-        $.each(currentFiltersApplied, function(){
-          filters.push([this['id'], this['value'], 'equals']);
-        });
-      }
-      // add masters
-      if ($grid.master) {
-        if ($grid.master instanceof Array) {
-          $.each($grid.master, function(){
-            filters.push(this);
-          });
-        } else {
-          filters.push([$grid.master.filter_column, $grid.master.filter_value, $grid.master.filter_operator || "equals"]);
-        }
-      }
-      $loader.setFilter(filters);
-    }
-
-    function applyCurrentFilters(filters) {
-      currentFiltersApplied = [];
-      if (filters) {
-        $.each(filters, function(k, v) {
-          if (v !== '')
-            currentFiltersApplied.push({id: k, value: v});
-        });
-      }
-    }
-
-    function reapply() {
-      currentFiltersApplied = [];
-      updateCurrentFilters();
-      applyCurrentFilters(currentFilters);
-      setCurrentFilter();
-    }
-
-    $.extend(this, {
-        // Events
-        "onFilterLoaded":                     new Slick.Event(),
-        'onFilterPanelClosed':                new Slick.Event(),
-
-        // Methods
-        'trigger':                            trigger,          // Ekohe Add
-        'setCurrentFilter':                   setCurrentFilter, // Ekohe Add
-        'setupEventHander':                   setupEventHander, // Ekohe Add
-        'generateFilters':                    generateFilters,
-        "applyCurrentFilters":                applyCurrentFilters,
-        "updateCurrentFilters":               updateCurrentFilters,
-        "reapply":                            reapply
+    this.grid.onColumnsReordered.subscribe(() => {
+      this.setupEventHandler();
+      this.grid.setupColumnSort();
+      this.generateFilters();
     });
 
-    init();
+    this.grid.onColumnsResized.subscribe(() => {
+      this.generateFilters();
+    });
+
+    this.setupEventHandler();
   }
-}(jQuery));
+
+  setupEventHandler() {
+    let timer = 0;
+    const delay = (callback, ms) => {
+      clearTimeout(timer);
+      timer = setTimeout(callback, ms);
+    };
+
+    const headers = this.grid.getHeaders();
+    if (!headers) return;
+
+    // Remove old listener if any
+    headers.removeEventListener('keyup', this._keyupHandler);
+
+    this._keyupHandler = (e) => {
+      if (!e.target.matches('input')) return;
+
+      const input = e.target;
+      const containerWidth = this.grid.container.offsetWidth;
+      const viewport = this.grid.getCanvasNode().parentElement;
+      
+      const inputRect = input.getBoundingClientRect();
+      const viewportRect = viewport.getBoundingClientRect();
+      
+      const inputLeft = input.offsetLeft;
+      const inputRight = inputLeft - viewport.scrollLeft + input.offsetWidth;
+      
+      const ignoreKeyCodes = ['Tab', 'Meta', 'Enter'];
+
+      if (containerWidth - inputRight < 0) {
+        viewport.scrollLeft = inputLeft - containerWidth;
+      }
+
+      if (!ignoreKeyCodes.includes(e.key)) {
+        delay(() => {
+          this.updateCurrentFilters();
+          this.applyCurrentFilters(this.currentFilters);
+          this.setCurrentFilter();
+          this.onFilterLoaded.notify({ filterData: this.currentFiltersApplied });
+        }, 1000);
+      }
+    };
+
+    headers.addEventListener('keyup', this._keyupHandler);
+  }
+
+  generateFilters() {
+    const headers = this.grid.getHeaders();
+    if (!headers) return;
+
+    this.applyCurrentFilters(this.currentFilters);
+    this.setOriginalFilter();
+
+    // Restore values to existing inputs if they exist
+    if (this.currentFiltersApplied.length > 0) {
+      this.currentFiltersApplied.forEach(v => {
+        const input = headers.querySelector(`input[data-id="${v.id}"]`);
+        if (input) {
+          input.value = v.value;
+          input.focus();
+        }
+      });
+    }
+
+    const columns = this.grid.getColumns();
+    // In WulinMaster, the actual rendering of inputs is often handled by grid.renderFilteredInputs()
+    // which might use the HTML generated here or similar logic.
+    this.grid.renderFilteredInputs();
+  }
+
+  updateCurrentFilters() {
+    this.currentFilters = {};
+    const headers = this.grid.getHeaders();
+    if (!headers) return;
+
+    headers.querySelectorAll('input').forEach(input => {
+      if (input.value !== '') {
+        this.currentFilters[input.dataset.id || input.id] = input.value;
+      }
+    });
+  }
+
+  setOriginalFilter() {
+    const originalFilters = this.loader.getFilters();
+    if (this.currentFiltersApplied.length !== 0) {
+      this.currentFiltersApplied.forEach(f => {
+        const operator = f.operator || 'equals';
+        const exists = originalFilters.some(orig => 
+          orig[0] === f.id && orig[1] === f.value && orig[2] === operator
+        );
+        if (!exists) {
+          originalFilters.push([f.id, f.value, operator]);
+        }
+      });
+      this.loader.setFilterWithoutRefresh(originalFilters);
+    }
+  }
+
+  setCurrentFilter() {
+    const filters = [];
+    
+    // Add current UI filters
+    this.currentFiltersApplied.forEach(f => {
+      filters.push([f.id, f.value, 'equals']);
+    });
+
+    // Add master grid filters
+    const master = this.grid.master;
+    if (master) {
+      if (Array.isArray(master)) {
+        master.forEach(m => filters.push(m));
+      } else {
+        filters.push([master.filter_column, master.filter_value, master.filter_operator || "equals"]);
+      }
+    }
+    
+    this.loader.setFilter(filters);
+  }
+
+  applyCurrentFilters(filters) {
+    this.currentFiltersApplied = [];
+    if (filters) {
+      Object.entries(filters).forEach(([id, value]) => {
+        if (value !== '') {
+          this.currentFiltersApplied.push({ id, value });
+        }
+      });
+    }
+  }
+
+  reapply() {
+    this.currentFiltersApplied = [];
+    this.updateCurrentFilters();
+    this.applyCurrentFilters(this.currentFilters);
+    this.setCurrentFilter();
+  }
+}
+
+// Global exposure for legacy compatibility
+window.WulinMaster = window.WulinMaster || {};
+window.WulinMaster.FilterPanel = FilterPanel;

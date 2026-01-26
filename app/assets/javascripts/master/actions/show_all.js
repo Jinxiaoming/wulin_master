@@ -1,11 +1,15 @@
-// Show all records
-
-WulinMaster.actions.ShowAll = $.extend({}, WulinMaster.actions.BaseAction, {
+/**
+ * Show All Action
+ * Clears all filters and reloads the grid data.
+ */
+WulinMaster.actions.ShowAll = Object.assign({}, WulinMaster.actions.BaseAction, {
   name: 'show_all',
 
   handler: function() {
-    var grid = this.getGrid();
-    this.grid.loader.setFilter([]);
+    const grid = this.getGrid();
+    if (grid?.loader) {
+      grid.loader.setFilter([]);
+    }
   }
 });
 

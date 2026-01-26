@@ -1,27 +1,36 @@
-// Toolbar Item 'JSON View'
-
-WulinMaster.actions.JsonView = $.extend({}, WulinMaster.actions.BaseAction, {
+/**
+ * JSON View Action
+ * Displays the JSON content of a 'jsonb' column in a modal.
+ */
+WulinMaster.actions.JsonView = Object.assign({}, WulinMaster.actions.BaseAction, {
   name: 'json_view',
 
   handler: function() {
-    var grid = this.getGrid();
-    var ids = grid.getSelectedIds();
+    const grid = this.getGrid();
+    const selectedRows = grid.getSelectedRows();
 
-    if (ids.length == 1) {
-      var columns = grid.getColumns();
-      var currentData = grid.getData()[grid.getSelectedRows()[0]];
-      var jsonData;
+    if (selectedRows.length === 1) {
+      const columns = grid.getColumns();
+      const currentData = grid.getData()[selectedRows[0]];
+      let jsonData = null;
 
-      $.each(columns, function(index, column) {
-        if (column.type == 'jsonb') {
-          jsonData = JSON.parse(currentData[column.column_name]);
-          return false;
+      const jsonColumn = columns.find(col => col.type === 'jsonb');
+      if (jsonColumn) {
+        const rawValue = currentData[jsonColumn.column_name];
+        try {
+          jsonData = typeof rawValue === 'string' ? JSON.parse(rawValue) : rawValue;
+        } catch (e) {
+          console.error("Error parsing JSON:", e);
         }
-      });
+      }
 
-      Ui.createJsonViewModal(jsonData);
+      if (jsonData) {
+        window.Ui.createJsonViewModal(jsonData);
+      } else {
+        window.displayErrorMessage('No JSON data found in this record.', 'View Error');
+      }
     } else {
-      displayErrorMessage('Please select just one record.');
+      window.displayErrorMessage('Please select exactly one record.', 'Selection Error');
     }
   }
 });

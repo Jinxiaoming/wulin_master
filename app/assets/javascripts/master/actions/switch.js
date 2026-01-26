@@ -1,12 +1,21 @@
-// Toolbar Item 'Switch Screen'
-
-WulinMaster.actions.Switch = $.extend({}, WulinMaster.actions.BaseAction, {
+/**
+ * Switch Screen Action
+ * Navigates to a different screen using Turbo Drive.
+ */
+WulinMaster.actions.Switch = Object.assign({}, WulinMaster.actions.BaseAction, {
   name: "switch",
 
   handler: function () {
-    var url = this.switch_to["path"] + "?screen=" + this.switch_to["screen"];
-    History.pushState(null, document.title, url);
-    loadPageForHistoryState(url);
+    if (!this.switch_to) return;
+    
+    const url = `${this.switch_to.path}?screen=${this.switch_to.screen}`;
+    
+    // Use Turbo for modern navigation
+    if (window.Turbo) {
+      window.Turbo.visit(url);
+    } else {
+      window.location.href = url;
+    }
   },
 });
 

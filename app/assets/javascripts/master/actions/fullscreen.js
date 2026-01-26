@@ -1,62 +1,80 @@
-WulinMaster.actions.fullscreen = {
-  ...WulinMaster.actions.BaseAction,
+/**
+ * Fullscreen Action
+ * Toggles the grid container to fill the entire viewport.
+ */
+WulinMaster.actions.fullscreen = Object.assign({}, WulinMaster.actions.BaseAction, {
   name: 'fullscreen',
-  handler: function (e, args) {
-    let $fullscreenElement = $(e.currentTarget)
-    let grid = this.getGrid()
-    let currentContainer = grid.container
+  
+  handler: function (e) {
+    const btn = e.currentTarget;
+    const grid = this.getGrid();
+    const container = grid.container instanceof jQuery ? grid.container[0] : grid.container;
 
-    toggleSiblings(currentContainer)
-
-    transform($fullscreenElement, currentContainer)
-
-    switchIcon($fullscreenElement)
+    this.toggleSiblings(container);
+    this.transform(btn, container);
+    this.switchIcon(btn);
   },
-}
 
-const toggleSiblings = (currentContainer) =>
-  currentContainer.siblings(':not(script)').toggle()
+  /**
+   * Toggles visibility of all sibling elements of the grid container.
+   */
+  toggleSiblings: function(container) {
+    const siblings = Array.from(container.parentElement.children);
+    siblings.forEach(el => {
+      if (el !== container && el.tagName !== 'SCRIPT') {
+        el.style.display = (el.style.display === 'none') ? '' : 'none';
+      }
+    });
+  },
 
-const transform = ($target, currentContainer) => {
-  let isFullscreen = $target.data('fullscreen')
-  if (isFullscreen) {
-    let gridOriginalHeight = $target.data('grid_height')
-    let gridOriginalWidth = $target.data('grid_width')
+  /**
+   * Adjusts the container size and stores/restores original dimensions.
+   */
+  transform: function(btn, container) {
+    const isFullscreen = btn.dataset.fullscreen === 'true';
+    
+    if (isFullscreen) {
+      const originalHeight = btn.dataset.gridHeight;
+      const originalWidth = btn.dataset.gridWidth;
 
-    $target.removeData('fullscreen', 'grid_height', 'grid_width')
+      delete btn.dataset.fullscreen;
+      delete btn.dataset.gridHeight;
+      delete btn.dataset.gridWidth;
 
-    currentContainer.height(gridOriginalHeight).width(gridOriginalWidth)
-  } else {
-    let gridContainerHeight = currentContainer[0].style.height
-    let gridContainerWidth = currentContainer[0].style.width
+      container.style.height = originalHeight;
+      container.style.width = originalWidth;
+    } else {
+      btn.dataset.fullscreen = 'true';
+      btn.dataset.gridHeight = container.style.height || `${container.offsetHeight}px`;
+      btn.dataset.gridWidth = container.style.width || `${container.offsetWidth}px`;
 
-    $target.data({
-      fullscreen: true,
-      grid_width: gridContainerWidth,
-      grid_height: gridContainerHeight,
-    })
+      container.style.height = '100%';
+      container.style.width = '100%';
+    }
 
-    currentContainer.height('100%').width('100%')
+    // Trigger grid resize
+    window.gridManager.resizeGrids();
+  },
+
+  /**
+   * Updates the icon and labels for the fullscreen button.
+   */
+  switchIcon: function(btn) {
+    const icon = btn.querySelector('a.fullscreen_action, i.material-icons');
+    if (icon) {
+      icon.textContent = (icon.textContent === 'fullscreen') ? 'fullscreen_exit' : 'fullscreen';
+    }
+
+    const label = btn.querySelector('a.fullscreen_action, span');
+    if (label) {
+      label.textContent = (label.textContent === 'Fullscreen') ? 'Exit Fullscreen' : 'Fullscreen';
+    }
+
+    const tooltip = btn.getAttribute('data-tooltip');
+    if (tooltip) {
+      btn.setAttribute('data-tooltip', (tooltip === 'Fullscreen') ? 'Exit Fullscreen' : 'Fullscreen');
+    }
   }
-  currentContainer.resize()
-}
+});
 
-const switchIcon = ($target) => {
-  let $icon = $target.find('a.fullscreen_action, i.material-icons')
-  let iconText = $icon.text()
-  $icon.text(iconText === 'fullscreen' ? 'fullscreen_exit' : 'fullscreen')
-  // split button mode we should switch icon label
-  let $iconLabel = $target.find('a.fullscreen_action, span')
-  let iconLabelText = $iconLabel.text()
-  $iconLabel.text(
-    iconLabelText === 'Fullscreen' ? 'Exit Fullscreen' : 'Fullscreen'
-  )
-  // merged button mode we should switch the icon tooltip text
-  let tooltip = $target.attr('data-tooltip')
-  $target.attr(
-    'data-tooltip',
-    tooltip === 'Fullscreen' ? 'Exit Fullscreen' : 'Fullscreen'
-  )
-}
-
-WulinMaster.ActionManager.register(WulinMaster.actions.fullscreen)
+WulinMaster.ActionManager.register(WulinMaster.actions.fullscreen);

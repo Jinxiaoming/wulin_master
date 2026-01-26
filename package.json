@@ -1,12 +1,18 @@
 {
   "name": "wulin_master",
-  "version": "1.0.0",
+  "version": "3.0.0",
   "private": true,
-  "description": "WulinMaster gem JavaScript dependencies",
+  "main": "app/assets/javascripts/master/master.js",
   "dependencies": {
-    "jquery": "1.12.4",
-    "jquery-ui": "^1.13.0",
+    "jquery": "^1.12.4",
+    "jquery-ui": "^1.14.1",
+    "rails-ujs": "^5.2.8",
     "materialize-css": "^1.0.0",
-    "material-icons": "^0.7.4"
+    "material-icons": "^0.7.7",
+    "flatpickr": "^4.6.13",
+    "select2": "^4.1.0-rc.0",
+    "sortablejs": "^1.15.2",
+    "jquery-form": "^4.3.0",
+    "inputmask": "^5.0.9"
   }
 }

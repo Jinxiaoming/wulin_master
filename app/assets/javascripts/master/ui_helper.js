@@ -1,19 +1,20 @@
 /**
  * UI Helper tools for WulinMaster.
- * Provides utility methods for managing grid state, forms, and modals.
+ * Modernized to use native JS and remove jQuery dependencies.
  */
 const Ui = {
   /**
    * Checks if any UI dialog is currently open.
    */
   isOpen: function () {
-    return document.querySelectorAll('.ui-dialog:not([style*="display: none"])').length > 0;
+    return document.querySelectorAll('.ui-dialog:not([style*="display: none"]), .modal.open').length > 0;
   },
 
   /**
    * Checks if any grid is currently being edited.
    */
   isEditing: function () {
+    if (!window.gridManager || !window.gridManager.grids) return false;
     return window.gridManager.grids.some(grid => grid.getCellEditor() != null);
   },
 
@@ -21,15 +22,15 @@ const Ui = {
    * Resizes the grid and its components.
    */
   resizeGrid: function (grid) {
+    if (!grid) return;
     grid.resizeCanvas();
     grid.autosizeColumns();
-    grid.filterPanel.generateFilters();
+    if (grid.filterPanel) grid.filterPanel.generateFilters();
     
-    // Use a named function to avoid duplicate listeners if called multiple times
     const onResize = () => {
       grid.resizeCanvas();
       grid.autosizeColumns();
-      grid.filterPanel.generateFilters();
+      if (grid.filterPanel) grid.filterPanel.generateFilters();
     };
     window.removeEventListener('resize', onResize);
     window.addEventListener('resize', onResize);
@@ -40,14 +41,14 @@ const Ui = {
    */
   filterPanelOpen: function () {
     const headerRow = document.querySelector('.slick-headerrow-columns:not([style*="display: none"])');
-    return !!headerRow && document.activeElement?.parentElement?.classList.contains('slick-headerrow-columns');
+    return !!headerRow && document.activeElement?.closest('.slick-headerrow-columns') != null;
   },
 
   /**
    * Checks if the grid is currently being filtered.
    */
   isFiltering: function () {
-    return document.activeElement?.parentElement?.classList.contains('slick-header-column');
+    return document.activeElement?.closest('.slick-header-column') != null;
   },
 
   /**
@@ -78,7 +79,7 @@ const Ui = {
     fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
       .then(response => response.text())
       .then(html => {
-        const formVisible = document.querySelector(`#${name}_form:not([style*="display: none"])`);
+        const formVisible = document.querySelector(`#${name}_form`);
         if (formVisible) {
           const modalContent = formVisible.closest('.modal-content');
           if (modalContent) {
@@ -97,7 +98,7 @@ const Ui = {
    * Resets a form's input fields.
    */
   resetForm: function (name) {
-    const form = document.getElementById(`new_${name}`);
+    const form = document.getElementById(`${name}_form`) || document.getElementById(`new_${name}`);
     if (!form) return;
 
     form.querySelectorAll('input, select, textarea').forEach(el => {
@@ -106,7 +107,12 @@ const Ui = {
 
       el.value = '';
       if (el.type === 'checkbox' || el.type === 'radio') el.checked = false;
-      if (el.tagName === 'SELECT') el.selectedIndex = -1;
+      if (el.tagName === 'SELECT') {
+        el.selectedIndex = -1;
+        if (typeof jQuery !== 'undefined' && (jQuery.fn.select2 || jQuery.fn.chosen)) {
+          $(el).trigger('change').trigger('chosen:updated');
+        }
+      }
     });
 
     // Cleanup for chosen (legacy)
@@ -168,17 +174,19 @@ const Ui = {
           $(this).data("unselecting", true);
         }).on("select2:opening", function(e) {
           if ($(this).data("unselecting")) {
-            $(this).parents(".field").find("label").removeClass("active");
+            const field = $(this).closest(".field");
+            field.find("label").removeClass("active");
             $(this).removeData("unselecting");
             e.preventDefault();
           }
         }).on("select2:open", (evt) => {
-          $(evt.target).parents(".field").find("label").addClass("active");
+          $(evt.target).closest(".field").find("label").addClass("active");
         }).on("select2:close", (evt) => {
           if (!$(evt.target).val()) {
-            $(evt.target).parents(".field").find("label").addClass("active");
+            $(evt.target).closest(".field").find("label").removeClass("active");
           }
-          const targetFlag = container.querySelector(`input.target_flag:checkbox[data-target="${evt.target.dataset.target}"]`);
+          const targetFlagId = evt.target.dataset.targetId;
+          const targetFlag = container.querySelector(`input.target_flag:checkbox[data-target-id="${targetFlagId}"]`);
           if (targetFlag) targetFlag.checked = true;
         });
       });
@@ -186,13 +194,10 @@ const Ui = {
 
     // Make labels active for inputs with values
     container.querySelectorAll('.field').forEach(field => {
-      const input = field.querySelector('input');
-      if (input && input.value) {
+      const input = field.querySelector('input, select, textarea');
+      if (input && (input.value || (input.tagName === 'SELECT' && input.selectedOptions.length > 0))) {
         field.querySelector('label')?.classList.add('active');
       }
-    });
-    container.querySelectorAll('input[data-time]').forEach(input => {
-      input.nextElementSibling?.classList.add('active');
     });
 
     // Setup Datepickers (Flatpickr)
@@ -202,7 +207,7 @@ const Ui = {
     });
 
     container.querySelectorAll('input[data-date]').forEach(el => {
-      const isUS = typeof USDateFormat === 'function' && USDateFormat();
+      const isUS = typeof window.USDateFormat === 'function' && window.USDateFormat();
       if (typeof jQuery !== 'undefined' && jQuery.fn.inputmask) $(el).inputmask(isUS ? 'wulinUSDate' : 'wulinDate');
       flatpickr(el, Object.assign({}, isUS ? window.fpConfigFormUSDate : window.fpConfigFormDate || {}, window.onCalendarOpenClose));
     });
@@ -267,21 +272,23 @@ const Ui = {
       const target = container.querySelector(`select[data-field='${field}']`);
       if (target) {
         target.querySelectorAll('option:not([value=""])').forEach(opt => opt.remove());
-        fetch(path).then(r => r.json()).then(data => {
-          const source = target.dataset.source;
-          data.forEach(value => {
-            const opt = document.createElement('option');
-            if (typeof value === 'object' && value !== null) {
-              opt.value = value.id;
-              opt.textContent = value[source];
-            } else {
-              opt.value = value;
-              opt.textContent = value;
-            }
-            target.appendChild(opt);
+        fetch(path, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+          .then(r => r.json())
+          .then(data => {
+            const source = target.dataset.source || 'name';
+            data.forEach(value => {
+              const opt = document.createElement('option');
+              if (typeof value === 'object' && value !== null) {
+                opt.value = value.id;
+                opt.textContent = value[source];
+              } else {
+                opt.value = value;
+                opt.textContent = value;
+              }
+              target.appendChild(opt);
+            });
+            this.setupChosen(grid, target, container, selectedIndexes);
           });
-          this.setupChosen(grid, target, container, selectedIndexes);
-        });
         fillValuesWillRun = true;
       }
     });
@@ -292,24 +299,26 @@ const Ui = {
       const target = container.querySelector(`select[data-field='${field}']`);
       if (target) {
         target.querySelectorAll('option:not([value=""])').forEach(opt => opt.remove());
-        fetch(path).then(r => r.json()).then(data => {
-          const source = target.dataset.source;
-          data.forEach(value => {
-            const opt = document.createElement('option');
-            if (typeof value === 'object' && value !== null) {
-              opt.value = value.id;
-              opt.textContent = value[source];
-            } else {
-              opt.value = value;
-              opt.textContent = value;
-            }
-            target.appendChild(opt);
+        fetch(path, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+          .then(r => r.json())
+          .then(data => {
+            const source = target.dataset.source || 'name';
+            data.forEach(value => {
+              const opt = document.createElement('option');
+              if (typeof value === 'object' && value !== null) {
+                opt.value = value.id;
+                opt.textContent = value[source];
+              } else {
+                opt.value = value;
+                opt.textContent = value;
+              }
+              target.appendChild(opt);
+            });
+            const addOpt = document.createElement('option');
+            addOpt.textContent = 'Add new Option';
+            target.appendChild(addOpt);
+            this.setupChosen(grid, target, container, selectedIndexes);
           });
-          const addOpt = document.createElement('option');
-          addOpt.textContent = 'Add new Option';
-          target.appendChild(addOpt);
-          this.setupChosen(grid, target, container, selectedIndexes);
-        });
         fillValuesWillRun = true;
       }
     });
@@ -331,14 +340,11 @@ const Ui = {
     });
 
     if (!fillValuesWillRun && selectedIndexes !== undefined) {
-      if (typeof fillValues === 'function') fillValues($(container), grid, selectedIndexes);
+      if (typeof window.fillValues === 'function') window.fillValues($(container), grid, selectedIndexes);
     }
 
-    const firstInput = container.querySelector('input, select, textarea');
-    if (firstInput?.dataset.date) firstInput.focus();
-
-    // Layout adjustments
-    document.querySelectorAll('.ui-dialog-titlebar, .ui-resizable-handle').forEach(el => el.style.display = 'none');
+    const firstInput = container.querySelector('input:not([type="hidden"]), select, textarea');
+    if (firstInput) firstInput.focus();
 
     if (grid.master?.filter_column && grid.master?.filter_value) {
       const hidden = document.createElement('input');
@@ -353,9 +359,9 @@ const Ui = {
 
   preventPressEnterKeySubmitForm: function (formSelector) {
     document.body.addEventListener("keypress", (event) => {
-      if (!event.target.matches(formSelector)) return;
+      if (!event.target.closest(formSelector)) return;
       const isTextarea = event.target.tagName === 'TEXTAREA' || event.target.classList.contains("note-editable");
-      if (!isTextarea && event.keyCode === 13) {
+      if (!isTextarea && event.key === 'Enter') {
         event.preventDefault();
         return false;
       }
@@ -363,12 +369,12 @@ const Ui = {
   },
 
   setupChosen: function (grid, target, scope, selectedIndexes) {
-    if (selectedIndexes !== undefined && typeof fillValues === 'function') {
-      fillValues($(scope), grid, selectedIndexes);
+    if (selectedIndexes !== undefined && typeof window.fillValues === 'function') {
+      window.fillValues($(scope), grid, selectedIndexes);
     }
     target.dispatchEvent(new Event('change'));
     // Trigger legacy chosen update if present
-    if (typeof jQuery !== 'undefined') $(target).trigger('chosen:updated');
+    if (typeof jQuery !== 'undefined' && jQuery.fn.chosen) $(target).trigger('chosen:updated');
     this.unCheckEmpty(target);
     this.addNewOption(target);
   },
@@ -392,7 +398,8 @@ const Ui = {
 
   unCheckEmpty: function (target) {
     if (!target.value) {
-      const flag = document.querySelector(`input.target_flag:checkbox[data-target="${target.dataset.target}"]`);
+      const targetId = target.dataset.targetId;
+      const flag = document.querySelector(`input.target_flag:checkbox[data-target-id="${targetId}"]`);
       if (flag) flag.checked = false;
     }
   },
@@ -410,7 +417,7 @@ const Ui = {
   },
 
   flashNotice: function (ids, action) {
-    const recordSize = Array.isArray(ids) ? ids.length : ids.split(',').length;
+    const recordSize = Array.isArray(ids) ? ids.length : String(ids).split(',').length;
     const recordUnit = recordSize > 1 ? 'records' : 'record';
     const actionDesc = action === 'delete' ? 'has been deleted!' : 'has been created!';
 
@@ -421,7 +428,11 @@ const Ui = {
       flash.textContent = `${recordSize} ${recordUnit} ${actionDesc}`;
       
       const indicators = document.getElementById('indicators');
-      indicators?.parentElement.insertBefore(flash, indicators);
+      if (indicators) {
+        indicators.parentElement.insertBefore(flash, indicators);
+      } else {
+        document.body.appendChild(flash);
+      }
 
       setTimeout(() => {
         flash.style.transition = 'opacity 1s';
@@ -435,15 +446,16 @@ const Ui = {
     let currentGrid = null;
     const activeEl = document.activeElement;
     const container = activeEl?.closest('.grid_container');
-    if (!container) return null;
-
-    const gridName = container.id.split('grid_')[1];
-
-    if (window.gridManager.grids.length === 1) {
-      currentGrid = window.gridManager.grids[0];
-    } else {
+    
+    if (container) {
+      const gridName = container.id.split('grid_')[1];
       currentGrid = window.gridManager.getGrid(gridName);
-      if (!currentGrid) {
+    }
+
+    if (!currentGrid && window.gridManager.grids.length > 0) {
+      if (window.gridManager.grids.length === 1) {
+        currentGrid = window.gridManager.grids[0];
+      } else {
         currentGrid = window.gridManager.grids.find(g => g.getSelectedRows().length > 0);
       }
     }
@@ -452,6 +464,8 @@ const Ui = {
 
   getModalSize: function (grid, data, willBeRemovedContainerClassName = 'create_form') {
     const temp = document.createElement('div');
+    temp.style.visibility = 'hidden';
+    temp.style.position = 'absolute';
     temp.innerHTML = data;
     document.body.appendChild(temp);
     
@@ -464,9 +478,8 @@ const Ui = {
     const titleH = container.querySelector('.title')?.offsetHeight || 0;
     const formH = container.querySelector('form')?.offsetHeight || 0;
     const submitH = container.querySelector('.submit')?.offsetHeight || 0;
-    const footerH = container.querySelector('.modal-footer')?.offsetHeight || 0;
     
-    const modalHeight = titleH + formH + submitH + footerH + 60;
+    const modalHeight = titleH + formH + submitH + 100;
     const width = grid.options?.form_dialog_width || 900;
     const height = grid.options?.form_dialog_height || modalHeight;
     
@@ -485,8 +498,8 @@ const Ui = {
     const onCloseEnd = options.onCloseEnd;
     options.onCloseEnd = (el) => {
       const activeRow = modal.querySelector(".ui-widget-content.active.slick-row");
-      if (activeRow && typeof cleanUpEditors === 'function') {
-        cleanUpEditors(activeRow.dataset.id);
+      if (activeRow && typeof window.cleanUpEditors === 'function') {
+        window.cleanUpEditors(activeRow.dataset.id);
       }
       if (onCloseEnd) onCloseEnd(el);
       modal.remove();
@@ -571,7 +584,9 @@ const Ui = {
     if (typeof jQuery !== 'undefined' && jQuery.fn.jsonViewer) {
       $(modal).find('.modal-content').jsonViewer(jsonData);
     } else {
-      modal.querySelector('.modal-content').textContent = JSON.stringify(jsonData, null, 2);
+      const pre = document.createElement('pre');
+      pre.textContent = JSON.stringify(jsonData, null, 2);
+      modal.querySelector('.modal-content').appendChild(pre);
     }
   },
 
@@ -597,15 +612,15 @@ const Ui = {
         const opt = document.createElement('option');
         opt.value = opt.textContent = val;
         
-        // Insert before "Add new Option"
         const addOpt = Array.from(inputBox.options).find(o => o.textContent === 'Add new Option');
         inputBox.insertBefore(opt, addOpt);
         inputBox.value = val;
 
-        const flag = document.querySelector(`input.target_flag:checkbox[data-target="${inputBox.dataset.target}"]`);
+        const targetId = inputBox.dataset.targetId;
+        const flag = document.querySelector(`input.target_flag:checkbox[data-target-id="${targetId}"]`);
         if (flag) flag.checked = true;
 
-        if (typeof jQuery !== 'undefined') $(inputBox).trigger('chosen:updated');
+        if (typeof jQuery !== 'undefined' && jQuery.fn.chosen) $(inputBox).trigger('chosen:updated');
         M.Modal.getInstance(modal)?.close();
       } else {
         alert('New option can not be blank!');

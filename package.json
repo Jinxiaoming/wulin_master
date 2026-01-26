@@ -14,6 +14,8 @@
     "select2": "^4.1.0-rc.0",
     "sortablejs": "^1.15.2",
     "jquery-form": "^4.3.0",
-    "inputmask": "^5.0.9"
+    "inputmask": "^5.0.9",
+    "6pac-slickgrid": "^5.10.0",
+    "jquery.event.drag": "^2.2.2"
   }
 }

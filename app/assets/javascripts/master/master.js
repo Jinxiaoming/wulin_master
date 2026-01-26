@@ -17,23 +17,26 @@ import { Sortable } from 'sortablejs'
 window.Sortable = Sortable;
 
 $(function(){
+});
 
-// SlickGrid dependencies
+// SlickGrid dependencies from NPM
+import 'jquery.event.drag'
+import '6pac-slickgrid/dist/browser/slick.core'
+import '6pac-slickgrid/dist/browser/slick.grid'
+import '6pac-slickgrid/dist/browser/controls/slick.columnpicker'
+import '6pac-slickgrid/dist/browser/controls/slick.pager'
+import '6pac-slickgrid/dist/browser/plugins/slick.autotooltips'
+import '6pac-slickgrid/dist/browser/plugins/slick.cellcopymanager'
+import '6pac-slickgrid/dist/browser/plugins/slick.cellrangedecorator'
+import '6pac-slickgrid/dist/browser/plugins/slick.cellrangeselector'
+import '6pac-slickgrid/dist/browser/plugins/slick.cellselectionmodel'
+import '6pac-slickgrid/dist/browser/plugins/slick.checkboxselectcolumn'
+import '6pac-slickgrid/dist/browser/plugins/slick.rowdetailview'
+import '6pac-slickgrid/dist/browser/plugins/slick.rowselectionmodel'
+
+// Local SlickGrid dependencies and extensions
 import '../jquery_plugins/SlickGrid/lib/chosen.jquery.js'
 import '../jquery_plugins/SlickGrid/lib/extension.js'
-import '../jquery_plugins/SlickGrid/lib/jquery.event.drag-2.2.js'
-import '../jquery_plugins/SlickGrid/slick.core.js'
-import '../jquery_plugins/SlickGrid/slick.grid.js'
-import '../jquery_plugins/SlickGrid/controls/slick.columnpicker.js'
-import '../jquery_plugins/SlickGrid/controls/slick.pager.js'
-import '../jquery_plugins/SlickGrid/plugins/slick.autotooltips.js'
-import '../jquery_plugins/SlickGrid/plugins/slick.cellcopymanager.js'
-import '../jquery_plugins/SlickGrid/plugins/slick.cellrangedecorator.js'
-import '../jquery_plugins/SlickGrid/plugins/slick.cellrangeselector.js'
-import '../jquery_plugins/SlickGrid/plugins/slick.cellselectionmodel.js'
-import '../jquery_plugins/SlickGrid/plugins/slick.checkboxselectcolumn.js'
-import '../jquery_plugins/SlickGrid/plugins/slick.rowdetailview.js'
-import '../jquery_plugins/SlickGrid/plugins/slick.rowselectionmodel.js'
 
 // Overrides
 import '../overrides/chosen.jquery.js'

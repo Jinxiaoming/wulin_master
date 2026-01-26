@@ -77,16 +77,18 @@ WulinMaster.actions.BaseAction = {
   // Handle delete confirm with dialog
   deleteGridRecords: function(grid, ids) {
     var self = this;
-    $('#confirm-modal').modal('open');
-    $('#confirmed-btn').off('click').on('click', function() {
-      Requests.deleteByAjax(grid, ids);
-      $('#confirm-modal').modal('close');
-      ids = [];
-      // reload the master grid (for dettach detail action)
-      if(self.reload_master && grid.master_grid) {
-        grid.master_grid.loader.reloadData();
+    displayCustomizedConfirmModal({
+      message: "Are you sure you want to delete the selected records?",
+      title: "Delete Confirmation",
+      confirmCallBack: function() {
+        Requests.deleteByAjax(grid, ids);
+        ids = [];
+        // reload the master grid (for dettach detail action)
+        if(self.reload_master && grid.master_grid) {
+          grid.master_grid.loader.reloadData();
+        }
       }
-    })
+    });
   },
 
   // Set height for grid related elements in Modal

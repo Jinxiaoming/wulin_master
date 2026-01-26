@@ -2,57 +2,91 @@
 var Requests = {
   // Record create by ajax
   createByAjax: function(grid, continue_on, afterCreated) {
-    var createFormElement, ajaxOptions, submitButton;
-    createFormElement = $('div#'+grid.name+'_form form');
-    submitButton = createFormElement.find("input[type='submit']");
-    // clear all the error messages
-    createFormElement.find(".field_error").text("");
-    ajaxOptions = {
-      url: grid.path + '.json',
-      beforeSend: function() {
-        submitButton.prop('disabled', 'disabled');
-      },
-      success: function(request) {
-        if (typeof afterCreated == "function") {
-          return afterCreated(request);
-        }
-        if (request.success) {
-          grid.resetActiveCell();
-          grid.operatedIds = [request.id];
-          var vp = grid.getViewport();
+    const createFormElement = document.querySelector(`div#${grid.name}_form form`);
+    if (!createFormElement) return;
 
-          grid.loader.reloadData();
-          grid.loader.ensureData(vp.top, vp.bottom)
-          if ((grid.reloadMasterAfterUpdates || grid.options.reloadMasterAfterUpdates) && grid.master_grid) {
-            grid.master_grid.loader.reloadData();
-            grid.master_grid.loader.ensureData(vp.top, vp.bottom)
-          }
-          if (continue_on) {
-            if (window._always_reset_form) {
-              Ui.refreshCreateForm(grid);
-            }
-          } else {
-            if (grid.loader.isDataLoaded()) {
-              setTimeout(function(){ Ui.closeModal(grid.name); }, 100);
-            }
-          }
-          displayNewNotification(grid.model + ' successfully created');
-        } else {
-          for(var k in request.error_message){
-            createFormElement.find(".field[name=" + k + "], .field[name=" + k + "_id]").find(".field_error").text(request.error_message[k].join());
-            createFormElement.find(".field[name=" + k + "], .field[name=" + k + "_id]").find("input:not(.numInput)").addClass('invalid');
-          }
-          if (request.error_message['base']) {
-            $('.base_error', createFormElement).text(request.error_message['base']);
-          }
-          saveMessage('Error creating ' + grid.model.toLowerCase(), 'error');
-        }
-      },
-      complete: function() {
-        submitButton.prop('disabled', null);
+    const submitButton = createFormElement.querySelector("input[type='submit']");
+    const formData = new FormData(createFormElement);
+    
+    // Clear all the error messages
+    createFormElement.querySelectorAll(".field_error").forEach(el => el.textContent = "");
+    createFormElement.querySelectorAll("input.invalid").forEach(el => el.classList.remove('invalid'));
+
+    if (submitButton) submitButton.disabled = true;
+
+    const url = `${grid.path}.json`;
+    
+    fetch(url, {
+      method: 'POST',
+      body: formData,
+      headers: {
+        'X-CSRF-Token': decodeURIComponent(window._token || ''),
+        'X-Requested-With': 'XMLHttpRequest',
+        'Accept': 'application/json'
       }
-    };
-    createFormElement.ajaxSubmit(ajaxOptions);
+    })
+    .then(response => {
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      return response.json();
+    })
+    .then(request => {
+      if (typeof afterCreated === "function") {
+        return afterCreated(request);
+      }
+
+      if (request.success) {
+        grid.resetActiveCell();
+        grid.operatedIds = [request.id];
+        const vp = grid.getViewport();
+
+        grid.loader.reloadData();
+        grid.loader.ensureData(vp.top, vp.bottom);
+        
+        if ((grid.reloadMasterAfterUpdates || grid.options.reloadMasterAfterUpdates) && grid.master_grid) {
+          grid.master_grid.loader.reloadData();
+          grid.master_grid.loader.ensureData(vp.top, vp.bottom);
+        }
+
+        if (continue_on) {
+          if (window._always_reset_form) {
+            Ui.refreshCreateForm(grid);
+          }
+        } else {
+          if (grid.loader.isDataLoaded()) {
+            setTimeout(() => { Ui.closeModal(grid.name); }, 100);
+          }
+        }
+
+        const successMessage = grid.options.success_message || `${grid.model} successfully created`;
+        displayNewNotification(successMessage, 'success');
+      } else {
+        // Handle validation errors
+        for(let k in request.error_message){
+          const field = createFormElement.querySelector(`.field[name="${k}"], .field[name="${k}_id"]`);
+          if (field) {
+            const errorEl = field.querySelector(".field_error");
+            if (errorEl) errorEl.textContent = request.error_message[k].join();
+            const input = field.querySelector("input:not(.numInput)");
+            if (input) input.classList.add('invalid');
+          }
+        }
+        
+        if (request.error_message['base']) {
+          const baseErrorEl = createFormElement.querySelector('.base_error');
+          if (baseErrorEl) baseErrorEl.textContent = request.error_message['base'];
+        }
+
+        const errorMessage = grid.options.error_message || `Error creating ${grid.model.toLowerCase()}`;
+        saveMessage(errorMessage, 'error');
+      }
+    })
+    .catch(error => {
+      console.error('Create error:', error);
+      displayErrorMessage('An error occurred during creation.', 'Network Error');
+    })
+    .finally(() => {
+      if (submitButton) submitButton.disabled = false;
+    });
   },
 
   /**
@@ -103,6 +137,9 @@ var Requests = {
           grid.onUpdatedByAjax.notify({item, msg});
           const from = parseInt(currentRow / 200, 10) * 200;
           grid.loader.reloadData(from, currentRow);
+          
+          const successMessage = grid.options.update_success_message || `${grid.model} successfully updated`;
+          displayNewNotification(successMessage, 'success');
         } else {
           displayErrorMessage(msg.error_message || 'Update failed', 'Error');
           if(editCommand) {

@@ -74,18 +74,39 @@ WulinMaster.actions.BaseAction = {
     });
   },
 
-  // Handle delete confirm with dialog
-  deleteGridRecords: function(grid, ids) {
+  /**
+   * Handles deleting records with a confirmation dialog.
+   * Allows passing custom messages and titles, falling back to dynamic defaults.
+   * 
+   * @param {Object} grid - The grid instance
+   * @param {Array} ids - IDs of records to delete
+   * @param {string} [customMessage] - Optional custom confirmation message
+   * @param {string} [customTitle] - Optional custom dialog title
+   */
+  deleteGridRecords: function(grid, ids, customMessage, customTitle) {
     const self = this;
     const modelName = grid.model || 'record';
     const recordCount = ids.length;
-    const message = recordCount > 1 
-      ? `Are you sure you want to delete these ${recordCount} ${modelName.toLowerCase()}s?`
-      : `Are you sure you want to delete this ${modelName.toLowerCase()}?`;
+    
+    // Determine the message: 
+    // 1. Parameter customMessage
+    // 2. Action property this.confirm_message
+    // 3. Dynamic default
+    const message = customMessage || this.confirm_message || (
+      recordCount > 1 
+        ? `Are you sure you want to delete these ${recordCount} ${modelName.toLowerCase()}s?`
+        : `Are you sure you want to delete this ${modelName.toLowerCase()}?`
+    );
+
+    // Determine the title:
+    // 1. Parameter customTitle
+    // 2. Action property this.confirm_title
+    // 3. Default
+    const title = customTitle || this.confirm_title || "Delete Confirmation";
 
     displayCustomizedConfirmModal({
       message: message,
-      title: "Delete Confirmation",
+      title: title,
       confirmCallBack: function() {
         Requests.deleteByAjax(grid, ids);
         ids = [];

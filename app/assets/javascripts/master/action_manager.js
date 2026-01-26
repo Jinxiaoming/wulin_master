@@ -1,137 +1,159 @@
-$.namespace('WulinMaster.ActionManager');
-$.namespace('WulinMaster.actions');
-
-// action manager
-WulinMaster.ActionManager = function(){
-  var actions = {};
+/**
+ * ActionManager handles the registration and dispatching of grid actions (toolbar items).
+ */
+const ActionManager = (() => {
+  const actions = {};
 
   return {
-    register: function(a_obj) {
-      actions[a_obj.name] = a_obj;
+    /**
+     * Registers a new action.
+     */
+    register: function(obj) {
+      actions[obj.name] = obj;
     },
 
-    unregister: function(a_obj) {
-      delete actions[a_obj.name];
+    /**
+     * Unregisters an existing action.
+     */
+    unregister: function(obj) {
+      delete actions[obj.name];
     },
 
-    getAction: function(a_name) {
-      var action_proto = actions[a_name];
-      return $.extend({}, action_proto);
+    /**
+     * Retrieves an action by name, returning a fresh copy.
+     */
+    getAction: function(name) {
+      const proto = actions[name];
+      return proto ? Object.assign({}, proto) : null;
     },
 
-    dispatchActions: function(target, action_configs) {
-      // try to find target's behaviors, and subsribe for target
-      for(var i in action_configs) {
-        var action = this.getAction(action_configs[i].name);
-        if(action){
-          $.extend(action, action_configs[i]);
-          $.extend(action, {target: target});
-          if(action.init) action.init();
+    /**
+     * Dispatches actions to a target (usually a grid).
+     */
+    dispatchActions: function(target, configs) {
+      if (!configs) return;
+      for (let i in configs) {
+        const action = this.getAction(configs[i].name);
+        if (action) {
+          Object.assign(action, configs[i], { target: target });
+          if (action.init) action.init();
         }
       }
     }
   };
-}();
+})();
 
-
-// we assume the wulin_master action is a click event on toolbar item, but you can override to satisfy your requirement
-WulinMaster.actions.BaseAction = {
+/**
+ * BaseAction provides the base logic for all grid actions.
+ */
+const BaseAction = {
   _isAction: true,
   name: null,
   event: "click",
   triggerElementIdentifier: null,
   target: null,
 
-  // in most case, don't need to override
-  init : function() {
-    // get the trigger element, you can override triggerElementIdentifier
-    this.triggerElement = $("#content").find(this.triggerElementIdentifier);
-    if(this.triggerElement.length === 0){
-      this.triggerElement = $("#" + this.name + "_action_on_" + this.target.name);
+  /**
+   * Initializes the action by locating its trigger element and activating it.
+   */
+  init: function() {
+    // Try to find the trigger element
+    this.triggerElement = document.querySelector(this.triggerElementIdentifier);
+    
+    if (!this.triggerElement) {
+      this.triggerElement = document.getElementById(`${this.name}_action_on_${this.target.name}`);
     }
 
-    // activate the action
-    this.activate();
-  },
-
-  // get the grid
-  getGrid: function(){
-    if(this.target) {
-      this.grid = this.target;
-    } else {
-      var grid_name = this.triggerElement.closest(".toolbar").data("grid");
-      this.grid = gridManager.getGrid(grid_name);
+    if (this.triggerElement) {
+      this.activate();
     }
-    return this.grid;
   },
 
-  // can be overrided
-  activate: function(){
-    var self = this;
-    this.triggerElement.off(self.event).on(self.event, function(e, args){
-      if($(this).hasClass('toolbar_icon_disabled')) return false;
-      self.handler(e, args);
+  /**
+   * Returns the grid associated with this action.
+   */
+  getGrid: function() {
+    if (this.target) return this.target;
+    
+    const toolbar = this.triggerElement?.closest(".toolbar");
+    if (toolbar) {
+      const gridName = toolbar.dataset.grid;
+      return window.gridManager.getGrid(gridName);
+    }
+    return null;
+  },
+
+  /**
+   * Activates the action by binding the trigger event.
+   */
+  activate: function() {
+    if (!this.triggerElement) return;
+
+    this.triggerElement.addEventListener(this.event, (e) => {
+      if (this.triggerElement.classList.contains('toolbar_icon_disabled')) return false;
+      this.handler(e);
     });
   },
 
   /**
    * Handles deleting records with a confirmation dialog.
-   * Allows passing custom messages and titles, falling back to dynamic defaults.
-   * 
-   * @param {Object} grid - The grid instance
-   * @param {Array} ids - IDs of records to delete
-   * @param {string} [customMessage] - Optional custom confirmation message
-   * @param {string} [customTitle] - Optional custom dialog title
    */
   deleteGridRecords: function(grid, ids, customMessage, customTitle) {
     const self = this;
     const modelName = grid.model || 'record';
     const recordCount = ids.length;
     
-    // Determine the message: 
-    // 1. Parameter customMessage
-    // 2. Action property this.confirm_message
-    // 3. Dynamic default
     const message = customMessage || this.confirm_message || (
       recordCount > 1 
         ? `Are you sure you want to delete these ${recordCount} ${modelName.toLowerCase()}s?`
         : `Are you sure you want to delete this ${modelName.toLowerCase()}?`
     );
 
-    // Determine the title:
-    // 1. Parameter customTitle
-    // 2. Action property this.confirm_title
-    // 3. Default
     const title = customTitle || this.confirm_title || "Delete Confirmation";
 
-    displayCustomizedConfirmModal({
+    window.displayCustomizedConfirmModal({
       message: message,
       title: title,
       confirmCallBack: function() {
-        Requests.deleteByAjax(grid, ids);
-        ids = [];
-        // reload the master grid (for dettach detail action)
-        if(self.reload_master && grid.master_grid) {
+        window.Requests.deleteByAjax(grid, ids);
+        // reload the master grid (for detach detail action)
+        if (self.reload_master && grid.master_grid) {
           grid.master_grid.loader.reloadData();
         }
       }
     });
   },
 
-  // Set height for grid related elements in Modal
+  /**
+   * Adjusts the grid height when displayed inside a modal.
+   */
   setGridHeightInModal: function(modalDom) {
-    var gridCanvasHeight = modalDom.height() -
-                           modalDom.find('.modal-header').outerHeight() -
-                           modalDom.find('.modal-content .grid-header').outerHeight() -
-                           modalDom.find('.modal-content .slick-header').outerHeight() -
-                           modalDom.find('.modal-footer').outerHeight() -
-                           modalDom.find('.modal-content .extra-block').outerHeight -
-                           modalDom.find('.pager').outerHeight();
-    modalDom.find('.modal-content .slick-viewport').height(gridCanvasHeight + 'px');
-    modalDom.find('.modal-content .grid-canvas').height('auto');
-    modalDom.find('.modal-content .grid').height('auto');
+    const modal = modalDom instanceof jQuery ? modalDom[0] : modalDom;
+    if (!modal) return;
+
+    const headerHeight = modal.querySelector('.modal-header')?.offsetHeight || 0;
+    const gridHeaderHeight = modal.querySelector('.grid-header')?.offsetHeight || 0;
+    const slickHeaderHeight = modal.querySelector('.slick-header')?.offsetHeight || 0;
+    const footerHeight = modal.querySelector('.modal-footer')?.offsetHeight || 0;
+    const pagerHeight = modal.querySelector('.pager')?.offsetHeight || 0;
+    const extraHeight = modal.querySelector('.extra-block')?.offsetHeight || 0;
+
+    const viewport = modal.querySelector('.slick-viewport');
+    if (viewport) {
+      const canvasHeight = modal.offsetHeight - headerHeight - gridHeaderHeight - slickHeaderHeight - footerHeight - extraHeight - pagerHeight;
+      viewport.style.height = `${canvasHeight}px`;
+    }
+    
+    modal.querySelectorAll('.grid-canvas, .grid').forEach(el => el.style.height = 'auto');
   },
 
-  // override this to define what the action to do
-  handler: $.noop
+  handler: () => {}
 };
+
+// Global exposure for legacy compatibility
+window.WulinMaster = window.WulinMaster || {};
+window.WulinMaster.ActionManager = ActionManager;
+window.WulinMaster.actions = window.WulinMaster.actions || {};
+window.WulinMaster.actions.BaseAction = BaseAction;
+
+export { ActionManager, BaseAction };

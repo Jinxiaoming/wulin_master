@@ -1,44 +1,61 @@
-$.namespace('WulinMaster.BehaviorManager');
-$.namespace('WulinMaster.behaviors');
-
-// behavior manager
-WulinMaster.BehaviorManager = function(){
-  var behaviors = {};
+/**
+ * BehaviorManager handles the registration and dispatching of grid behaviors.
+ */
+const BehaviorManager = (() => {
+  const behaviors = {};
 
   return {
-    register: function(b_name, b_obj) {
-      //console.log(b_name + " registered!")
-      behaviors[b_name] = b_obj;
+    /**
+     * Registers a new behavior.
+     */
+    register: function(name, obj) {
+      behaviors[name] = obj;
     },
 
-    unregister: function(b_name) {
-      delete behaviors[b_name];
+    /**
+     * Unregisters an existing behavior.
+     */
+    unregister: function(name) {
+      delete behaviors[name];
     },
 
-    getBehavior: function(b_name) {
-      var behavior_proto = behaviors[b_name];
-      // extend the behavior prototype to create a new behavior, avoid the same behavior conflict in one screen
-      return $.extend({}, behavior_proto);
+    /**
+     * Retrieves a behavior by name, returning a fresh copy.
+     */
+    getBehavior: function(name) {
+      const proto = behaviors[name];
+      return proto ? Object.assign({}, proto) : null;
     },
 
-    dispatchBehaviors: function(target, behavior_configs) {
-      // try to find target's behaviors, and subsribe for target
-      for(var i=0;i < behavior_configs.length; i++) {
-        var behavior = this.getBehavior(behavior_configs[i].name);
-        if(behavior){
-          $.extend(behavior, behavior_configs[i]);
+    /**
+     * Dispatches behaviors to a target (usually a grid).
+     */
+    dispatchBehaviors: function(target, configs) {
+      if (!configs) return;
+      for (let i = 0; i < configs.length; i++) {
+        const behavior = this.getBehavior(configs[i].name);
+        if (behavior) {
+          Object.assign(behavior, configs[i]);
           behavior.subscribe(target);
         }
       }
     }
   };
-}();
+})();
 
-// base behavior
-WulinMaster.behaviors.BaseBehavior = {
+/**
+ * BaseBehavior provides the interface for all grid behaviors.
+ */
+const BaseBehavior = {
   _isBehavior: true,
-  
-  subscribe : $.noop,
-  unsubscribe : $.noop
+  subscribe: () => {},
+  unsubscribe: () => {}
 };
 
+// Global exposure for legacy compatibility
+window.WulinMaster = window.WulinMaster || {};
+window.WulinMaster.BehaviorManager = BehaviorManager;
+window.WulinMaster.behaviors = window.WulinMaster.behaviors || {};
+window.WulinMaster.behaviors.BaseBehavior = BaseBehavior;
+
+export { BehaviorManager, BaseBehavior };

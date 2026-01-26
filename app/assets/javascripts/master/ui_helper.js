@@ -1,637 +1,628 @@
-// ------------------------------------ UI tools -----------------------------------------
-window.Ui = {
-  // return true if the dialog of grid with "name" is open, unless return false
+/**
+ * UI Helper tools for WulinMaster.
+ * Provides utility methods for managing grid state, forms, and modals.
+ */
+const Ui = {
+  /**
+   * Checks if any UI dialog is currently open.
+   */
   isOpen: function () {
-    return $('.ui-dialog:visible').size() > 0;
+    return document.querySelectorAll('.ui-dialog:not([style*="display: none"])').length > 0;
   },
 
-  // check if the grid is being edited
+  /**
+   * Checks if any grid is currently being edited.
+   */
   isEditing: function () {
-    var editing = false;
-    $.each(gridManager.grids, function () {
-      if (this.getCellEditor() != null) editing = true;
-    });
-    return editing;
+    return window.gridManager.grids.some(grid => grid.getCellEditor() != null);
   },
 
-  // Resize grid
+  /**
+   * Resizes the grid and its components.
+   */
   resizeGrid: function (grid) {
     grid.resizeCanvas();
     grid.autosizeColumns();
     grid.filterPanel.generateFilters();
-    $(window).resize(function () {
+    
+    // Use a named function to avoid duplicate listeners if called multiple times
+    const onResize = () => {
       grid.resizeCanvas();
       grid.autosizeColumns();
       grid.filterPanel.generateFilters();
-    });
+    };
+    window.removeEventListener('resize', onResize);
+    window.addEventListener('resize', onResize);
   },
 
-  // Check if filter panel is open (Not in use since Material Design implementation)
+  /**
+   * Checks if the filter panel is open.
+   */
   filterPanelOpen: function () {
-    return (
-      $('.slick-headerrow-columns:visible').size() > 0 &&
-      $(document.activeElement).parent().attr('class') ===
-        'slick-headerrow-columns'
-    );
+    const headerRow = document.querySelector('.slick-headerrow-columns:not([style*="display: none"])');
+    return !!headerRow && document.activeElement?.parentElement?.classList.contains('slick-headerrow-columns');
   },
 
-  // Check if the grid is being filtered
+  /**
+   * Checks if the grid is currently being filtered.
+   */
   isFiltering: function () {
-    return $(document.activeElement).parent().hasClass('slick-header-column');
+    return document.activeElement?.parentElement?.classList.contains('slick-header-column');
   },
 
-  // Check if can add or delete records
+  /**
+   * Checks if add or delete operations are locked.
+   */
   addOrDeleteLocked: function () {
     return this.isEditing() || this.isOpen() || this.isFiltering();
   },
 
-  // Select grid names
+  /**
+   * Returns an array of active grid names.
+   */
   selectGridNames: function () {
-    var gridContainers = $('.grid_container'),
-      gridName;
-    return $.map(gridContainers, function (container) {
-      gridName = $.trim($(container).attr('id').split('grid_')[1]);
-      if (gridName) {
-        return gridName;
-      }
-    });
+    const gridContainers = document.querySelectorAll('.grid_container');
+    return Array.from(gridContainers).map(container => {
+      const id = container.id || "";
+      return id.split('grid_')[1]?.trim();
+    }).filter(Boolean);
   },
 
-  // Refresh create form when continue create new record
+  /**
+   * Refreshes the create form for a grid.
+   */
   refreshCreateForm: function (grid) {
-    var name = grid.name;
-    $.get(grid.path + '/wulin_master_new_form' + grid.query, function (data) {
-      newFormDom = $(data);
-      $('#' + name + '_form:visible').closest('.modal-content').html(newFormDom);
-      setTimeout(function () {
-        Ui.setupForm(grid, false);
-      }, 350);
-      Ui.setupComponents(grid);
-      grid.onOpenCreateModalEnd.notify();
-    });
-  },
+    const name = grid.name;
+    const url = `${grid.path}/wulin_master_new_form${grid.query}`;
 
-  // Reset form
-  resetForm: function (name) {
-    $(':input', '#new_' + name)
-      .not(':button, :submit, :reset, :hidden')
-      .not('[readonly]')
-      .val('')
-      .removeAttr('checked')
-      .removeAttr('selected');
-    // For chosen
-    $('ul.chzn-choices li.search-choice').remove();
-  },
-
-  // Create and open dialog
-  openDialog: function (grid, action) {
-    $.get(grid.path + "/" + action + grid.query, function (data) {
-      Ui.createModelModal(grid, data, {
-        dismissible: false,
-        onOpenEnd: function () {
-          /*
-           * needDuplicateSelectedRows will duplicate selected rows.
-           * For examle in the comment https://gitlab.ekohe.com/ekohe/hbs/bss_core/-/issues/37
-           * You need set needDuplicateSelectedRows to be true before call openDialog to make it happen.
-           */
-          if(grid.options['needDuplicateSelectedRows']) {
-            var selectedIndexes = grid.getSelectedRows();
-            Ui.setupForm(grid, false, selectedIndexes);
-          } else {
-            Ui.setupForm(grid, false);
+    fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+      .then(response => response.text())
+      .then(html => {
+        const formVisible = document.querySelector(`#${name}_form:not([style*="display: none"])`);
+        if (formVisible) {
+          const modalContent = formVisible.closest('.modal-content');
+          if (modalContent) {
+            modalContent.innerHTML = html;
+            setTimeout(() => {
+              this.setupForm(grid, false);
+              this.setupComponents(grid);
+              grid.onOpenCreateModalEnd.notify();
+            }, 350);
           }
-          Ui.setupComponents(grid);
-
-          grid.onOpenCreateModalEnd.notify();
-        },
-        onCloseStart: function (modal) {
-          $(".materialnote", modal).materialnote("destroy");
-          $(".note-popover").remove();
-          // Need reset to false at the end to avoid side effect.
-          grid.options['needDuplicateSelectedRows'] = false;
-        },
+        }
       });
-    });
   },
 
-  setupComponents: function (grid, scope) {
-    var name = grid.name;
-    scope = scope || `#${name}_form`;
+  /**
+   * Resets a form's input fields.
+   */
+  resetForm: function (name) {
+    const form = document.getElementById(`new_${name}`);
+    if (!form) return;
 
-    $(`${scope} select.select2[data-required=false][multiple]`).each((_, e) => {
-      $(e).find("option[value='']").remove()
-    })
+    form.querySelectorAll('input, select, textarea').forEach(el => {
+      if (['button', 'submit', 'reset', 'hidden'].includes(el.type)) return;
+      if (el.readOnly) return;
 
-    // init select2
-    $(`${scope} select.select2`).each((_, e) => {
-      $(e).select2({
-        placeholder: "",
-        allowClear: true,
-        width: "100%"
-      }).on("select2:unselecting", function() {
-        $(this).data("unselecting", true);
-      }).on("select2:opening", function(e) {
-        if ($(this).data("unselecting")) {
-          $(this).parents(".field").find("label").removeClass("active")
-          $(this).removeData("unselecting")
-          e.preventDefault()
-        }
-      })
-
-      $(e).on("select2:open", (evt) => {
-        $(evt.target).parents(".field").find("label").addClass("active")
-      })
-
-      $(e).on("select2:close", (evt) => {
-        let val = $(evt.target).val()
-        if (val) {
-          // do nothing
-        } else {
-          $(evt.target).parents(".field").find("label").addClass("active")
-        }
-
-        var flag = $(
-          `${scope} input.target_flag:checkbox[data-target="${$(e).attr(
-            'data-target'
-          )}"]`
-        );
-        if (flag.size() > 0) flag.prop('checked', true);
-      })
-    })
-
-    // materialize input[type=text]
-    // since we have already imp lemented the input-outlined feature in the _form.html.haml
-    // I think we can comment the follow line code.
-    // $(`${scope} input[type=text]`).parent().addClass('input-field');
-
-    // make label active for input with value
-    $(`${scope} .field`)
-      .filter(function () {
-        return !!$(this).find('input').val();
-      })
-      .find('label')
-      .addClass('active');
-    $(`${scope} input[data-time]`).siblings('label').addClass('active');
-
-    // setup datepicker
-    $(`${scope} input[data-datetime]`).each(function() {
-      let that = this
-      $(that)
-      .inputmask('wulinDateTime')
-      .flatpickr(fpMergeConfigs({}, fpConfigFormDateTime, onCalendarOpenClose));
+      el.value = '';
+      if (el.type === 'checkbox' || el.type === 'radio') el.checked = false;
+      if (el.tagName === 'SELECT') el.selectedIndex = -1;
     });
-    $(`${scope} input[data-date]`).each(function() {
-      let that = this;
-      if (USDateFormat()) {
-        $(that)
-        .inputmask('wulinUSDate')
-        .flatpickr(fpMergeConfigs({}, fpConfigFormUSDate, onCalendarOpenClose));
-      } else {
-        $(that)
-        .inputmask('wulinDate')
-        .flatpickr(fpMergeConfigs({}, fpConfigFormDate, onCalendarOpenClose));
+
+    // Cleanup for chosen (legacy)
+    form.querySelectorAll('ul.chzn-choices li.search-choice').forEach(el => el.remove());
+  },
+
+  /**
+   * Opens a dialog for a grid action.
+   */
+  openDialog: function (grid, action) {
+    const url = `${grid.path}/${action}${grid.query}`;
+
+    fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+      .then(response => response.text())
+      .then(data => {
+        this.createModelModal(grid, data, {
+          dismissible: false,
+          onOpenEnd: () => {
+            const selectedIndexes = grid.options['needDuplicateSelectedRows'] ? grid.getSelectedRows() : undefined;
+            this.setupForm(grid, false, selectedIndexes);
+            this.setupComponents(grid);
+            grid.onOpenCreateModalEnd.notify();
+          },
+          onCloseStart: (modal) => {
+            // Cleanup for materialnote (legacy)
+            if (typeof jQuery !== 'undefined' && jQuery.fn.materialnote) {
+              $(modal).find(".materialnote").materialnote("destroy");
+            }
+            document.querySelectorAll(".note-popover").forEach(el => el.remove());
+            grid.options['needDuplicateSelectedRows'] = false;
+          },
+        });
+      });
+  },
+
+  /**
+   * Sets up UI components (Select2, Flatpickr, etc.) within a scope.
+   */
+  setupComponents: function (grid, scope) {
+    const name = grid.name;
+    const scopeSelector = scope || `#${name}_form`;
+    const container = document.querySelector(scopeSelector);
+    if (!container) return;
+
+    // Cleanup Select2 empty options
+    container.querySelectorAll('select.select2[data-required=false][multiple]').forEach(select => {
+      select.querySelectorAll("option[value='']").forEach(opt => opt.remove());
+    });
+
+    // Init Select2 (Still requires jQuery for now as Select2 is a jQuery plugin)
+    if (typeof jQuery !== 'undefined' && jQuery.fn.select2) {
+      $(container).find('select.select2').each((_, e) => {
+        const $el = $(e);
+        $el.select2({
+          placeholder: "",
+          allowClear: true,
+          width: "100%"
+        }).on("select2:unselecting", function() {
+          $(this).data("unselecting", true);
+        }).on("select2:opening", function(e) {
+          if ($(this).data("unselecting")) {
+            $(this).parents(".field").find("label").removeClass("active");
+            $(this).removeData("unselecting");
+            e.preventDefault();
+          }
+        }).on("select2:open", (evt) => {
+          $(evt.target).parents(".field").find("label").addClass("active");
+        }).on("select2:close", (evt) => {
+          if (!$(evt.target).val()) {
+            $(evt.target).parents(".field").find("label").addClass("active");
+          }
+          const targetFlag = container.querySelector(`input.target_flag:checkbox[data-target="${evt.target.dataset.target}"]`);
+          if (targetFlag) targetFlag.checked = true;
+        });
+      });
+    }
+
+    // Make labels active for inputs with values
+    container.querySelectorAll('.field').forEach(field => {
+      const input = field.querySelector('input');
+      if (input && input.value) {
+        field.querySelector('label')?.classList.add('active');
       }
     });
-    $(`${scope} input[data-time]`).each(function() {
-      let that = this
-      $(that)
-      .inputmask('wulinTime')
-      .flatpickr(fpMergeConfigs({}, fpConfigFormTime, { appendTo: $(that).parent()[0] }));
+    container.querySelectorAll('input[data-time]').forEach(input => {
+      input.nextElementSibling?.classList.add('active');
+    });
+
+    // Setup Datepickers (Flatpickr)
+    container.querySelectorAll('input[data-datetime]').forEach(el => {
+      if (typeof jQuery !== 'undefined' && jQuery.fn.inputmask) $(el).inputmask('wulinDateTime');
+      flatpickr(el, Object.assign({}, window.fpConfigFormDateTime || {}, window.onCalendarOpenClose));
+    });
+
+    container.querySelectorAll('input[data-date]').forEach(el => {
+      const isUS = typeof USDateFormat === 'function' && USDateFormat();
+      if (typeof jQuery !== 'undefined' && jQuery.fn.inputmask) $(el).inputmask(isUS ? 'wulinUSDate' : 'wulinDate');
+      flatpickr(el, Object.assign({}, isUS ? window.fpConfigFormUSDate : window.fpConfigFormDate || {}, window.onCalendarOpenClose));
+    });
+
+    container.querySelectorAll('input[data-time]').forEach(el => {
+      if (typeof jQuery !== 'undefined' && jQuery.fn.inputmask) $(el).inputmask('wulinTime');
+      flatpickr(el, Object.assign({}, window.fpConfigFormTime || {}, { appendTo: el.parentElement }));
     });
   },
 
+  /**
+   * Sets up the form state and remote options.
+   */
   setupForm: function (grid, monitor, selectedIndexes, scope) {
-    var name = grid.name;
-    var scope = scope || `#${name}_form`;
-    var $scope = $(scope);
-    var remotePath = [];
-    var choicesColumn = [];
-    var distinctColumn = [];
-    var path;
-    var formType = $scope.data('action');
-    var columns = window[name + '_columns'] || grid.allColumns
-    var currentData = {};
+    const name = grid.name;
+    const scopeSelector = scope || `#${name}_form`;
+    const container = document.querySelector(scopeSelector);
+    if (!container) return;
 
-    if (grid.loader) currentData = grid.loader.data[grid.getSelectedRows()[0]];
+    const formType = container.dataset.action;
+    const columns = window[`${name}_columns`] || grid.allColumns;
+    let currentData = {};
 
-    // special handling for 'choices' and 'choices_column' options
-    $.each(columns, function (i, n) {
-      if (n['choices'] && typeof n['choices'] == 'string') {
-        if (n['distinct'] && formType != 'create') {
-          distinctColumn.push([n.field, n['choices']]);
+    if (grid.loader && grid.getSelectedRows().length > 0) {
+      currentData = grid.loader.data[grid.getSelectedRows()[0]] || {};
+    }
+
+    const remotePath = [];
+    const choicesColumn = [];
+    const distinctColumn = [];
+
+    columns.forEach(n => {
+      if (n.choices && typeof n.choices === 'string') {
+        if (n.distinct && formType !== 'create') {
+          distinctColumn.push([n.field, n.choices]);
         } else {
-          var formable = n.formable === false ? false : true;
+          const formable = n.formable !== false;
+          let editorChoices = n.choices;
 
-          var editorChoices = n.choices;
-          // Use editor's source instead of grid's source
-          if (n.editor.source) {
-            var match = /^.*(source=.*)$/gim.exec(n.choices);
-            var grid_source = match[1];
-            editorChoices = n.choices.replace(
-              grid_source,
-              'source=' + n.editor.source
-            );
-          } else if (currentData && n['depend_column']) {
-            // For column configured with depend_column and choices as an url string.
-            // e.g. column :room_type, depend_column: :hotel, choices: "/room_types/fetch_options?"
-            const master_model = n['depend_column'], master_id = currentData[n['depend_column']]['id'];
-            editorChoices = `${editorChoices}&master_model=${master_model}&master_id=${master_id}`;
+          if (n.editor?.source) {
+            const match = /^.*(source=.*)$/gim.exec(n.choices);
+            if (match) {
+              editorChoices = n.choices.replace(match[1], `source=${n.editor.source}`);
+            }
+          } else if (currentData && n.depend_column && currentData[n.depend_column]) {
+            const masterModel = n.depend_column;
+            const masterId = currentData[n.depend_column].id;
+            editorChoices = `${editorChoices}&master_model=${masterModel}&master_id=${masterId}`;
           }
           remotePath.push([n.field, editorChoices, formable]);
         }
-      } else if (currentData && n['choices_column']) {
-        choicesColumn.push([n.field, currentData[n['choices_column']]]);
+      } else if (currentData && n.choices_column) {
+        choicesColumn.push([n.field, currentData[n.choices_column]]);
       }
     });
 
-    var fillValuesWillRun = false;
+    let fillValuesWillRun = false;
 
-    // Fetch select options from remote
-    if (remotePath.length > 0) {
-      $.each(remotePath, function (i, n) {
-        var field = n[0];
-        var path = n[1];
-        var formable = n[2];
-        if (!path || !formable) return;
-
-        var first_input;
-        var target = $("select[data-field='" + field + "']", $scope);
-        var source = target.attr('data-source');
-        if (target.size() == 1) {
-          $('option[value!=""]', target).remove();
-
-          $.getJSON(path, function (itemdata) {
-            $.each(itemdata, function (index, value) {
-              if ($.isPlainObject(value)) {
-                target.append(
-                  "<option value='" +
-                    value.id +
-                    "'>" +
-                    value[source] +
-                    '</option>'
-                );
-              } else {
-                target.append(
-                  "<option value='" + value + "'>" + value + '</option>'
-                );
-              }
-            });
-            Ui.setupChosen(grid, target, $scope, selectedIndexes);
+    // Remote options
+    remotePath.forEach(([field, path, formable]) => {
+      if (!path || !formable) return;
+      const target = container.querySelector(`select[data-field='${field}']`);
+      if (target) {
+        target.querySelectorAll('option:not([value=""])').forEach(opt => opt.remove());
+        fetch(path).then(r => r.json()).then(data => {
+          const source = target.dataset.source;
+          data.forEach(value => {
+            const opt = document.createElement('option');
+            if (typeof value === 'object' && value !== null) {
+              opt.value = value.id;
+              opt.textContent = value[source];
+            } else {
+              opt.value = value;
+              opt.textContent = value;
+            }
+            target.appendChild(opt);
           });
-          fillValuesWillRun = true;
-        }
-      });
-    }
+          this.setupChosen(grid, target, container, selectedIndexes);
+        });
+        fillValuesWillRun = true;
+      }
+    });
 
-    // Fetch distinct select options from remote
-    if (distinctColumn.length > 0) {
-      $.each(distinctColumn, function (i, n) {
-        var field = n[0];
-        var path = n[1];
-        if (!path) return;
-
-        var first_input;
-        var target = $("select[data-field='" + field + "']", $scope);
-        var source = target.attr('data-source');
-        if (target.size() == 1) {
-          $('option[value!=""]', target).remove();
-
-          $.getJSON(path, function (itemdata) {
-            $.each(itemdata, function (index, value) {
-              if ($.isPlainObject(value)) {
-                target.append(
-                  "<option value='" +
-                    value.id +
-                    "'>" +
-                    value[source] +
-                    '</option>'
-                );
-              } else {
-                target.append(
-                  "<option value='" + value + "'>" + value + '</option>'
-                );
-              }
-            });
-            target.append('<option>Add new Option</option>');
-            Ui.setupChosen(grid, target, $scope, selectedIndexes);
+    // Distinct options
+    distinctColumn.forEach(([field, path]) => {
+      if (!path) return;
+      const target = container.querySelector(`select[data-field='${field}']`);
+      if (target) {
+        target.querySelectorAll('option:not([value=""])').forEach(opt => opt.remove());
+        fetch(path).then(r => r.json()).then(data => {
+          const source = target.dataset.source;
+          data.forEach(value => {
+            const opt = document.createElement('option');
+            if (typeof value === 'object' && value !== null) {
+              opt.value = value.id;
+              opt.textContent = value[source];
+            } else {
+              opt.value = value;
+              opt.textContent = value;
+            }
+            target.appendChild(opt);
           });
-          fillValuesWillRun = true;
-        }
-      });
+          const addOpt = document.createElement('option');
+          addOpt.textContent = 'Add new Option';
+          target.appendChild(addOpt);
+          this.setupChosen(grid, target, container, selectedIndexes);
+        });
+        fillValuesWillRun = true;
+      }
+    });
+
+    // Choices from data
+    choicesColumn.forEach(([field, choices]) => {
+      const target = container.querySelector(`select[data-field='${field}']`);
+      if (target) {
+        target.querySelectorAll('option:not([value=""])').forEach(opt => opt.remove());
+        choices.forEach(value => {
+          const opt = document.createElement('option');
+          opt.value = value;
+          opt.textContent = value;
+          target.appendChild(opt);
+        });
+        this.setupChosen(grid, target, container, selectedIndexes);
+        fillValuesWillRun = true;
+      }
+    });
+
+    if (!fillValuesWillRun && selectedIndexes !== undefined) {
+      if (typeof fillValues === 'function') fillValues($(container), grid, selectedIndexes);
     }
 
-    // Fetch select options from current data
-    if (choicesColumn.length > 0) {
-      $.each(choicesColumn, function (i, n) {
-        var field = n[0];
-        var first_input;
-        var target = $("select[data-field='" + field + "']", $scope);
-        if (target.size() == 1) {
-          $('option[value!=""]', target).remove();
-          $.each(n[1], function (index, value) {
-            target.append(
-              "<option value='" + value + "'>" + value + '</option>'
-            );
-          });
-          Ui.setupChosen(grid, target, $scope, selectedIndexes);
-          fillValuesWillRun = true;
-        }
-      });
+    const firstInput = container.querySelector('input, select, textarea');
+    if (firstInput?.dataset.date) firstInput.focus();
+
+    // Layout adjustments
+    document.querySelectorAll('.ui-dialog-titlebar, .ui-resizable-handle').forEach(el => el.style.display = 'none');
+
+    if (grid.master?.filter_column && grid.master?.filter_value) {
+      const hidden = document.createElement('input');
+      hidden.type = 'hidden';
+      hidden.name = grid.master.filter_column;
+      hidden.value = grid.master.filter_value;
+      container.querySelector('form')?.appendChild(hidden);
     }
 
-    if (fillValuesWillRun == false && typeof selectedIndexes != 'undefined') {
-      fillValues($scope, grid, selectedIndexes);
-    }
-
-    first_input = $(`${scope}`, $scope).first();
-    if (first_input.attr('data-date')) {
-      first_input.focus();
-    }
-
-    // Layout
-    $('.ui-dialog-titlebar').hide();
-    $('.ui-resizable-handle').hide();
-
-    // For detail add, pass the filter value / column in the parameters
-    if (grid.master && grid.master.filter_column && grid.master.filter_value) {
-      hidden_master_id = $("<input type='hidden'/>")
-        .attr('name', grid.master.filter_column)
-        .val(grid.master.filter_value);
-      $('form', $scope).append(hidden_master_id);
-    }
-    Ui.preventPressEnterKeySubmitForm(`${scope} form`);
+    this.preventPressEnterKeySubmitForm(`${scopeSelector} form`);
   },
 
   preventPressEnterKeySubmitForm: function (formSelector) {
-    $("body")
-      .off("keypress", formSelector)
-      .on("keypress", formSelector, function (event) {
-        let isTextarea = /textarea/i.test(event.target.nodeName) || event.target.className.includes("note-editable");
-        if (!isTextarea && event.keyCode === 13) {
-          return false;
-        }
-      });
+    document.body.addEventListener("keypress", (event) => {
+      if (!event.target.matches(formSelector)) return;
+      const isTextarea = event.target.tagName === 'TEXTAREA' || event.target.classList.contains("note-editable");
+      if (!isTextarea && event.keyCode === 13) {
+        event.preventDefault();
+        return false;
+      }
+    });
   },
 
   setupChosen: function (grid, target, scope, selectedIndexes) {
-    if (typeof selectedIndexes != 'undefined') {
-      fillValues(scope, grid, selectedIndexes);
+    if (selectedIndexes !== undefined && typeof fillValues === 'function') {
+      fillValues($(scope), grid, selectedIndexes);
     }
-    target.trigger('change');
-    target.trigger('chosen:updated');
-    Ui.unCheckEmpty(target);
-    Ui.addNewOption(target);
+    target.dispatchEvent(new Event('change'));
+    // Trigger legacy chosen update if present
+    if (typeof jQuery !== 'undefined') $(target).trigger('chosen:updated');
+    this.unCheckEmpty(target);
+    this.addNewOption(target);
   },
 
-  // Add new option for distinct column
   addNewOption: function (target) {
-    $('#' + target.attr('id') + '_chosen')
-      .off('click')
-      .on('click', 'li:contains("Add new Option")', function () {
-        $(
-          '#' +
-            target.attr('id') +
-            '_chosen .chosen-single .search-choice-close'
-        ).trigger('mouseup');
-        Ui.createAddOptionModal(target);
-      });
+    const chosenId = `${target.id}_chosen`;
+    const chosenEl = document.getElementById(chosenId);
+    if (!chosenEl) return;
+
+    chosenEl.addEventListener('click', (e) => {
+      if (e.target.textContent.includes("Add new Option")) {
+        const closeBtn = chosenEl.querySelector('.chosen-single .search-choice-close');
+        if (closeBtn) {
+          const mouseUp = new MouseEvent('mouseup', { bubbles: true });
+          closeBtn.dispatchEvent(mouseUp);
+        }
+        this.createAddOptionModal(target);
+      }
+    });
   },
 
-  // Uncheck select column when value is empty
   unCheckEmpty: function (target) {
-    if (!target.val()) {
-      $(
-        'input.target_flag:checkbox[data-target="' +
-          target.attr('data-target') +
-          '"]'
-      ).prop('checked', false);
+    if (!target.value) {
+      const flag = document.querySelector(`input.target_flag:checkbox[data-target="${target.dataset.target}"]`);
+      if (flag) flag.checked = false;
     }
   },
 
-  // Close Modal
   closeModal: function (name) {
-    var $form = $('#' + name + '_form');
+    const form = document.getElementById(`${name}_form`);
+    if (!form) return;
     window._focused = {};
-    $form.closest('.modal').modal('close');
-    $form.closest('.modal').remove();
+    const modal = form.closest('.modal');
+    if (modal) {
+      const instance = M.Modal.getInstance(modal);
+      instance?.close();
+      modal.remove();
+    }
   },
 
-  // Flash the notification
   flashNotice: function (ids, action) {
-    var recordSize = $.isArray(ids) ? ids.length : ids.split(',').length,
-      recordUnit = recordSize > 1 ? 'records' : 'record',
-      actionDesc =
-        action === 'delete' ? 'has been deleted!' : 'has been created!';
+    const recordSize = Array.isArray(ids) ? ids.length : ids.split(',').length;
+    const recordUnit = recordSize > 1 ? 'records' : 'record';
+    const actionDesc = action === 'delete' ? 'has been deleted!' : 'has been created!';
 
     if (recordSize > 0) {
-      $('.notice_flash').remove();
-      $('#indicators').before(
-        '<div class="notice_flash">' +
-          recordSize +
-          ' ' +
-          recordUnit +
-          ' ' +
-          actionDesc +
-          '</div>'
-      );
-      $('.notice_flash').fadeOut(7000);
+      document.querySelectorAll('.notice_flash').forEach(el => el.remove());
+      const flash = document.createElement('div');
+      flash.className = 'notice_flash';
+      flash.textContent = `${recordSize} ${recordUnit} ${actionDesc}`;
+      
+      const indicators = document.getElementById('indicators');
+      indicators?.parentElement.insertBefore(flash, indicators);
+
+      setTimeout(() => {
+        flash.style.transition = 'opacity 1s';
+        flash.style.opacity = '0';
+        setTimeout(() => flash.remove(), 1000);
+      }, 6000);
     }
   },
 
-  // Find the selected grid
   findCurrentGrid: function () {
-    var currentGrid = null;
-    currentGridContainer = $(document.activeElement).parents('.grid_container');
-    if (currentGridContainer.size() === 0) {
-      return null;
-    }
-    gridName = currentGridContainer.attr('id').split('grid_')[1];
+    let currentGrid = null;
+    const activeEl = document.activeElement;
+    const container = activeEl?.closest('.grid_container');
+    if (!container) return null;
 
-    if (gridManager.grids.length == 1) {
-      currentGrid = gridManager.grids[0];
+    const gridName = container.id.split('grid_')[1];
+
+    if (window.gridManager.grids.length === 1) {
+      currentGrid = window.gridManager.grids[0];
     } else {
-      if (currentGridContainer.size() == 1) {
-        currentGrid = gridManager.getGrid(gridName);
-      } else {
-        $.each(gridManager.grids, function () {
-          if (this.getSelectedRows().length > 0) currentGrid = this;
-        });
+      currentGrid = window.gridManager.getGrid(gridName);
+      if (!currentGrid) {
+        currentGrid = window.gridManager.grids.find(g => g.getSelectedRows().length > 0);
       }
     }
     return currentGrid;
   },
 
   getModalSize: function (grid, data, willBeRemovedContainerClassName = 'create_form') {
-    var width, height;
-    $('body').append(data);
-    var modalHeight =
-      $(`.${willBeRemovedContainerClassName} .title`).outerHeight() + // Title
-      $(`.${willBeRemovedContainerClassName} form`).outerHeight() + // Fields
-      $(`.${willBeRemovedContainerClassName} .submit`).outerHeight() +  // Submit
-      $(`.${willBeRemovedContainerClassName} .modal-footer`).outerHeight()  // Footer
-      + 60; // Padding
-    if (grid.options) {
-      width = grid.options.form_dialog_width || 900;
-      height = grid.options.form_dialog_height || modalHeight;
-    } else {
-      width = 900;
-      height = modalHeight;
-    }
-    $(`.${willBeRemovedContainerClassName}`).remove();
-    return { width: width, height: height };
-  },
-
-  baseModal: function (options) {
-    options = options || {};
-
-    var $modal = $('<div/>').addClass('modal').appendTo($('body'));
-    var $modalContent = $('<div/>').addClass('modal-content').appendTo($modal);
-
-
-    $.extend(options, {
-      onCloseEnd: function () {
-        //cleanup select-editor inside modal when closing
-        let modalActiveRow = $(".modal").has(".ui-widget-content.active.slick-row").length > 0
-        if(modalActiveRow){
-          let activeDataId = $(".modal").find(".ui-widget-content.active.slick-row").data("id")
-          cleanUpEditors(activeDataId)
-        }
-        $modal.remove();
-      },
-    });
-    $modal.modal(options);
-
-    const { openNow = true } = options
-
-    if (openNow) {
-      $modal.modal('open');
+    const temp = document.createElement('div');
+    temp.innerHTML = data;
+    document.body.appendChild(temp);
+    
+    const container = temp.querySelector(`.${willBeRemovedContainerClassName}`);
+    if (!container) {
+      temp.remove();
+      return { width: 900, height: 600 };
     }
 
-    return $modal;
+    const titleH = container.querySelector('.title')?.offsetHeight || 0;
+    const formH = container.querySelector('form')?.offsetHeight || 0;
+    const submitH = container.querySelector('.submit')?.offsetHeight || 0;
+    const footerH = container.querySelector('.modal-footer')?.offsetHeight || 0;
+    
+    const modalHeight = titleH + formH + submitH + footerH + 60;
+    const width = grid.options?.form_dialog_width || 900;
+    const height = grid.options?.form_dialog_height || modalHeight;
+    
+    temp.remove();
+    return { width, height };
   },
 
-  headerModal: function (title, options) {
-    options = options || {};
-    var $headerModal = this.baseModal(options)
-      .addClass('modal-fixed-footer')
-      .css({ overflow: 'hidden' });
-    var $modalHeader = $('<div/>')
-      .addClass('modal-header')
-      .append($('<span/>').text(title))
-      .append(
-        $('<span/>').text('close').addClass('modal-close material-icons right')
-      )
-      .prependTo($headerModal);
+  baseModal: function (options = {}) {
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    const content = document.createElement('div');
+    content.className = 'modal-content';
+    modal.appendChild(content);
+    document.body.appendChild(modal);
 
-    return $headerModal;
+    const onCloseEnd = options.onCloseEnd;
+    options.onCloseEnd = (el) => {
+      const activeRow = modal.querySelector(".ui-widget-content.active.slick-row");
+      if (activeRow && typeof cleanUpEditors === 'function') {
+        cleanUpEditors(activeRow.dataset.id);
+      }
+      if (onCloseEnd) onCloseEnd(el);
+      modal.remove();
+    };
+
+    const instance = M.Modal.init(modal, options);
+    if (options.openNow !== false) instance.open();
+
+    return modal;
+  },
+
+  headerModal: function (title, options = {}) {
+    const modal = this.baseModal(options);
+    modal.classList.add('modal-fixed-footer');
+    modal.style.overflow = 'hidden';
+
+    const header = document.createElement('div');
+    header.className = 'modal-header';
+    header.innerHTML = `<span>${title}</span><span class="modal-close material-icons right">close</span>`;
+    modal.insertBefore(header, modal.firstChild);
+
+    return modal;
   },
 
   modalFooter: function (btnName) {
-    var $modalFooter = $('<div/>')
-      .addClass('modal-footer')
-      .append($('<div/>').addClass('confirm-btn btn right').text(btnName))
-      .append($('<div/>').addClass('btn-flat modal-close').text('Cancel'));
-
-    return $modalFooter;
+    const footer = document.createElement('div');
+    footer.className = 'modal-footer';
+    footer.innerHTML = `
+      <div class="confirm-btn btn right">${btnName}</div>
+      <div class="btn-flat modal-close">Cancel</div>
+    `;
+    return footer;
   },
 
   appendModalFooter: function (btnName, modal) {
-    var $modalFooter = this.modalFooter(btnName).appendTo(modal);
-    this.resetHeightOfModalContent(modal.find('.modal-content'));
-
-    return $modalFooter;
+    const footer = this.modalFooter(btnName);
+    modal.appendChild(footer);
+    this.resetHeightOfModalContent(modal.querySelector('.modal-content'));
+    return footer;
   },
 
-  resetHeightOfModalContent: function (modalContentDom) {
-    const siblingsHeight = this.getSiblingHeight(modalContentDom, '.modal-header') + this.getSiblingHeight(modalContentDom, '.modal-footer');
-
-    modalContentDom.css({height: `calc(100% - ${siblingsHeight}px)`});
-  },
-
-  getSiblingHeight: function (element, selector) {
-    return parseInt(element.siblings(selector).css('height')) || 0;
+  resetHeightOfModalContent: function (content) {
+    if (!content) return;
+    const headerH = content.parentElement.querySelector('.modal-header')?.offsetHeight || 0;
+    const footerH = content.parentElement.querySelector('.modal-footer')?.offsetHeight || 0;
+    content.style.height = `calc(100% - ${headerH + footerH}px)`;
   },
 
   pdfDownloadFooter: function (pdfUrl) {
-    var $pdfDownloadFooter = Ui.modalFooter('Download PDF');
-    $pdfDownloadFooter.find('.confirm-btn').on('click', function () {
+    const footer = this.modalFooter('Download PDF');
+    footer.querySelector('.confirm-btn').onclick = () => {
       window.open(pdfUrl);
-      $pdfDownloadFooter.parent().modal('close');
-    });
-
-    return $pdfDownloadFooter;
+      M.Modal.getInstance(footer.parentElement)?.close();
+    };
+    return footer;
   },
 
-  createModelModal: function (grid, data, options, willBeRemovedContainerClassName) {
-    $.extend(options, {
-      startingTop: '5%',
-      endingTop: '5%',
-    });
-
-    var modalSize = this.getModalSize(grid, data, willBeRemovedContainerClassName);
-    var $modelModal = this.baseModal(options)
-      .width(modalSize.width)
-      .height(modalSize.height)
-      .css({ 'max-height': '90%' });
+  createModelModal: function (grid, data, options = {}, willBeRemovedContainerClassName) {
+    options.startingTop = options.endingTop = '5%';
+    const size = this.getModalSize(grid, data, willBeRemovedContainerClassName);
+    
+    const modal = this.baseModal(options);
+    modal.style.width = `${size.width}px`;
+    modal.style.height = `${size.height}px`;
+    modal.style.maxHeight = '90%';
+    modal.classList.add('modal-fixed-footer');
 
     window.__globalWillAppend = true;
-    $modelModal.addClass('modal-fixed-footer');
-    $modelModal.find('.modal-content').append(data);
-
-    var $modelFooter = $('<div/>').addClass('modal-footer').attr('id','modal-footer').appendTo($modelModal);
+    modal.querySelector('.modal-content').innerHTML = data;
+    
+    const footer = document.createElement('div');
+    footer.className = 'modal-footer';
+    footer.id = 'modal-footer';
+    modal.appendChild(footer);
 
     window.__globalWillAppend = false;
-    return $modelModal;
+    return modal;
   },
 
   createJsonViewModal: function (jsonData) {
-    var $jsonViewModal = this.headerModal('JSON View');
-    $jsonViewModal.find('.modal-content').jsonViewer(jsonData);
+    const modal = this.headerModal('JSON View');
+    if (typeof jQuery !== 'undefined' && jQuery.fn.jsonViewer) {
+      $(modal).find('.modal-content').jsonViewer(jsonData);
+    } else {
+      modal.querySelector('.modal-content').textContent = JSON.stringify(jsonData, null, 2);
+    }
   },
 
   createAddOptionModal: function (inputBox) {
-    var $addOptionModal = Ui.baseModal({
-      onOpenEnd: function (modal, trigger) {
-        var $fieldDiv = $('<div />').addClass('input-field');
-        $fieldDiv.append('<label for="distinct_field"">New Option</label>');
-        $fieldDiv.append(
-          '<input id="distinct_field" type="text" name="distinct_field">'
-        );
-        $(modal)
-          .find('.modal-content')
-          .append($('<h5/>').text('Add new option'))
-          .append($fieldDiv);
-      },
-    }).width(400);
+    const modal = this.baseModal({
+      onOpenEnd: (el) => {
+        const content = el.querySelector('.modal-content');
+        content.innerHTML = `
+          <h5>Add new option</h5>
+          <div class="input-field">
+            <label for="distinct_field">New Option</label>
+            <input id="distinct_field" type="text" name="distinct_field">
+          </div>
+        `;
+      }
+    });
+    modal.style.width = '400px';
 
-    var $modalFooter = Ui.modalFooter('Add Option').appendTo($addOptionModal);
-    $modalFooter.find('.confirm-btn').on('click', function () {
-      var optionText = $addOptionModal.find('#distinct_field').val();
-      if (optionText) {
-        $('option:contains("Add new Option")', inputBox).before(
-          '<option value="' + optionText + '">' + optionText + '</option>'
-        );
-        inputBox.val(optionText);
-        $(
-          'input.target_flag:checkbox[data-target="' +
-            inputBox.attr('data-target') +
-            '"]'
-        ).attr('checked', 'checked');
-        inputBox.trigger('chosen:updated');
-        $addOptionModal.modal('close');
+    const footer = this.appendModalFooter('Add Option', modal);
+    footer.querySelector('.confirm-btn').onclick = () => {
+      const val = modal.querySelector('#distinct_field').value;
+      if (val) {
+        const opt = document.createElement('option');
+        opt.value = opt.textContent = val;
+        
+        // Insert before "Add new Option"
+        const addOpt = Array.from(inputBox.options).find(o => o.textContent === 'Add new Option');
+        inputBox.insertBefore(opt, addOpt);
+        inputBox.value = val;
+
+        const flag = document.querySelector(`input.target_flag:checkbox[data-target="${inputBox.dataset.target}"]`);
+        if (flag) flag.checked = true;
+
+        if (typeof jQuery !== 'undefined') $(inputBox).trigger('chosen:updated');
+        M.Modal.getInstance(modal)?.close();
       } else {
         alert('New option can not be blank!');
       }
-    });
+    };
   },
 
   formatData: function (grid, arrayData) {
-    var data = {},
-      columns;
-    columns = grid.loader.getColumns();
-    $.each(columns, function (index, column) {
-      data[column['id']] = arrayData[index];
+    const data = {};
+    const columns = grid.loader.getColumns();
+    columns.forEach((col, i) => {
+      data[col.id] = arrayData[i];
     });
     return data;
   },
 };
+
+// Global exposure for legacy compatibility
+window.Ui = Ui;
+export default Ui;

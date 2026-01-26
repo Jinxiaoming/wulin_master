@@ -3,12 +3,21 @@ var currentUrl = null;
 $(document).ready(function() {
   initialize_menu();
 
-  $("#navigation").resizable({ handles: 'e, w', minWidth: 199, maxWidth: 500 });
-
+  // Navigation toggle handled by Stimulus if controller present
   $("#menu-toggle").click(function() {
+    const nav = document.querySelector('[data-controller~="navigation"]');
+    if (nav) {
+      const controller = window.Stimulus.getControllerForElementAndIdentifier(nav, "navigation");
+      if (controller) {
+        controller.toggle();
+        return;
+      }
+    }
     $('#content').toggleClass('extended-panel');
     $("#navigation").toggle();
   });
+
+  $("#navigation").resizable({ handles: 'e, w', minWidth: 199, maxWidth: 500 });
 
   // On resize of the left side panel, resize the grid
   $("#navigation").bind("resize", function() {

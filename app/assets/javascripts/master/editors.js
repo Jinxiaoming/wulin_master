@@ -1,1033 +1,773 @@
-window.WulinEditors = (function($) {
+/**
+ * SlickGrid Editors for WulinMaster.
+ * Modernized to use ES6 classes and native DOM APIs.
+ */
 
-  ///////////////////////////////////////////////////////////////////////////
-  // BaseEditor
-  ///////////////////////////////////////////////////////////////////////////
-
-  function BaseEditor(args) {
+class BaseEditor {
+  constructor(args) {
     this.args = args;
     this.column = args.column;
+    this.element = null;
+    this.wrapper = null;
+    this.defaultValue = null;
   }
 
-  BaseEditor.prototype = {
-    destroy: function () {
-      if (this.wrapper) {
-        this.wrapper.remove();
-      } else {
-        this.element.remove();
-      }
-    },
+  destroy() {
+    if (this.wrapper) {
+      this.wrapper.remove();
+    } else if (this.element) {
+      this.element.remove();
+    }
+  }
 
-    focus: function () {
-      this.element.focus();
-    },
+  focus() {
+    this.element?.focus();
+  }
 
-    applyValue: function (item, state) {
-      item[this.column.field] = state;
-    },
+  applyValue(item, state) {
+    item[this.column.field] = state;
+  }
 
-    serializeValue: function () {
-      return this.element.val();
-    },
+  serializeValue() {
+    return this.element?.value;
+  }
 
-    loadValue: function (item) {
-      this.defaultValue = item[this.column.field];
-      this.element.val(this.defaultValue);
+  loadValue(item) {
+    this.defaultValue = item[this.column.field];
+    if (this.element) {
+      this.element.value = this.defaultValue || "";
       this.element.select();
-    },
+    }
+  }
 
-    isValueChanged: function () {
-      return this.element.val() != this.defaultValue;
-    },
+  isValueChanged() {
+    return this.element?.value !== this.defaultValue;
+  }
 
-    validate: function () {
-      return {
-        valid: true,
-        msg: null,
-      };
-    },
+  validate() {
+    return { valid: true, msg: null };
+  }
 
-    validateNumber: function () {
-      if (isNaN(this.element.val())) {
-        this.element.val(this.defaultValue);
-        return {
-          valid: false,
-          msg: "Please enter a valid number.",
-        };
-      } else {
-        return {
-          valid: true,
-          msg: null,
-        };
-      }
-    },
+  validateNumber() {
+    const val = this.element?.value;
+    if (isNaN(val)) {
+      if (this.element) this.element.value = this.defaultValue;
+      return { valid: false, msg: "Please enter a valid number." };
+    }
+    return { valid: true, msg: null };
+  }
 
-    getWrapper: function () {
-      return this.wrapper;
-    },
+  getValue() {
+    return this.element?.value;
+  }
 
-    setWrapper: function (wrapper) {
-      this.wrapper = wrapper;
-    },
+  setValue(val) {
+    if (this.element) this.element.value = val;
+  }
 
-    getElement: function () {
-      return this.element;
-    },
+  getCell() {
+    return this.element?.parentElement;
+  }
 
-    setElement: function (element) {
-      this.element = element;
-    },
+  callValidator(value) {
+    const validator = this.column.validator;
+    if (typeof validator === 'function') {
+      return validator(this.args, value);
+    } else if (typeof validator === 'string') {
+      return eval(validator)(this.args, value);
+    }
+    return { valid: true, msg: null };
+  }
 
-    getValue: function () {
-      return this.element.val();
-    },
+  setOffset(element, offsetWidth) {
+    if (element.classList.contains("editor-text")) return;
 
-    setValue: function (val) {
-      this.element.val(val);
-    },
+    const winWidth = window.innerWidth;
+    const rect = element.getBoundingClientRect();
+    const offsetLeft = rect.left + window.pageXOffset;
 
-    getCell: function () {
-      return this.element.parent();
-    },
+    if (winWidth - offsetLeft < offsetWidth) {
+      element.style.left = `${winWidth - offsetWidth}px`;
+    }
+  }
 
-    callValidator: function (value) {
-      if ($.isFunction(this.column.validator)) {
-        return this.column.validator(args, value);
-      } else {
-        return eval(this.column.validator)(args, value);
-      }
-    },
+  adjustPosition(element, container, ignoreCellHeight = true) {
+    const coordinate = container.getBoundingClientRect();
+    const elementWidth = element.offsetWidth;
+    const elementHeight = element.offsetHeight;
 
-    setOffset: function (element, offsetWith) {
-      var winWith = $(window).width(),
-        offsetLeft = this.element.offset().left;
+    element.style.position = "absolute";
+    element.style.left = `${coordinate.left + window.pageXOffset}px`;
 
-      // https://gitlab.ekohe.com/ekohe/wulin/wulin_master/-/issues/285
-      if ($(element).hasClass("editor-text")) return
+    let coordinateY = ignoreCellHeight ? coordinate.top : coordinate.bottom;
+    coordinateY += window.pageYOffset;
 
-      if (winWith - offsetLeft < offsetWith) {
-        this.element.offset({
-          left: winWith - offsetWith,
-        });
-      }
-    },
+    const docHeight = Math.max(document.body.scrollHeight, document.documentElement.scrollHeight);
 
-    adjustPosition: function (element, offsetWith, ignoreCellHeight = true) {
-      let coordinate = offsetWith.getBoundingClientRect();
-      let coordinateX = coordinate.right;
-      let elementWidth = $(element).width();
+    if (docHeight - coordinateY < elementHeight) {
+      coordinateY = coordinate.top + window.pageYOffset - elementHeight;
+    }
 
-      $(element).css({ position: "absolute", left: coordinate.left });
+    if (coordinate.right + elementWidth > window.innerWidth && element.classList.contains("flatpickr-calendar")) {
+      element.style.left = `${coordinate.right + window.pageXOffset - elementWidth}px`;
+    }
+    
+    element.style.top = `${coordinateY}px`;
+  }
+}
 
-      let coordinateY;
-      if (ignoreCellHeight) {
-        coordinateY = coordinate.top;
-      } else {
-        coordinateY = coordinate.top + $(offsetWith).height();
-      }
-
-      if ($(document).height() - coordinateY < $(element).height()) {
-        // Make flatpickr bottom alignment if there isn't enough space below the editing cell
-        coordinateY = coordinate.top - $(element).height();
-      }
-
-      // repositionned flatpick if they is not enough space on the right corner of the viewport
-      if (
-        coordinateX + elementWidth > $(document).width() &&
-        $(element).hasClass("flatpickr-calendar")
-      ) {
-        let newCoordinatex = coordinateX - elementWidth;
-        $(element).css({ left: newCoordinatex });
-      }
-      $(element).css({ top: coordinateY });
-    },
-  };
-
-  ///////////////////////////////////////////////////////////////////////////
-  // InputElementEditor < BaseEditor
-  ///////////////////////////////////////////////////////////////////////////
-
-  function InputElementEditor(args) {
-    BaseEditor.call(this, args);
-
+class InputElementEditor extends BaseEditor {
+  constructor(args) {
+    super(args);
     this.boxWidth = this.column.width;
-    this.offsetWith = this.boxWidth + 28;
+    this.offsetWidth = this.boxWidth + 28;
+  }
 
-    this.initElements = function() {
-      this.input = $("<INPUT type=text class='editor-text' style='width:" + this.boxWidth + "px;border:none;' />");
-      this.setElement(this.input);
+  initElements() {
+    this.input = document.createElement('input');
+    this.input.type = 'text';
+    this.input.className = 'editor-text';
+    this.input.style.width = `${this.boxWidth}px`;
+    this.input.style.border = 'none';
+    this.element = this.input;
 
-      this.input.on("keydown.nav", function(e) {
-        if (e.keyCode === $.ui.keyCode.LEFT || e.keyCode === $.ui.keyCode.RIGHT) {
-          e.stopImmediatePropagation();
+    this.input.addEventListener("keydown", (e) => {
+      if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+        e.stopImmediatePropagation();
+      }
+    });
+
+    this.args.container.classList.add("input-field");
+    this.args.container.appendChild(this.input);
+    this.input.focus();
+    this.input.select();
+  }
+
+  initMdAutoComplete(input) {
+    if (this.column.hide_autocomplete || !this.column.choices) return;
+
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+        e.stopPropagation();
+      }
+    });
+
+    fetch(this.column.choices)
+      .then(r => r.json())
+      .then(dataArray => {
+        const dataObject = {};
+        dataArray.forEach(item => dataObject[item] = null);
+
+        input.classList.add("autocomplete");
+        // Materialize autocomplete still needs jQuery for now
+        if (typeof jQuery !== 'undefined' && jQuery.fn.autocomplete) {
+          $(input).autocomplete({
+            data: dataObject,
+            limit: 5,
+            minLength: this.column.autocomplete_minlength || 1,
+          });
         }
       });
-
-      $(this.args.container).addClass("input-field");
-      this.input.appendTo(this.args.container);
-      this.input.focus().select();
-    };
-
-      this.initMdAutoComplete = function ($input) {
-        // disable autocomplete feature if options hide_autocomplete: true is declare
-        if (args.column.hide_autocomplete) {
-          return;
-        }
-        $input.on("keydown", function (e) {
-          if (
-            e.keyCode === $.ui.keyCode.UP ||
-            e.keyCode === $.ui.keyCode.DOWN
-          ) {
-            e.stopPropagation();
-          }
-        });
-
-        $.getJSON(
-          args.column.choices,
-          function (dataArray) {
-            var dataObject = {};
-            for (var i = 0; i < dataArray.length; ++i) {
-              dataObject[dataArray[i]] = null;
-            }
-
-            $input.addClass("autocomplete");
-            $input.autocomplete({
-              data: dataObject,
-              limit: 5,
-              minLength: args.column.autocomplete_minlength || 1,
-            });
-          }.bind(this)
-        );
-      };
-
-    this.isValueChanged = function() {
-      return (!(this.input.val() === "" && this.defaultValue === null)) && (this.input.val() != this.defaultValue);
-    };
   }
 
-  InputElementEditor.prototype = Object.create(BaseEditor.prototype);
+  isValueChanged() {
+    const val = this.input.value;
+    return (!(val === "" && this.defaultValue === null)) && (val !== this.defaultValue);
+  }
+}
 
-  ///////////////////////////////////////////////////////////////////////////
-  // IntegerEditor < InputElementEditor < BaseEditor
-  ///////////////////////////////////////////////////////////////////////////
-
-  this.IntegerEditor = function(args) {
-    InputElementEditor.call(this, args);
-
-    this.init = function() {
-      this.initElements();
-      this.setOffset(this.input, this.offsetWith);
-    };
-
-    this.serializeValue = function() {
-      return parseInt(this.input.val(), 10) || 0;
-    };
-
-    this.validate = function() {
-      return this.validateNumber();
-    };
-
-    this.init();
-  };
-
-  IntegerEditor.prototype = Object.create(InputElementEditor.prototype);
-
-  ///////////////////////////////////////////////////////////////////////////
-  // DecimalEditor < InputElementEditor < BaseEditor
-  ///////////////////////////////////////////////////////////////////////////
-
-  this.DecimalEditor = function(args) {
-    InputElementEditor.call(this, args);
-
-    this.init = function() {
-      this.initElements();
-      this.setOffset(this.input, this.offsetWith);
-    };
-
-    this.serializeValue = function() {
-      return this.input.val() || '';
-    };
-
-    this.validate = function() {
-      return this.validateNumber();
-    };
-
-    this.init();
-  };
-
-  DecimalEditor.prototype = Object.create(InputElementEditor.prototype);
-
-  ///////////////////////////////////////////////////////////////////////////
-  // YesNoCheckboxEditor < BaseEditor
-  ///////////////////////////////////////////////////////////////////////////
-
-  this.YesNoCheckboxEditor = function(args) {
-    BaseEditor.call(this, args);
-
-    this.init = function() {
-      var id = 'checkbox-' + this.args.item.id;
-      this.checkbox = $('<input type="checkbox">')
-        .addClass('filled-in')
-        .attr('id', id)
-        .appendTo(this.args.container);
-      $('<span />').attr('for', id).appendTo(this.args.container);
-      $(this.args.container).children().wrapAll($('<label class="checkbox-editor"/>'));
-      this.setElement(this.checkbox);
-    };
-
-    this.loadValue = function(item) {
-      this.defaultValue = item[this.column.field];
-      if (this.defaultValue) {
-        this.checkbox.attr("checked", "checked");
-      } else {
-        this.checkbox.removeAttr("checked");
-      }
-    };
-
-    this.serializeValue = function() {
-      return this.checkbox[0].checked;
-    };
-
-    this.isValueChanged = function() {
-      return (this.checkbox[0].checked != this.defaultValue);
-    };
-
-    this.init();
+class IntegerEditor extends InputElementEditor {
+  constructor(args) {
+    super(args);
+    this.initElements();
+    this.setOffset(this.input, this.offsetWidth);
   }
 
-  YesNoCheckboxEditor.prototype = Object.create(BaseEditor.prototype);
+  serializeValue() {
+    return parseInt(this.input.value, 10) || 0;
+  }
 
-  ///////////////////////////////////////////////////////////////////////////
-  // SelectElementEditor < BaseEditor
-  ///////////////////////////////////////////////////////////////////////////
+  validate() {
+    return this.validateNumber();
+  }
+}
 
-  function SelectElementEditor(args) {
-    BaseEditor.call(this, args);
+class DecimalEditor extends InputElementEditor {
+  constructor(args) {
+    super(args);
+    this.initElements();
+    this.setOffset(this.input, this.offsetWidth);
+  }
 
+  serializeValue() {
+    return this.input.value || '';
+  }
+
+  validate() {
+    return this.validateNumber();
+  }
+}
+
+class YesNoCheckboxEditor extends BaseEditor {
+  constructor(args) {
+    super(args);
+    const id = `checkbox-${this.args.item.id}`;
+    
+    const label = document.createElement('label');
+    label.className = 'checkbox-editor';
+    
+    this.checkbox = document.createElement('input');
+    this.checkbox.type = 'checkbox';
+    this.checkbox.className = 'filled-in';
+    this.checkbox.id = id;
+    
+    const span = document.createElement('span');
+    span.setAttribute('for', id);
+    
+    label.appendChild(this.checkbox);
+    label.appendChild(span);
+    
+    this.args.container.appendChild(label);
+    this.element = this.checkbox;
+  }
+
+  loadValue(item) {
+    this.defaultValue = !!item[this.column.field];
+    this.checkbox.checked = this.defaultValue;
+  }
+
+  serializeValue() {
+    return this.checkbox.checked;
+  }
+
+  isValueChanged() {
+    return this.checkbox.checked !== this.defaultValue;
+  }
+}
+
+class SelectElementEditor extends BaseEditor {
+  constructor(args) {
+    super(args);
     this.choices = this.column.choices;
-    if (this.column.editor.source) {
-      var match = /^.*(source=.*)$/igm.exec(this.column.choices);
-      var grid_source = match[1];
-      this.choices = this.column.choices.replace(grid_source, 'source=' + this.column.editor.source);
+    if (this.column.editor?.source) {
+      const match = /^.*(source=.*)$/igm.exec(this.column.choices);
+      if (match) {
+        this.choices = this.column.choices.replace(match[1], `source=${this.column.editor.source}`);
+      }
     }
 
     this.field = this.args.item[this.column.field];
+    this.originColumn = this.args.grid.originColumns.find(c => c.name === this.column.name) || this.column;
 
-    // find originColumn
-    for (var k in args.grid.originColumns) {
-      if (args.grid.originColumns[k].name == this.column.name) {
-        this.originColumn = args.grid.originColumns[k];
-        break;
-      }
-    }
-
-    this.boxWidth = (this.column.width < this.originColumn.width) ? this.originColumn.width : this.column.width;
-    this.offsetWith = this.boxWidth + 28;
-
-    this.initElements = function() {
-      let parentDataId = this.args.container.parentElement.dataset.id
-      this.wrapper = $(`<div class='select-editor' data-id="${parentDataId}"/>`);
-      this.setWrapper(this.wrapper);
-      this.wrapper.appendTo(document.querySelector('body'));
-
-      this.select = $("<select class='chzn-select' style='width:" + this.boxWidth + "px'></select>");
-      this.setElement(this.select);
-      this.select.appendTo(this.wrapper);
-      this.select.focus();
-
-      this.setOffset(this.wrapper, this.offsetWith);
-      this.adjustPosition(this.wrapper, args.container)
-
-      this.select.append($("<option />"));
-    };
-
-    this.openDropDrown = function() {
-      setTimeout(function() {
-        let gridView = $(args.container).closest('.slick-viewport')
-        this.select.bind('chosen:ready, chosen:showing_dropdown', () => {
-          gridView.css({overflow: 'hidden'})
-        })
-        this.select.bind('chosen:hiding_dropdown', () => {
-          gridView.css({overflow: 'auto'})
-        })
-        // https://github.com/harvesthq/chosen/blob/master/coffee/chosen.jquery.coffee#L93
-        this.select.trigger('chosen:open.chosen');
-      }.bind(this));
-    };
-
-    this.setAllowSingleDeselect = function() {
-      this.select.chosen({
-        allow_single_deselect: !args.column['required']
-      });
-    };
+    this.boxWidth = Math.max(this.column.width, this.originColumn.width);
+    this.offsetWidth = this.boxWidth + 28;
   }
 
-  SelectElementEditor.prototype = Object.create(BaseEditor.prototype);
+  initElements() {
+    const parentDataId = this.args.container.parentElement.dataset.id;
+    this.wrapper = document.createElement('div');
+    this.wrapper.className = 'select-editor';
+    this.wrapper.dataset.id = parentDataId;
+    document.body.appendChild(this.wrapper);
 
-  ///////////////////////////////////////////////////////////////////////////
-  // SelectEditor < SelectElementEditor < BaseEditor
-  // 1. Provide options from pre-defined arrays for `string` type columns
-  // 2. Use jquery.chosen to allow you choose the value as select
-  ///////////////////////////////////////////////////////////////////////////
+    this.select = document.createElement('select');
+    this.select.className = 'chzn-select';
+    this.select.style.width = `${this.boxWidth}px`;
+    this.element = this.select;
+    this.wrapper.appendChild(this.select);
+    
+    this.setOffset(this.wrapper, this.offsetWidth);
+    this.adjustPosition(this.wrapper, this.args.container);
 
-  this.SelectEditor = function(args) {
-    SelectElementEditor.call(this, args);
+    this.select.appendChild(document.createElement('option'));
+    this.select.focus();
+  }
 
-    this.init = function() {
-      var choices = this.column.choices;
-      var selectOptions;
-
-      this.initElements();
-
-      // get choices options from choices_column value
-      if (this.column.choices_column) {
-        choices = args.item[this.column.choices_column];
-      }
-
-      // construce select option
-      if ($.isArray(choices)) {
-        selectOptions = $.map(choices, function(e, index) {
-          if ($.isPlainObject(e)) {
-            return e;
-          } else {
-            return { id: e, name: e };
-          }
+  openDropDown() {
+    setTimeout(() => {
+      const gridView = this.args.container.closest('.slick-viewport');
+      
+      // Chosen events still need jQuery
+      if (typeof jQuery !== 'undefined') {
+        const $select = $(this.select);
+        $select.on('chosen:ready chosen:showing_dropdown', () => {
+          if (gridView) gridView.style.overflow = 'hidden';
         });
-      } else if ($.isPlainObject(choices)) {
-        selectOptions = {};
-        for (var i in choices) {
-          if ($.isEmptyObject(choices[i])) {
-            selectOptions[i] = [];
-          } else {
-            var option = $.map(choices[i], function(e, index) {
-              return { id: e, name: e };
-            });
-            selectOptions[i] = option;
-          }
-        }
-      }
-
-      // Filter the choices if it depend on other column's value
-      if (this.column.depend_column) {
-        selectOptions = selectOptions[args.item[this.column.depend_column]];
-      }
-
-      // Append the current value option, otherwise this.serializeValue can't get it
-      if (args.item[this.column.field]) {
-        this.select.append(`<option style='display: none;' value="${args.item[this.column.field]}">${args.item[this.column.field]}</option>`);
-        this.select.val(args.item[this.column.field]);
-      }
-
-      // Append options from choices array
-      $.each(selectOptions, function(index, value) {
-        value = value.name || value;
-        this.select.append(`<option value="${value}">${value}</option>`)
-      }.bind(this));
-
-      this.setAllowSingleDeselect();
-      this.openDropDrown();
-    };
-
-    this.init();
-  }
-
-  SelectEditor.prototype = Object.create(SelectElementEditor.prototype);
-
-  ///////////////////////////////////////////////////////////////////////////
-  // DistinctEditor < SelectElementEditor < BaseEditor
-  // 1. Provide distinct options from the string column with repeatable items
-  // 2. Use jquery.chosen to allow you choose the value as select
-  ///////////////////////////////////////////////////////////////////////////
-
-  this.DistinctEditor = function(args) {
-    SelectElementEditor.call(this, args);
-
-    this.source = this.column.source || 'name';
-    this.addOptionText = 'Add new Option';
-    this.bottomOption = '<option>' + this.addOptionText + '</option>';
-
-    this.init = function() {
-      this.initElements();
-      this.getOptions();
-      this.openDropDrown();
-    };
-
-    this.addNewOptionHandler = function() {
-      var inputBox = this.select;
-      inputBox.chosen().change(function(){
-        $('.chosen-results li:contains("Add new Option")').on('click', function() {
-          Ui.createAddOptionModal(inputBox);
+        $select.on('chosen:hiding_dropdown', () => {
+          if (gridView) gridView.style.overflow = 'auto';
         });
-      });
-    };
-
-    this.getOptions = function() {
-      $.getJSON(this.choices, function(itemdata) {
-
-        // set options with AJAX
-        var ajaxOptions = [];
-        $.each(itemdata, function(index, value) {
-          ajaxOptions.push(`<option value="${value}">${value}</option>`);
-        });
-        this.select.append(ajaxOptions.join(''));
-
-        // append 'Add new options' option
-        this.select.append(this.bottomOption);
-
-        this.select.val(args.item[this.column.field]);
-        this.setAllowSingleDeselect();
-
-        // 'Add new option' option handler
-        this.addNewOptionHandler();
-      }.bind(this));
-    };
-
-    this.init();
-  }
-
-  DistinctEditor.prototype = Object.create(SelectElementEditor.prototype);
-
-  ///////////////////////////////////////////////////////////////////////////
-  // RelationEditor < SelectElementEditor < BaseEditor
-  // - Use jquery.chosen to choose options from a relation column
-  ///////////////////////////////////////////////////////////////////////////
-
-  function RelationEditor(args) {
-    SelectElementEditor.call(this, args);
-
-    this.source = this.column.editor.source || this.column.source || 'name';
-    this.addOptionText = 'Add new Option';
-    this.arrOptions = [];
-    this.relationColumn = (this.column.type === 'has_and_belongs_to_many') || (this.column.type === 'has_many');
-
-    this.isValueChanged = function() {
-      // return true if the value(s) being edited by the user has/have been changed
-      var selectedValue = this.select.val();
-      if (this.relationColumn) {
-        if (selectedValue) {
-          if (selectedValue.length != this.defaultValue.length) {
-            return true;
-          } else {
-            return $.difference(this.defaultValue, selectedValue).length !== 0;
-          }
-        } else {
-          return this.defaultValue.length > 0;
-        }
-      } else {
-        return (selectedValue != this.defaultValue);
-      }
-    };
-
-    this.serializeValue = function() {
-      // return the value(s) being edited by the user in a serialized form
-      // can be an arbitrary object
-      // the only restriction is that it must be a simple object that can be passed around even
-      // when the editor itself has been destroyed
-      var obj = {};
-      obj["id"] = this.select.val();
-      obj[this.source] = $('option:selected', this.select).text();
-
-      // special case for has_and_belongs_to_many
-      if (this.column.type === 'has_and_belongs_to_many') {
-        obj[this.source] = $.map($('option:selected', this.select), function(n) {
-          return $(n).text();
-        }).join();
-      }
-      return obj;
-    };
-
-    this.loadValue = function(item) {
-      // load the value(s) from the data item and update the UI
-      // this method will be called immediately after the editor is initialized
-      // it may also be called by the grid if if the row/cell being edited is updated via grid.updateRow/updateCell
-      this.defaultValue = item[this.column.field].id
-      this.select.val(this.defaultValue);
-      this.select.select();
-    };
-
-    this.applyValue = function(item, state) {
-      // deserialize the value(s) saved to "state" and apply them to the data item
-      // this method may get called after the editor itself has been destroyed
-      // treat it as an equivalent of a Java/C# "static" method - no instance variables should be accessed
-      item[this.column.field].id = state.id;
-      item[this.column.field][this.source] = state[this.source];
-    };
-
-    this.getOptions = function() {
-      // dynamic filter by other relational column
-      if (this.args.column.depend_column) {
-        var relation_id = this.args.item[this.args.column.depend_column].id;
-        this.choices += '&master_model=' + this.args.column.depend_column + '&master_id=' + relation_id;
-      }
-
-      this.args.grid.onRelationCellEdit.notify({relationEditor: this});
-
-      $.getJSON(this.choices, function(itemdata) {
-        this.setOptions(itemdata);
-      }.bind(this));
-    };
-
-    this.setOptions = function(dateset) {
-      $.each(dateset, function(index, value) {
-        if (!this.field || this.field.id != value.id) {
-          this.arrOptions.push(
-            `<option value="${value.id}">${value[this.source]}</option>`
-          );
-        }
-      }.bind(this));
-      this.select.append(this.arrOptions.join(''));
-      this.setAllowSingleDeselect();
-    };
-
-    this.appendOptions = function(target, value) {
-      target.append(
-        `<option value="${value.id}">${value[this.source]}</option>`
-      );
-    };
-  }
-
-  RelationEditor.prototype = Object.create(SelectElementEditor.prototype);
-
-  ///////////////////////////////////////////////////////////////////////////
-  // OtherReationEditor < RelationEditor < SelectElementEditor < BaseEditor
-  // - Provide options for `belong_to`, `has_one`, `has_and_belongs_to_many` type columns
-  ///////////////////////////////////////////////////////////////////////////
-
-  this.OtherRelationEditor = function(args) {
-    RelationEditor.call(this, args);
-
-    this.init = function() {
-      this.initElements();
-
-      if (this.relationColumn) {
-        this.select.attr('multiple', 'true');
-      }
-
-      // https://gitlab.ekohe.com/ekohe/wulin/wulin_master/-/issues/232
-      if (this.column.type === "has_and_belongs_to_many") {
-        fetch(this.choices)
-          .then(response => response.json())
-          .then(items => {
-            items.forEach(item => {
-              this.appendOptions(this.select, item)
-            })
-
-            let column = this.column.column_name
-            let recordId = this.args.item.id
-
-            let link = this.args.grid.path + `.json${this.args.grid.query}&` + new URLSearchParams({
-              "filters[][column]": "id",
-              "filters[][value]": recordId,
-              "filters[][operator]": "equals",
-              "columns": `id,${column}`
-            })
-
-            fetch(link)
-              .then(response => response.json())
-              .then(data => {
-                data["rows"][0].forEach(item => {
-                  if (item && item[column]) {
-                    let selectedIds = item[column].id
-
-                    if(selectedIds) {
-                      this.select.val(selectedIds)
-                      this.defaultValue = selectedIds
-                      this.setAllowSingleDeselect()
-                    }
-                  }
-                })
-              })
-              .finally(() => {
-                this.openDropDrown()
-              })
-          })
-        return
-      }
-
-      // must append the current value option, otherwise this.serializeValue can't get it
-      this.select.append($("<option />"));
-      if (this.field && this.field.id) {
-        this.appendOptions(this.select, this.field);
-        this.select.val(this.field.id);
-      }
-
-      if ($.isArray(this.choices)) {
-        this.setOptions(this.choices);
-      } else {
-        this.getOptions();
-      }
-
-      this.openDropDrown();
-    };
-
-    this.init();
-  }
-
-  OtherRelationEditor.prototype = Object.create(RelationEditor.prototype);
-
-  ///////////////////////////////////////////////////////////////////////////
-  // HasManyEditor < RelationEditor < SelectElementEditor < BaseEditor
-  // - Provide options for `has_many` type columns
-  ///////////////////////////////////////////////////////////////////////////
-
-  this.HasManyEditor = function(args) {
-    RelationEditor.call(this, args);
-
-    this.init = function() {
-      this.initElements();
-
-      if (this.relationColumn) {
-        this.select.attr('multiple', 'true');
-      }
-
-      this.select.empty();
-      this.select.append($("<option />"));
-
-      this.args.grid.onHasManyCellEdit.notify({ editor: this });
-
-      $.getJSON(this.choices, function(itemdata) {
-        $.each(itemdata, function(index, value) {
-          this.appendOptions(this.select, value);
-        }.bind(this));
-
-        let column = this.column.column_name
-        let recordId = this.args.item.id
-
-        let link = this.args.grid.path + `.json${this.args.grid.query}&` + new URLSearchParams({
-          "filters[][column]": "id",
-          "filters[][value]": recordId,
-          "filters[][operator]": "equals",
-          "columns": `id,${column}`
-        })
-
-        fetch(link)
-          .then(response => response.json())
-          .then(data => {
-            data["rows"][0].forEach(item => {
-              if (item && item[column]) {
-                let selectedIds = item[column].id
-
-                if(selectedIds) {
-                  this.select.val(selectedIds)
-                  this.defaultValue = selectedIds
-                  this.setAllowSingleDeselect()
-                }
-              }
-            })
-          })
-          .finally(() => {
-            this.openDropDrown()
-          })
-      }.bind(this));
-    };
-
-    this.applyValue = function(item, state) {
-      // deserialize the value(s) saved to "state" and apply them to the data item
-      // this method may get called after the editor itself has been destroyed
-      // treat it as an equivalent of a Java/C# "static" method - no instance variables should be accessed
-      if (state.id === null) {
-        item[this.column.field] = 'null';
-      } else {
-        item[this.column.field] = state;
-      }
-    };
-
-    this.init();
-  }
-
-  HasManyEditor.prototype = Object.create(RelationEditor.prototype);
-
-  ///////////////////////////////////////////////////////////////////////////
-  // TextEditor < InputElementEditor < BaseEditor
-  ///////////////////////////////////////////////////////////////////////////
-
-  this.TextEditor = function(args) {
-    InputElementEditor.call(this, args);
-    this.init = function() {
-      this.initElements();
-      this.setOffset(this.input, this.boxWidth);
-      this.initMdAutoComplete(this.input);
-    };
-
-    this.validate = function() {
-      var validationResults;
-      var value = this.element.val();
-
-      if (this.column.validator) {
-        validationResults = this.callValidator(value);
-        if (!validationResults.valid) {
-          return validationResults;
-        }
-      }
-
-      return { valid: true, msg: null };
-    };
-
-    this.init();
-    args.grid.onTextEditorInit.notify({editor: this, ...args});
-  }
-
-  TextEditor.prototype = Object.create(InputElementEditor.prototype);
-
-  ///////////////////////////////////////////////////////////////////////////
-  // TextEditorForForm < InputElementEditor < BaseEditor
-  ///////////////////////////////////////////////////////////////////////////
-
-  this.TextEditorForForm = function(args) {
-    InputElementEditor.call(this, args);
-
-    this.init = function() {
-      $(args.container).attr('autocomplete', 'off');
-      this.initMdAutoComplete(args.container);
-    };
-
-    this.init();
-  }
-
-  TextEditorForForm.prototype = Object.create(InputElementEditor.prototype);
-
-  ///////////////////////////////////////////////////////////////////////////
-  // TextAreaEditor < BaseEditor
-  // 1. An example of a "detached" editor.
-  // 2. The UI is added onto document BODY and .position(), .show() and .hide() are implemented.
-  // 3. KeyDown events are also handled to provide handling for Tab, Shift-Tab, Esc and Ctrl-Enter.
-  ///////////////////////////////////////////////////////////////////////////
-
-  this.TextAreaEditor = function(args) {
-    BaseEditor.call(this, args);
-
-    var _self = this;
-
-    this.boxWidth = 250;
-    this.offsetWith = this.boxWidth + 18;
-
-    this.init = function() {
-      let parentDataId = this.args.container.parentElement.dataset.id
-      this.wrapper = $('<div />').addClass('textarea-wrapper').data('id', parentDataId);
-      this.setWrapper(this.wrapper);
-      this.wrapper.appendTo($("body"));
-
-      this.textArea = $("<textarea hidefocus rows=5>").addClass('textarea-in-grid');
-      this.textArea.css('width', this.boxWidth);
-      this.setElement(this.textArea);
-      this.textArea.appendTo(this.wrapper);
-
-      var $btnSave = $('<button />').text('Save').addClass('btn btn-small right');
-      var $btnCancel = $('<button />').text('Cancel').addClass('btn btn-small right');
-      $('<div />').append($btnCancel).append($btnSave).appendTo(this.wrapper);
-
-      $btnSave.on("click", this.save);
-      $btnCancel.on("click", this.cancel);
-      this.textArea.on("keydown", this.handleKeyDown);
-
-      this.position(args.position);
-      this.textArea.focus().select();
-    };
-
-    this.handleKeyDown = function(e) {
-      if (e.which == $.ui.keyCode.ENTER && e.ctrlKey) {
-        _self.save();
-      } else if (e.which == $.ui.keyCode.ESCAPE) {
-        e.preventDefault();
-        _self.cancel();
-      } else if (e.which == $.ui.keyCode.TAB && e.shiftKey) {
-        e.preventDefault();
-        args.grid.navigatePrev();
-      } else if (e.which == $.ui.keyCode.TAB) {
-        e.preventDefault();
-        args.grid.navigateNext();
-      }
-    };
-
-    this.save = function() {
-      args.commitChanges();
-    };
-
-    this.cancel = function() {
-      _self.textArea.val(_self.defaultValue);
-      args.cancelChanges();
-    };
-
-    this.hide = function() {
-      this.wrapper.hide();
-    };
-
-    this.show = function() {
-      this.wrapper.show();
-    };
-
-    this.position = function(position) {
-      var winWith = $(window).width(),
-          offsetLeft = this.wrapper.offset().left;
-      this.wrapper.css({
-        "top": position.top - 5,
-        "left": position.left - 5
-      });
-      if (winWith - offsetLeft < this.offsetWith)
-        this.wrapper.offset({
-          left: winWith - this.offsetWith
-        });
-    };
-
-    this.isValueChanged = function() {
-      return (!(this.textArea.val() === "" && this.defaultValue === null)) && (this.textArea.val() != this.defaultValue);
-    };
-
-    this.init();
-  }
-
-  TextAreaEditor.prototype = Object.create(BaseEditor.prototype);
-
-  ///////////////////////////////////////////////////////////////////////////
-  // DateTimeBaseEditor < InputElementEditor < BaseEditor
-  ///////////////////////////////////////////////////////////////////////////
-
-  function DateTimeBaseEditor(args) {
-    InputElementEditor.call(this, args);
-
-    var date = this.args.item[this.column.field];
-    this.boxWidth -= 24;
-
-    let gridView = $(args.container).closest('.slick-viewport')
-    this.fpConfigGrid = fpMergeConfigs({}, fpConfigInit, {
-      clickOpens: false,
-      onReady: function(selectedDates, dateStr, instance) {
-        instance.open();
-        instance.update(date);
-      },
-      onOpen: (_selectedDates, _dateStr, instance) => {
-        this.adjustPosition(instance.calendarContainer, args.container, false)
-        gridView.css({overflow: 'hidden'})
-      },
-      onClose: () => {
-        gridView.css({overflow: 'auto'})
+        $select.trigger('chosen:open.chosen');
       }
     });
   }
 
-  DateTimeBaseEditor.prototype = Object.create(InputElementEditor.prototype);
-
-  ///////////////////////////////////////////////////////////////////////////
-  // DateTimeEditor < DateTimeBaseEditor < InputElementEditor < BaseEditor
-  ///////////////////////////////////////////////////////////////////////////
-
-  this.DateTimeEditor = function(args) {
-    DateTimeBaseEditor.call(this, args);
-
-    this.init = function() {
-      const fpConfigGridDateTime = fpMergeConfigs(this.fpConfigGrid, fpConfigDateTime);
-
-      this.initElements();
-      this.input.inputmask('wulinDateTime')
-
-      if(!args.column.hide_calendar) {
-        this.input.flatpickr(fpConfigGridDateTime);
-      }
-    };
-
-    this.init();
+  setAllowSingleDeselect() {
+    if (typeof jQuery !== 'undefined' && jQuery.fn.chosen) {
+      $(this.select).chosen({
+        allow_single_deselect: !this.column.required
+      });
+    }
   }
+}
 
-  DateTimeEditor.prototype = Object.create(DateTimeBaseEditor.prototype);
+class SelectEditor extends SelectElementEditor {
+  constructor(args) {
+    super(args);
+    this.initElements();
 
-  ///////////////////////////////////////////////////////////////////////////
-  // DateEditor < DateTimeBaseEditor < InputElementEditor < BaseEditor
-  ///////////////////////////////////////////////////////////////////////////
+    let choices = this.column.choices;
+    if (this.column.choices_column) {
+      choices = this.args.item[this.column.choices_column];
+    }
 
-  this.DateEditor = function(args) {
-    DateTimeBaseEditor.call(this, args);
-
-    this.init = function() {
-      let gridView = $(args.container).closest('.slick-viewport')
-      const fpConfigGridDate = fpMergeConfigs({}, this.fpConfigGrid, fpConfigDate);
-      const fpConfigGridUSDate = fpMergeConfigs({}, this.fpConfigGrid, fpConfigUSDate);
-
-      this.initElements();
-      this.input.inputmask(USDateFormat() ? 'wulinUSDate' : 'wulinDate')
-      if(!args.column.hide_calendar) {
-        this.input.flatpickr(USDateFormat() ? fpConfigGridUSDate : fpConfigGridDate)
+    let selectOptions = [];
+    if (Array.isArray(choices)) {
+      selectOptions = choices.map(e => (typeof e === 'object' && e !== null) ? e : { id: e, name: e });
+    } else if (typeof choices === 'object' && choices !== null) {
+      if (this.column.depend_column) {
+        const dependVal = this.args.item[this.column.depend_column];
+        const options = choices[dependVal] || [];
+        selectOptions = options.map(e => ({ id: e, name: e }));
       }
-    };
+    }
 
-    this.init();
+    const currentValue = this.args.item[this.column.field];
+    if (currentValue) {
+      const opt = document.createElement('option');
+      opt.style.display = 'none';
+      opt.value = opt.textContent = currentValue;
+      this.select.appendChild(opt);
+      this.select.value = currentValue;
+    }
+
+    selectOptions.forEach(opt => {
+      const option = document.createElement('option');
+      option.value = option.textContent = opt.name || opt.id;
+      this.select.appendChild(option);
+    });
+
+    this.setAllowSingleDeselect();
+    this.openDropDown();
   }
+}
 
-  DateEditor.prototype = Object.create(DateTimeBaseEditor.prototype);
+class DistinctEditor extends SelectElementEditor {
+  constructor(args) {
+    super(args);
+    this.source = this.column.source || 'name';
+    this.addOptionText = 'Add new Option';
+    
+    this.initElements();
+    
+    fetch(this.choices)
+      .then(r => r.json())
+      .then(itemdata => {
+        itemdata.forEach(value => {
+          const opt = document.createElement('option');
+          opt.value = opt.textContent = value;
+          this.select.appendChild(opt);
+        });
 
-  ///////////////////////////////////////////////////////////////////////////
-  // TimeEditor < DateTimeBaseEditor < InputElementEditor < BaseEditor
-  ///////////////////////////////////////////////////////////////////////////
+        const addOpt = document.createElement('option');
+        addOpt.textContent = this.addOptionText;
+        this.select.appendChild(addOpt);
 
-  this.TimeEditor = function(args) {
-    DateTimeBaseEditor.call(this, args);
-
-    this.init = function() {
-      const fpConfigGridTime = fpMergeConfigs({}, this.fpConfigGrid, fpConfigTime);
-
-      this.initElements();
-      this.input.inputmask('wulinTime')
-
-      if(!args.column.hide_calendar) {
-        this.input.flatpickr(fpConfigGridTime)
-      }
-    };
-
-    this.init();
-  }
-
-  TimeEditor.prototype = Object.create(DateTimeBaseEditor.prototype);
-
-
-  ///////////////////////////////////////////////////////////////////////////
-  // RichTextEditor < InputElementEditor < BaseEditor
-  ///////////////////////////////////////////////////////////////////////////
-
-  this.RichTextEditor = function(args) {
-    InputElementEditor.call(this, args);
-
-    this.init = function() {
-      this.initElements();
-      this.setOffset(this.input, this.offsetWith);
-    };
-
-    this.validate = function() {
-      var validationResults;
-      var value = this.element.val();
-
-      if (this.column.validator) {
-        validationResults = this.callValidator(value);
-        if (!validationResults.valid) {
-          return validationResults;
+        this.select.value = this.args.item[this.column.field] || "";
+        this.setAllowSingleDeselect();
+        
+        if (typeof jQuery !== 'undefined') {
+          $(this.select).on('change', () => {
+            if (this.select.value === this.addOptionText) {
+              window.Ui.createAddOptionModal(this.select);
+            }
+          });
         }
-      }
+      });
+      
+    this.openDropDown();
+  }
+}
 
-      return { valid: true, msg: null };
+class RelationEditor extends SelectElementEditor {
+  constructor(args) {
+    super(args);
+    this.source = this.column.editor?.source || this.column.source || 'name';
+    this.relationColumn = ['has_and_belongs_to_many', 'has_many'].includes(this.column.type);
+  }
+
+  isValueChanged() {
+    const selectedValue = Array.from(this.select.selectedOptions).map(o => o.value);
+    if (this.relationColumn) {
+      const defaultIds = (this.defaultValue || []).map(String);
+      if (selectedValue.length !== defaultIds.length) return true;
+      return selectedValue.some(v => !defaultIds.includes(v));
+    }
+    return this.select.value != this.defaultValue;
+  }
+
+  serializeValue() {
+    const obj = { id: this.select.value };
+    const selectedOptions = Array.from(this.select.selectedOptions);
+    
+    if (this.column.type === 'has_and_belongs_to_many') {
+      obj[this.source] = selectedOptions.map(o => o.textContent).join(', ');
+    } else {
+      obj[this.source] = selectedOptions[0]?.textContent || '';
+    }
+    return obj;
+  }
+
+  loadValue(item) {
+    this.defaultValue = item[this.column.field]?.id;
+    this.select.value = this.defaultValue || "";
+  }
+
+  applyValue(item, state) {
+    const field = item[this.column.field] || {};
+    field.id = state.id;
+    field[this.source] = state[this.source];
+    item[this.column.field] = field;
+  }
+
+  getOptions() {
+    let url = this.choices;
+    if (this.args.column.depend_column) {
+      const relationId = this.args.item[this.args.column.depend_column]?.id;
+      url += `&master_model=${this.args.column.depend_column}&master_id=${relationId}`;
+    }
+
+    this.args.grid.onRelationCellEdit.notify({ relationEditor: this });
+
+    fetch(url).then(r => r.json()).then(data => this.setOptions(data));
+  }
+
+  setOptions(dataset) {
+    dataset.forEach(value => {
+      if (!this.field || this.field.id != value.id) {
+        const opt = document.createElement('option');
+        opt.value = value.id;
+        opt.textContent = value[this.source];
+        this.select.appendChild(opt);
+      }
+    });
+    this.setAllowSingleDeselect();
+  }
+
+  appendOptions(target, value) {
+    const opt = document.createElement('option');
+    opt.value = value.id;
+    opt.textContent = value[this.source];
+    target.appendChild(opt);
+  }
+}
+
+class OtherRelationEditor extends RelationEditor {
+  constructor(args) {
+    super(args);
+    this.initElements();
+
+    if (this.relationColumn) {
+      this.select.multiple = true;
+    }
+
+    if (this.column.type === "has_and_belongs_to_many") {
+      fetch(this.choices)
+        .then(r => r.json())
+        .then(items => {
+          items.forEach(item => this.appendOptions(this.select, item));
+
+          const column = this.column.column_name;
+          const recordId = this.args.item.id;
+          const link = `${this.args.grid.path}.json${this.args.grid.query}&` + new URLSearchParams({
+            "filters[][column]": "id",
+            "filters[][value]": recordId,
+            "filters[][operator]": "equals",
+            "columns": `id,${column}`
+          });
+
+          fetch(link).then(r => r.json()).then(data => {
+            const row = data.rows?.[0];
+            if (row) {
+              // Find the data by column name
+              const colIdx = this.args.grid.getColumns().findIndex(c => c.column_name === column);
+              const val = row[colIdx];
+              if (val?.id) {
+                this.select.value = val.id;
+                this.defaultValue = val.id;
+                this.setAllowSingleDeselect();
+              }
+            }
+          }).finally(() => this.openDropDown());
+        });
+      return;
+    }
+
+    this.select.appendChild(document.createElement('option'));
+    if (this.field?.id) {
+      this.appendOptions(this.select, this.field);
+      this.select.value = this.field.id;
+    }
+
+    if (Array.isArray(this.choices)) {
+      this.setOptions(this.choices);
+    } else {
+      this.getOptions();
+    }
+
+    this.openDropDown();
+  }
+}
+
+class HasManyEditor extends RelationEditor {
+  constructor(args) {
+    super(args);
+    this.initElements();
+
+    if (this.relationColumn) this.select.multiple = true;
+
+    this.select.innerHTML = '';
+    this.select.appendChild(document.createElement('option'));
+
+    this.args.grid.onHasManyCellEdit.notify({ editor: this });
+
+    fetch(this.choices).then(r => r.json()).then(itemdata => {
+      itemdata.forEach(value => this.appendOptions(this.select, value));
+
+      const column = this.column.column_name;
+      const recordId = this.args.item.id;
+      const link = `${this.args.grid.path}.json${this.args.grid.query}&` + new URLSearchParams({
+        "filters[][column]": "id",
+        "filters[][value]": recordId,
+        "filters[][operator]": "equals",
+        "columns": `id,${column}`
+      });
+
+      fetch(link).then(r => r.json()).then(data => {
+        const row = data.rows?.[0];
+        if (row) {
+          const colIdx = this.args.grid.getColumns().findIndex(c => c.column_name === column);
+          const val = row[colIdx];
+          if (val?.id) {
+            this.select.value = val.id;
+            this.defaultValue = val.id;
+            this.setAllowSingleDeselect();
+          }
+        }
+      }).finally(() => this.openDropDown());
+    });
+  }
+
+  applyValue(item, state) {
+    item[this.column.field] = state.id === null ? 'null' : state;
+  }
+}
+
+class TextEditor extends InputElementEditor {
+  constructor(args) {
+    super(args);
+    this.initElements();
+    this.setOffset(this.input, this.boxWidth);
+    this.initMdAutoComplete(this.input);
+    args.grid.onTextEditorInit.notify({ editor: this, ...args });
+  }
+
+  validate() {
+    if (this.column.validator) {
+      const results = this.callValidator(this.input.value);
+      if (!results.valid) return results;
+    }
+    return { valid: true, msg: null };
+  }
+}
+
+class TextEditorForForm extends InputElementEditor {
+  constructor(args) {
+    super(args);
+    this.args.container.setAttribute('autocomplete', 'off');
+    this.initMdAutoComplete(this.args.container);
+  }
+}
+
+class TextAreaEditor extends BaseEditor {
+  constructor(args) {
+    super(args);
+    this.boxWidth = 250;
+    this.offsetWidth = this.boxWidth + 18;
+
+    const parentDataId = this.args.container.parentElement.dataset.id;
+    this.wrapper = document.createElement('div');
+    this.wrapper.className = 'textarea-wrapper';
+    this.wrapper.dataset.id = parentDataId;
+    document.body.appendChild(this.wrapper);
+
+    this.textArea = document.createElement('textarea');
+    this.textArea.className = 'textarea-in-grid';
+    this.textArea.rows = 5;
+    this.textArea.style.width = `${this.boxWidth}px`;
+    this.element = this.textArea;
+    this.wrapper.appendChild(this.textArea);
+
+    const btnContainer = document.createElement('div');
+    const btnSave = document.createElement('button');
+    btnSave.textContent = 'Save';
+    btnSave.className = 'btn btn-small right';
+    btnSave.onclick = () => this.args.commitChanges();
+
+    const btnCancel = document.createElement('button');
+    btnCancel.textContent = 'Cancel';
+    btnCancel.className = 'btn btn-small right';
+    btnCancel.onclick = () => {
+      this.textArea.value = this.defaultValue;
+      this.args.cancelChanges();
     };
 
-    this.init();
+    btnContainer.appendChild(btnCancel);
+    btnContainer.appendChild(btnSave);
+    this.wrapper.appendChild(btnContainer);
+
+    this.textArea.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && e.ctrlKey) {
+        this.args.commitChanges();
+      } else if (e.key === "Escape") {
+        e.preventDefault();
+        this.textArea.value = this.defaultValue;
+        this.args.cancelChanges();
+      } else if (e.key === "Tab") {
+        e.preventDefault();
+        if (e.shiftKey) this.args.grid.navigatePrev();
+        else this.args.grid.navigateNext();
+      }
+    });
+
+    this.position(args.position);
+    this.textArea.focus();
+    this.textArea.select();
   }
 
-  RichTextEditor.prototype = Object.create(InputElementEditor.prototype);
+  hide() { this.wrapper.style.display = 'none'; }
+  show() { this.wrapper.style.display = 'block'; }
 
-  return {
-    BaseEditor,
-    InputElementEditor,
-    IntegerEditor,
-    DecimalEditor,
-    YesNoCheckboxEditor,
-    SelectElementEditor,
-    SelectEditor,
-    DistinctEditor,
-    RelationEditor,
-    OtherRelationEditor,
-    HasManyEditor,
-    TextEditor,
-    TextEditorForForm,
-    TextAreaEditor,
-    DateTimeBaseEditor,
-    DateTimeEditor,
-    DateEditor,
-    TimeEditor,
-    RichTextEditor
+  position(pos) {
+    this.wrapper.style.top = `${pos.top - 5}px`;
+    this.wrapper.style.left = `${pos.left - 5}px`;
+    
+    const winWidth = window.innerWidth;
+    const rect = this.wrapper.getBoundingClientRect();
+    if (winWidth - rect.left < this.offsetWidth) {
+      this.wrapper.style.left = `${winWidth - this.offsetWidth}px`;
+    }
   }
-})(jQuery);
+
+  isValueChanged() {
+    const val = this.textArea.value;
+    return (!(val === "" && this.defaultValue === null)) && (val !== this.defaultValue);
+  }
+}
+
+class DateTimeBaseEditor extends InputElementEditor {
+  constructor(args) {
+    super(args);
+    const date = this.args.item[this.column.field];
+    this.boxWidth -= 24;
+
+    this.fpConfigGrid = window.fpMergeConfigs({}, window.fpConfigInit || {}, {
+      clickOpens: false,
+      onReady: (selectedDates, dateStr, instance) => {
+        instance.open();
+        instance.update(date);
+      },
+      onOpen: (selectedDates, dateStr, instance) => {
+        this.adjustPosition(instance.calendarContainer, this.args.container, false);
+        const gridView = this.args.container.closest('.slick-viewport');
+        if (gridView) gridView.style.overflow = 'hidden';
+      },
+      onClose: (selectedDates, dateStr, instance) => {
+        const gridView = this.args.container.closest('.slick-viewport');
+        if (gridView) gridView.style.overflow = 'auto';
+      }
+    });
+  }
+}
+
+class DateTimeEditor extends DateTimeBaseEditor {
+  constructor(args) {
+    super(args);
+    this.initElements();
+    // Inputmask still needs jQuery
+    if (typeof jQuery !== 'undefined' && jQuery.fn.inputmask) $(this.input).inputmask('wulinDateTime');
+
+    if (!this.column.hide_calendar) {
+      const config = window.fpMergeConfigs(this.fpConfigGrid, window.fpConfigFormDateTime);
+      flatpickr(this.input, config);
+    }
+  }
+}
+
+class DateEditor extends DateTimeBaseEditor {
+  constructor(args) {
+    super(args);
+    this.initElements();
+    const isUS = typeof window.USDateFormat === 'function' && window.USDateFormat();
+    if (typeof jQuery !== 'undefined' && jQuery.fn.inputmask) $(this.input).inputmask(isUS ? 'wulinUSDate' : 'wulinDate');
+
+    if (!this.column.hide_calendar) {
+      const config = window.fpMergeConfigs(this.fpConfigGrid, isUS ? window.fpConfigFormUSDate : window.fpConfigFormDate);
+      flatpickr(this.input, config);
+    }
+  }
+}
+
+class TimeEditor extends DateTimeBaseEditor {
+  constructor(args) {
+    super(args);
+    this.initElements();
+    if (typeof jQuery !== 'undefined' && jQuery.fn.inputmask) $(this.input).inputmask('wulinTime');
+
+    if (!this.column.hide_calendar) {
+      const config = window.fpMergeConfigs(this.fpConfigGrid, window.fpConfigFormTime);
+      flatpickr(this.input, config);
+    }
+  }
+}
+
+class RichTextEditor extends InputElementEditor {
+  constructor(args) {
+    super(args);
+    this.initElements();
+    this.setOffset(this.input, this.offsetWidth);
+  }
+
+  validate() {
+    if (this.column.validator) {
+      const results = this.callValidator(this.input.value);
+      if (!results.valid) return results;
+    }
+    return { valid: true, msg: null };
+  }
+}
+
+// Export to window for SlickGrid compatibility
+window.WulinEditors = {
+  BaseEditor,
+  InputElementEditor,
+  IntegerEditor,
+  DecimalEditor,
+  YesNoCheckboxEditor,
+  SelectElementEditor,
+  SelectEditor,
+  DistinctEditor,
+  RelationEditor,
+  OtherRelationEditor,
+  HasManyEditor,
+  TextEditor,
+  TextEditorForForm,
+  TextAreaEditor,
+  DateTimeBaseEditor,
+  DateTimeEditor,
+  DateEditor,
+  TimeEditor,
+  RichTextEditor
+};
+
+// Also export individual editors to window root as SlickGrid expects them there
+Object.assign(window, window.WulinEditors);

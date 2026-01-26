@@ -11,6 +11,7 @@ require File.expand_path("../../spec/wulin_app/config/environment.rb", __dir__)
 ENV["RAILS_ROOT"] ||= File.dirname(__FILE__) + "../../../spec/wulin_app"
 
 require "cucumber/rails"
+require "database_cleaner/active_record"
 
 # Capybara defaults to CSS3 selectors rather than XPath.
 # If you'd prefer to use XPath, just uncomment this line and adjust any

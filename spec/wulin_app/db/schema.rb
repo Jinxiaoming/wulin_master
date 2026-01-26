@@ -19,14 +19,14 @@ ActiveRecord::Schema[8.0].define(version: 2021_06_15_152900) do
     t.string "city"
     t.integer "country_id"
     t.integer "city_id"
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
+    t.datetime "created_at", precision: nil, null: false
+    t.datetime "updated_at", precision: nil, null: false
   end
 
   create_table "clients", id: :serial, force: :cascade do |t|
     t.string "name"
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
+    t.datetime "created_at", precision: nil, null: false
+    t.datetime "updated_at", precision: nil, null: false
     t.index ["name"], name: "index_clients_on_name"
   end
 
@@ -41,8 +41,8 @@ ActiveRecord::Schema[8.0].define(version: 2021_06_15_152900) do
     t.string "title"
     t.string "desc"
     t.integer "training_id"
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
+    t.datetime "created_at", precision: nil, null: false
+    t.datetime "updated_at", precision: nil, null: false
     t.index ["name", "title"], name: "index_courses_on_name_and_title", unique: true
   end
 
@@ -52,17 +52,17 @@ ActiveRecord::Schema[8.0].define(version: 2021_06_15_152900) do
     t.string "grid_name"
     t.text "state_value"
     t.boolean "current", default: false, null: false
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
+    t.datetime "created_at", precision: nil, null: false
+    t.datetime "updated_at", precision: nil, null: false
     t.index ["user_id"], name: "index_grid_states_on_user_id"
   end
 
   create_table "people", id: :serial, force: :cascade do |t|
     t.string "first_name"
     t.string "last_name"
-    t.datetime "birthdate"
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
+    t.datetime "birthdate", precision: nil
+    t.datetime "created_at", precision: nil, null: false
+    t.datetime "updated_at", precision: nil, null: false
     t.string "job"
     t.boolean "vip", default: false
     t.integer "age", default: 18
@@ -84,8 +84,8 @@ ActiveRecord::Schema[8.0].define(version: 2021_06_15_152900) do
   create_table "posts", id: :serial, force: :cascade do |t|
     t.string "name"
     t.integer "person_id"
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
+    t.datetime "created_at", precision: nil, null: false
+    t.datetime "updated_at", precision: nil, null: false
   end
 
   create_table "students_teachers", id: false, force: :cascade do |t|
@@ -102,7 +102,7 @@ ActiveRecord::Schema[8.0].define(version: 2021_06_15_152900) do
     t.string "name"
     t.integer "teacher_id"
     t.integer "client_id"
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
+    t.datetime "created_at", precision: nil, null: false
+    t.datetime "updated_at", precision: nil, null: false
   end
 end

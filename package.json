@@ -13,5 +13,6 @@
     "slickgrid": "^5.18.2",
     "sortablejs": "^1.15.2",
     "tom-select": "^2.4.3"
-  }
+  },
+  "devDependencies": {}
 }

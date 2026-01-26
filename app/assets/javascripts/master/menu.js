@@ -62,6 +62,7 @@ function initializeMenu() {
       }
 
       selectMenuItem(url);
+      // Turbo will automatically handle the link if it's within a turbo-frame or has data-turbo-frame
     });
   });
 

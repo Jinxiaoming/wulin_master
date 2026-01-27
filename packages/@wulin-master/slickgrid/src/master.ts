@@ -41,6 +41,7 @@ import {
   AddDetailAction,
   ExportRolePermissionAction,
   ImportRolePermissionAction,
+  MakeDefaultGridAction,
   UpdateBehavior,
   ColumnFilterBehavior,
   AffiliationBehavior,
@@ -84,7 +85,8 @@ Object.assign(window.WulinMaster, {
     Switch: SwitchAction,
     AddDetail: AddDetailAction,
     ExportRolePermission: ExportRolePermissionAction,
-    ImportRolePermission: ImportRolePermissionAction
+    ImportRolePermission: ImportRolePermissionAction,
+    MakeDefaultGrid: MakeDefaultGridAction
   },
   BehaviorManager,
   behaviors: { 

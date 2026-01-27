@@ -30,7 +30,7 @@ JS
 remove_file "app/assets/stylesheets/application.css"
 
 # Add wulin master stylesheet to application.sass
-file "app/assets/stylesheets/application.sass", <<~CSS
+file "app/javascript/application.sass", <<~CSS
   @use "../../../vendor/gems/wulin_master/app/assets/stylesheets/master";
 CSS
 
@@ -44,7 +44,7 @@ file "package.json", <<~JSON, force: true
       "esbuild": "^0.25.9"
     },
     "scripts": {
-      "build": "esbuild app/javascript/application.js --bundle --sourcemap --format=esm --outdir=app/assets/builds --public-path=/assets --loader:.woff=file --loader:.woff2=file --external:'*.css'",
+      "build": "esbuild app/javascript/application.js --bundle --sourcemap --format=esm --outdir=app/assets/builds --public-path=/assets --loader:.woff=file --loader:.woff2=file --external:*.css",
       "copy-icons": "node script/copy_material_icons.js"
     },
     "dependencies": {

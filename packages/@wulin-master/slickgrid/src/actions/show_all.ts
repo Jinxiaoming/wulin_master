@@ -1,16 +1,20 @@
+import { GridAction } from '@wulin-master/core';
+import { BaseAction, ActionManager } from '../action_manager';
+
 /**
  * Show All Action
  * Clears all filters and reloads the grid data.
  */
-WulinMaster.actions.ShowAll = Object.assign({}, WulinMaster.actions.BaseAction, {
+const ShowAllAction: GridAction = Object.assign({}, BaseAction, {
   name: 'show_all',
 
-  handler: function() {
-    const grid = this.getGrid();
+  handler: function(this: GridAction) {
+    const grid = this.target;
     if (grid?.loader) {
       grid.loader.setFilter([]);
     }
   }
 });
 
-WulinMaster.ActionManager.register(WulinMaster.actions.ShowAll);
+ActionManager.register(ShowAllAction);
+export default ShowAllAction;

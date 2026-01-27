@@ -1,31 +1,35 @@
+import { GridAction } from '@wulin-master/core';
+import { BaseAction, ActionManager } from '../action_manager';
+
 /**
  * Hotkey 'C' to create record
  */
-WulinMaster.actions.HotkeyCreate = Object.assign({}, WulinMaster.actions.BaseAction, {
+const HotkeyCreateAction: GridAction = Object.assign({}, BaseAction, {
   name: 'hotkey_create',
   event: 'keypress',
   triggerElementIdentifier: '.grid_container',
 
-  handler: function(e) {
-    if (window.Ui.addOrDeleteLocked()) return true;
+  handler: function(this: GridAction, e: KeyboardEvent) {
+    if (window.WulinMaster.Ui.addOrDeleteLocked()) return true;
 
-    const grid = window.Ui.findCurrentGrid();
+    const grid = window.WulinMaster.Ui.findCurrentGrid();
     if (grid && (e.key === 'c' || e.key === 'C')) {
-      window.Ui.openDialog(grid, 'wulin_master_new_form', grid.options);
+      window.WulinMaster.Ui.openDialog(grid, 'wulin_master_new_form', grid.options);
 
-      const submitHandler = (evt) => {
-        const btn = evt.target;
-        if (btn.id !== `${grid.name}_submit` && btn.id !== `${grid.name}_submit_continue`) return;
+      const submitHandler = (evt: MouseEvent) => {
+        const btn = evt.target as HTMLElement;
+        if (!btn || (btn.id !== `${grid.name}_submit` && btn.id !== `${grid.name}_submit_continue`)) return;
 
         evt.preventDefault();
         const continueOn = btn.id === `${grid.name}_submit_continue`;
-        window.Requests.createByAjax(grid, continueOn);
+        window.WulinMaster.Requests.createByAjax(grid, continueOn);
       };
 
-      document.body.removeEventListener('click', submitHandler);
-      document.body.addEventListener('click', submitHandler);
+      document.body.removeEventListener('click', submitHandler as any);
+      document.body.addEventListener('click', submitHandler as any);
     }
   }
 });
 
-// WulinMaster.ActionManager.register(WulinMaster.actions.HotkeyCreate);
+ActionManager.register(HotkeyCreateAction);
+export default HotkeyCreateAction;

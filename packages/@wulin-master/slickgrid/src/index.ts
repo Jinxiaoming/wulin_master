@@ -18,6 +18,8 @@ export { default as EditAction } from './actions/edit';
 export { default as CreateAction } from './actions/create';
 export { default as FilterAction } from './actions/filter';
 export { default as FullscreenAction } from './actions/fullscreen';
+export { default as ShowAllAction } from './actions/show_all';
+export { default as HotkeyCreateAction } from './actions/hotkey_create';
 
 // Behaviors
 export { default as UpdateBehavior } from './behaviors/update';

@@ -9,7 +9,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // Initialize legacy menu behaviors
   initializeMenu();
 
-  // side-navigation resize (Legacy jQuery UI Resizable removed)
+  // side-navigation and layout initialization
   const nav = document.getElementById("navigation");
   const content = document.getElementById("content");
 

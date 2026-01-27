@@ -1,11 +1,11 @@
 /**
- * Global AJAX and Fetch error handler for WulinMaster.
+ * Global API and Fetch error handler for WulinMaster.
  */
 
 /**
- * Handles errors from both legacy AJAX and modern Fetch API.
+ * Handles errors from Fetch API requests.
  */
-export function handleAjaxError(xhr) {
+export function handleApiError(xhr) {
   let msg = xhr.responseText;
   let wulin_oauth;
 
@@ -37,4 +37,4 @@ export function handleAjaxError(xhr) {
 }
 
 // Export to window for global access
-window.handleAjaxError = handleAjaxError;
+window.handleAjaxError = handleApiError;

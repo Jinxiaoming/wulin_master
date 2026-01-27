@@ -38,6 +38,4 @@
   // Export to window for global access
   window.appendLoader = appendLoader;
   window.removeLoader = removeLoader;
-
-  // Legacy support removed
 })();

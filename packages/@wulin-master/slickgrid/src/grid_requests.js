@@ -7,7 +7,7 @@ import Ui from './ui_helper.js';
  */
 const Requests = {
   /**
-   * Creates a new record via AJAX.
+   * Creates a new record via Fetch API.
    */
   createByAjax: async function(grid, continueOn, afterCreated) {
     const createFormElement = document.querySelector(`div#${grid.name}_form form`);
@@ -92,7 +92,7 @@ const Requests = {
   },
 
   /**
-   * Updates a record via AJAX.
+   * Updates a record via Fetch API.
    */
   updateByAjax: async function(grid, item, editCommand) {
     delete item.slick_index;
@@ -136,7 +136,7 @@ const Requests = {
   },
 
   /**
-   * Deletes records via AJAX.
+   * Deletes records via Fetch API.
    */
   deleteByAjax: async function(grid, ids, force = false) {
     if (ids.length > 350) {

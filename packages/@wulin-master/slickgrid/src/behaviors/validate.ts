@@ -1,21 +1,22 @@
-// when editor validate return false
+import { WulinGrid, GridBehavior } from '@wulin-master/core';
+import { BaseBehavior, BehaviorManager } from '../behavior_manager';
 
-WulinMaster.behaviors.Validate = Object.assign({}, WulinMaster.behaviors.BaseBehavior, {
+// when editor validate return false
+const ValidateBehavior: GridBehavior = Object.assign({}, BaseBehavior, {
+  name: 'validate',
   event: "onValidationError",
 
-  subscribe: function(target) {
-    var self = this;
-    target[this.event].subscribe(function(e, args){ self.handler(args.validationResults); });
+  subscribe: function(this: GridBehavior, target: WulinGrid) {
+    const self = this;
+    (target as any)[this.event].subscribe((e: any, args: any) => { 
+      self.handler(args.validationResults); 
+    });
   },
 
-  unsubscribe: function() {
-
-  },
-
-  handler: function(result) {
-    if (result.msg) displayErrorMessage(result.msg);
+  handler: function(result: any) {
+    if (result.msg) window.WulinMaster.displayErrorMessage(result.msg);
   }
-
 });
 
-WulinMaster.BehaviorManager.register("validate", WulinMaster.behaviors.Validate);
+BehaviorManager.register("validate", ValidateBehavior);
+export default ValidateBehavior;

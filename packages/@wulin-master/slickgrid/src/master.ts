@@ -45,7 +45,8 @@ import {
   UpdateBehavior,
   ColumnFilterBehavior,
   AffiliationBehavior,
-  AggregationBehavior
+  AggregationBehavior,
+  ValidateBehavior
 } from './index'
 
 import { registerWulinControllers } from '@wulin-master/stimulus'
@@ -95,7 +96,8 @@ Object.assign(window.WulinMaster, {
     Update: UpdateBehavior,
     ColumnFilter: ColumnFilterBehavior,
     Affiliation: AffiliationBehavior,
-    Aggregation: AggregationBehavior
+    Aggregation: AggregationBehavior,
+    Validate: ValidateBehavior
   },
   FilterPanel
 });

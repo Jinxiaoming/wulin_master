@@ -32,3 +32,4 @@ export { default as UpdateBehavior } from './behaviors/update';
 export { default as ColumnFilterBehavior } from './behaviors/column_filter';
 export { default as AffiliationBehavior } from './behaviors/affiliation';
 export { default as AggregationBehavior } from './behaviors/aggregation';
+export { default as ValidateBehavior } from './behaviors/validate';

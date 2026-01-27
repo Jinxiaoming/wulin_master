@@ -1,13 +1,14 @@
-function escapeHtml(html) {
-  var text = document.createTextNode(html);
-  var p = document.createElement("p");
+export function escapeHtml(html: string): string {
+  const text = document.createTextNode(html);
+  const p = document.createElement("p");
   p.appendChild(text);
   return p.innerHTML;
 }
 
-function simpleFormat(str) {
+export function simpleFormat(str: string): string {
+  if (!str) return '';
   str = str.replace(/\r\n?/, "\n");
-  str = $.trim(str);
+  str = str.trim();
   if (str.length > 0) {
     str = str.replace(/\n\n+/g, "</p><p>");
     str = str.replace(/\n/g, "<br />");
@@ -15,3 +16,8 @@ function simpleFormat(str) {
   }
   return str;
 }
+
+// Global exposure for legacy
+const win = window as any;
+win.escapeHtml = escapeHtml;
+win.simpleFormat = simpleFormat;

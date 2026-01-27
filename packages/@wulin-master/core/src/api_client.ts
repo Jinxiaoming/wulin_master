@@ -3,6 +3,8 @@
  * It handles CSRF tokens, error handling, and common headers.
  */
 class ApiClient {
+  private defaultHeaders: Record<string, string>;
+
   constructor() {
     this.defaultHeaders = {
       'X-Requested-With': 'XMLHttpRequest',
@@ -14,16 +16,17 @@ class ApiClient {
   /**
    * Gets the CSRF token from the window or meta tags.
    */
-  getCsrfToken() {
-    return decodeURIComponent(window._token || document.querySelector('meta[name="csrf-token"]')?.content || '');
+  getCsrfToken(): string {
+    const win = window as any;
+    return decodeURIComponent(win._token || document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '');
   }
 
   /**
    * Performs a fetch request with unified logic.
    */
-  async request(url, options = {}) {
+  async request(url: string, options: RequestInit = {}): Promise<any> {
     const method = options.method || 'GET';
-    const headers = { ...this.defaultHeaders, ...options.headers };
+    const headers: Record<string, string> = { ...this.defaultHeaders, ...(options.headers as Record<string, string>) };
     
     // Don't set Content-Type for FormData to let the browser set the boundary
     if (options.body instanceof FormData) {
@@ -34,7 +37,7 @@ class ApiClient {
       headers['X-CSRF-Token'] = this.getCsrfToken();
     }
 
-    const fetchOptions = {
+    const fetchOptions: RequestInit = {
       ...options,
       method,
       headers
@@ -48,8 +51,9 @@ class ApiClient {
       
       if (!response.ok) {
         // Handle global errors via the existing handler
-        if (window.handleAjaxError) {
-          window.handleAjaxError(response);
+        const win = window as any;
+        if (win.handleAjaxError) {
+          win.handleAjaxError(response);
         }
         throw response;
       }
@@ -68,23 +72,35 @@ class ApiClient {
     }
   }
 
-  get(url, options = {}) {
+  get(url: string, options: RequestInit = {}): Promise<any> {
     return this.request(url, { ...options, method: 'GET' });
   }
 
-  post(url, body, options = {}) {
-    return this.request(url, { ...options, method: 'POST', body: JSON.stringify(body) });
+  post(url: string, body: any, options: RequestInit = {}): Promise<any> {
+    const requestOptions: RequestInit = { ...options, method: 'POST' };
+    if (!(body instanceof FormData)) {
+      requestOptions.body = JSON.stringify(body);
+    } else {
+      requestOptions.body = body;
+    }
+    return this.request(url, requestOptions);
   }
 
-  put(url, body, options = {}) {
-    return this.request(url, { ...options, method: 'PUT', body: JSON.stringify(body) });
+  put(url: string, body: any, options: RequestInit = {}): Promise<any> {
+    const requestOptions: RequestInit = { ...options, method: 'PUT' };
+    if (!(body instanceof FormData)) {
+      requestOptions.body = JSON.stringify(body);
+    } else {
+      requestOptions.body = body;
+    }
+    return this.request(url, requestOptions);
   }
 
-  delete(url, options = {}) {
+  delete(url: string, options: RequestInit = {}): Promise<any> {
     return this.request(url, { ...options, method: 'DELETE' });
   }
 }
 
 const apiClient = new ApiClient();
-window.apiClient = apiClient;
+(window as any).apiClient = apiClient;
 export default apiClient;

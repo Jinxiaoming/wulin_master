@@ -3,7 +3,10 @@
  * It manages request deduplication, cancellation, and loading indicators.
  */
 export default class ConnectionManager {
-  constructor(remoteModel) {
+  private remoteModel: any;
+  private requests: Map<string, AbortController>;
+
+  constructor(remoteModel: any) {
     this.remoteModel = remoteModel;
     this.requests = new Map(); // Map of URL -> AbortController
   }
@@ -11,20 +14,28 @@ export default class ConnectionManager {
   /**
    * Creates a new connection (request) to the server.
    * 
-   * @param {Object} grid - The SlickGrid instance
+   * @param {any} grid - The SlickGrid instance
    * @param {string} url - The request URL
-   * @param {Object} indicator - Legacy indicator (unused but kept for signature)
+   * @param {any} indicator - Legacy indicator (unused but kept for signature)
    * @param {Function} clientOnSuccess - Success callback
    * @param {Function} clientOnError - Error callback
    * @param {number} currentRequestVersionNumber - Version number to prevent out-of-order updates
    */
-  async createConnection(grid, url, indicator, clientOnSuccess, clientOnError, currentRequestVersionNumber) {
+  async createConnection(
+    grid: any, 
+    url: string, 
+    indicator: any, 
+    clientOnSuccess: Function, 
+    clientOnError: Function, 
+    currentRequestVersionNumber: number
+  ): Promise<void> {
     // If a request for this URL is already in progress, don't start a new one
     if (this.requests.has(url)) return;
 
     // UI: Show progress bar in grid header
-    const container = grid.container;
+    const container = grid.container as HTMLElement;
     const header = container.querySelector('.slick-header');
+    if (!header) return;
     
     // Cleanup old progress bars
     const oldProgress = header.nextElementSibling;
@@ -76,7 +87,7 @@ export default class ConnectionManager {
         loader.lastRequestVersionNumber = currentRequestVersionNumber;
         clientOnSuccess(data, "success", { url, loader, versionNumber: currentRequestVersionNumber });
       }
-    } catch (error) {
+    } catch (error: any) {
       if (error.name === 'AbortError') {
         console.log('Fetch aborted');
       } else {
@@ -93,14 +104,14 @@ export default class ConnectionManager {
   /**
    * Checks if there are any active requests.
    */
-  isEmpty() {
+  isEmpty(): boolean {
     return this.requests.size === 0;
   }
 
   /**
    * Cancels a specific connection by URL.
    */
-  removeConnection(url) {
+  removeConnection(url: string): void {
     const controller = this.requests.get(url);
     if (controller) {
       controller.abort();
@@ -110,4 +121,4 @@ export default class ConnectionManager {
 }
 
 // Global exposure for legacy compatibility
-window.ConnectionManager = ConnectionManager;
+(window as any).ConnectionManager = ConnectionManager;

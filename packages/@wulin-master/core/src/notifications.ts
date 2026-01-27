@@ -1,5 +1,5 @@
 // Notification system using Stimulus bridge
-export const displayNewNotification = (message, type, always) => {
+export const displayNewNotification = (message: string, type?: string, always?: boolean): boolean => {
   // Dispatch event to Stimulus controller
   const event = new CustomEvent("display-notification", {
     detail: { message, type, always }
@@ -12,7 +12,8 @@ export const displayNewNotification = (message, type, always) => {
     container.dataset.controller = "notification";
     container.dataset.notificationTarget = "container";
     container.addEventListener("display-notification", (e) => {
-      const controller = window.Stimulus.getControllerForElementAndIdentifier(container, "notification");
+      const win = window as any;
+      const controller = win.Stimulus.getControllerForElementAndIdentifier(container, "notification");
       if (controller) {
         controller.display(e);
       }
@@ -25,14 +26,12 @@ export const displayNewNotification = (message, type, always) => {
 };
 
 // Backward compatibility for saveMessage
-export const saveMessage = (message, type) => {
-  const event = new CustomEvent("save-message-only", {
-    detail: { message, type }
-  });
+export const saveMessage = (message: string, type?: string): void => {
+  const win = window as any;
   // We can just call the method on the controller if it exists
   const container = document.getElementById('notification-container');
   if (container) {
-    const controller = window.Stimulus.getControllerForElementAndIdentifier(container, "notification");
+    const controller = win.Stimulus.getControllerForElementAndIdentifier(container, "notification");
     if (controller) {
       controller.saveMessage(message, type);
     }
@@ -40,5 +39,6 @@ export const saveMessage = (message, type) => {
 };
 
 // Global exposure for legacy
-window.displayNewNotification = displayNewNotification;
-window.saveMessage = saveMessage;
+const win = window as any;
+win.displayNewNotification = displayNewNotification;
+win.saveMessage = saveMessage;

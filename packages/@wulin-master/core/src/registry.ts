@@ -3,25 +3,28 @@
  * Replaces brittle string-to-window resolution.
  */
 class Registry {
+  private formatters: Record<string, any>;
+  private editors: Record<string, any>;
+
   constructor() {
     this.formatters = {};
     this.editors = {};
   }
 
-  registerFormatter(name, formatter) {
+  registerFormatter(name: string, formatter: any): void {
     this.formatters[name] = formatter;
   }
 
-  registerEditor(name, editor) {
+  registerEditor(name: string, editor: any): void {
     this.editors[name] = editor;
   }
 
-  getFormatter(name) {
-    return this.formatters[name] || window[name]; // Fallback to window for legacy
+  getFormatter(name: string): any {
+    return this.formatters[name] || (window as any)[name]; // Fallback to window for legacy
   }
 
-  getEditor(name) {
-    return this.editors[name] || window[name];
+  getEditor(name: string): any {
+    return this.editors[name] || (window as any)[name];
   }
 }
 

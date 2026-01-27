@@ -5,26 +5,35 @@ import ConnectionManager from './connectionmanager.js';
  * server-side pagination, sorting, and filtering.
  */
 export default class RemoteModel {
-  constructor(path, initialFilters, columns) {
-    // Private state
-    this.loadingSize = 200;
-    this.preemptiveLoadingSize = 100;
-    this.pageSize = 0;
-    this.pageNum = 0;
-    this.totalRows = 0;
-    this.aggregation = '';
-    this.rowsWithoutFilter = -1;
-    this.data = { length: 0 };
-    this.oldData = { length: 0 };
-    this.sortcol = null;
-    this.sortdir = 1;
-    this.params = [];
-    this.pagingOptionsChanged = false;
+  private loadingSize: number = 200;
+  private preemptiveLoadingSize: number = 100;
+  private pageSize: number = 0;
+  private pageNum: number = 0;
+  private totalRows: number = 0;
+  private aggregation: string = '';
+  private rowsWithoutFilter: number = -1;
+  public data: any = { length: 0 };
+  private oldData: any = { length: 0 };
+  private sortcol: string | null = null;
+  private sortdir: number = 1;
+  private params: Array<[string, any]> = [];
+  private pagingOptionsChanged: boolean = false;
+  private path: string;
+  private columns: any[];
+  private filters: Array<[string, any, string]> = [];
+  private lastRequestVersionNumber: number = 0;
+  private currentRequestVersionNumber: number = 0;
+  private connectionManager: ConnectionManager;
+  private grid: any;
+
+  public beforeRemoteRequest: any;
+  public onDataLoading: any;
+  public onPagingInfoChanged: any;
+  public onDataLoaded: any;
+
+  constructor(path: string, initialFilters: any[], columns: any[]) {
     this.path = path;
     this.columns = columns;
-    this.filters = [];
-    this.lastRequestVersionNumber = 0;
-    this.currentRequestVersionNumber = 0;
 
     if (initialFilters) {
       initialFilters.forEach(f => {
@@ -35,13 +44,14 @@ export default class RemoteModel {
     this.connectionManager = new ConnectionManager(this);
 
     // SlickGrid Events
+    const Slick = (window as any).Slick;
     this.beforeRemoteRequest = new Slick.Event();
     this.onDataLoading = new Slick.Event();
     this.onPagingInfoChanged = new Slick.Event();
     this.onDataLoaded = new Slick.Event();
   }
 
-  setGrid(newGrid) {
+  setGrid(newGrid: any) {
     this.grid = newGrid;
 
     // Connect the grid and the loader
@@ -51,32 +61,34 @@ export default class RemoteModel {
       this.ensureData(vp.top, vp.bottom);
     });
 
-    this.grid.onSort.subscribe((e, args) => {
+    this.grid.onSort.subscribe((e: any, args: any) => {
       this.setSort(args.sortCol.sortColumn, args.sortAsc ? 1 : -1);
     });
   }
 
   clear() {
     for (const key in this.data) {
-      delete this.data[key];
+      if (key !== 'length') {
+        delete this.data[key];
+      }
     }
     this.data.length = 0;
   }
 
-  isDataLoaded(from, to) {
+  isDataLoaded(from: number, to: number) {
     for (let i = from; i <= to; i++) {
       if (this.data[i] === undefined || this.data[i] === null) return false;
     }
     return true;
   }
 
-  ensureData(from, to) {
+  ensureData(from: number, to: number) {
     this.beforeRemoteRequest.notify();
 
     const urlData = this.generateUrl(from, to);
     if (urlData === null) return;
 
-    const [url] = urlData;
+    const [url] = urlData as [string, boolean];
     this.connectionManager.createConnection(
       this.grid, 
       url, 
@@ -87,7 +99,7 @@ export default class RemoteModel {
     );
   }
 
-  generateUrl(from, to) {
+  generateUrl(from: number, to: number): [string, boolean] | null {
     let paginationOptions = this.getPaginationOptions(from, to);
     let [offset, count] = paginationOptions;
     let normalLoadingMode = true;
@@ -106,7 +118,7 @@ export default class RemoteModel {
     return [url, normalLoadingMode];
   }
 
-  getPaginationOptions(from, to) {
+  getPaginationOptions(from: number, to: number): [number, number] {
     if (this.pageSize === 0) {
       from = Math.max(0, from);
       let fromPage = Math.floor(from / this.loadingSize);
@@ -153,11 +165,11 @@ export default class RemoteModel {
 
   visibleColumnNames() {
     return this.grid.allColumns
-      .filter(c => c.column_name !== undefined)
-      .map(c => c.column_name);
+      .filter((c: any) => c.column_name !== undefined)
+      .map((c: any) => c.column_name);
   }
 
-  onSuccess(resp) {
+  onSuccess(resp: any) {
     this.rowsWithoutFilter = parseInt(resp.totalNoFilter, 10);
     this.totalRows = parseInt(resp.total, 10);
     this.aggregation = resp.aggregation || '';
@@ -177,9 +189,9 @@ export default class RemoteModel {
         this.data[from + this.loadingSize] = null;
       }
 
-      resp.rows.forEach((row, i) => {
+      resp.rows.forEach((row: any[], i: number) => {
         const j = from + i;
-        const obj = {};
+        const obj: any = {};
         const indexOffset = this.grid.getOptions().checkbox.enable ? 1 : 0;
 
         this.columns.forEach((col, colIdx) => {
@@ -202,11 +214,11 @@ export default class RemoteModel {
     this.onPagingInfoChanged.notify(this.getPagingInfo());
   }
 
-  onError(request, textStatus, errorThrown) {
+  onError(request: any, textStatus: string, errorThrown: string) {
     console.error("RemoteModel error:", errorThrown);
   }
 
-  dataIsLoaded(args) {
+  dataIsLoaded(args: { from: number, to: number, data: any }) {
     for (let i = args.from; i < args.to; i++) {
       this.grid.invalidateRow(i);
     }
@@ -226,7 +238,7 @@ export default class RemoteModel {
     };
   }
 
-  setSort(column, dir) {
+  setSort(column: string, dir: number) {
     if (this.sortcol !== column || this.sortdir !== dir) {
       this.currentRequestVersionNumber++;
       this.sortcol = column;
@@ -242,21 +254,21 @@ export default class RemoteModel {
     this.ensureData(vp.top, vp.bottom);
   }
 
-  reloadData(from, to) {
-    if (!from && !to) {
+  reloadData(from?: number, to?: number) {
+    if (from === undefined && to === undefined) {
       const pos = this.decideCurrentPosition();
-      from = pos[0];
-      to = pos[1];
+      from = pos[0] as number;
+      to = pos[1] as number;
     }
-    if (from !== null && to !== null) {
+    if (from !== undefined && to !== undefined && from !== null && to !== null) {
       for (let i = from; i <= to; i++) delete this.data[i];
     } else {
       this.clear();
     }
-    this.ensureData(from, to);
+    this.ensureData(from || 0, to || 0);
   }
 
-  decideCurrentPosition() {
+  decideCurrentPosition(): [number | null, number | null] {
     if (this.grid.operatedIds && this.grid.operatedIds.length > 0) {
       const lastId = this.grid.operatedIds[this.grid.operatedIds.length - 1];
       const gridRow = this.grid.getRowByRecordId(lastId);
@@ -273,6 +285,7 @@ export default class RemoteModel {
 }
 
 // Global exposure for legacy compatibility
-window.WulinMaster = window.WulinMaster || {};
-window.WulinMaster.Data = window.WulinMaster.Data || {};
-window.WulinMaster.Data.RemoteModel = RemoteModel;
+const win = window as any;
+win.WulinMaster = win.WulinMaster || {};
+win.WulinMaster.Data = win.WulinMaster.Data || {};
+win.WulinMaster.Data.RemoteModel = RemoteModel;

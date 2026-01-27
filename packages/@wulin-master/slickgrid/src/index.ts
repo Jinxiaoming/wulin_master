@@ -7,3 +7,7 @@ export * from './behavior_manager';
 export { default as FilterPanel } from './filterpanel';
 export * from './editors';
 export * from './formatters';
+export * from './menu';
+export * from './loader';
+export * from './panel';
+export * from './wulin_form';

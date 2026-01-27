@@ -1,6 +1,8 @@
+import apiClient from './api_client.js';
+
 /**
  * GridStatesManager handles saving and restoring grid states (width, order, visibility, sorting, filters).
- * Modernized to use Fetch API and native JS.
+ * Modernized to use ApiClient and native JS.
  */
 const GridStatesManager = {
   /**
@@ -22,22 +24,11 @@ const GridStatesManager = {
 
     const payload = {
       grid_name: gridName,
-      state_value: stateValue,
-      authenticity_token: window._token
+      state_value: stateValue
     };
 
     try {
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Requested-With': 'XMLHttpRequest'
-        },
-        body: JSON.stringify(payload)
-      });
-
-      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-      return await response.json();
+      return await apiClient.post(url, payload);
     } catch (error) {
       console.error('Error saving grid states:', error);
     }

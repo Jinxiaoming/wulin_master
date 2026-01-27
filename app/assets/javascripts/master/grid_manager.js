@@ -1,10 +1,11 @@
 import RemoteModel from './remotemodel.js';
+import registry from './registry.js';
 
 /**
  * GridManager manages the collection of SlickGrid instances on the page.
  * It handles grid creation, retrieval, and global resizing.
  */
-export default class GridManager {
+export class GridManager {
   constructor() {
     this.gridElementPrefix = "#grid_";
     this.gridElementSuffix = " .grid";
@@ -35,20 +36,20 @@ export default class GridManager {
    */
   getEditorForType(type) {
     switch (type.toLowerCase()) {
-      case "enum": return window.SelectEditor;
-      case "string": return window.TextEditor;
-      case "text": return window.TextAreaEditor;
-      case "datetime": return window.DateTimeEditor;
-      case "time": return window.TimeEditor;
-      case "date": return window.DateEditor;
-      case "integer": return window.IntegerEditor;
-      case "decimal": return window.DecimalEditor;
-      case "boolean": return window.YesNoCheckboxEditor;
+      case "enum": return registry.getEditor("SelectEditor");
+      case "string": return registry.getEditor("TextEditor");
+      case "text": return registry.getEditor("TextAreaEditor");
+      case "datetime": return registry.getEditor("DateTimeEditor");
+      case "time": return registry.getEditor("TimeEditor");
+      case "date": return registry.getEditor("DateEditor");
+      case "integer": return registry.getEditor("IntegerEditor");
+      case "decimal": return registry.getEditor("DecimalEditor");
+      case "boolean": return registry.getEditor("YesNoCheckboxEditor");
       case "belongs_to":
       case "has_one":
-      case "has_and_belongs_to_many": return window.OtherRelationEditor;
-      case "has_many": return window.HasManyEditor;
-      default: return window.TextEditor;
+      case "has_and_belongs_to_many": return registry.getEditor("OtherRelationEditor");
+      case "has_many": return registry.getEditor("HasManyEditor");
+      default: return registry.getEditor("TextEditor");
     }
   }
 
@@ -63,10 +64,10 @@ export default class GridManager {
 
       // 1. Append editor
       if (typeof column.editor === 'string') {
-        column.editor = eval(column.editor);
+        column.editor = registry.getEditor(column.editor);
       } else if (typeof column.editor !== 'object') {
         if (column.distinct) {
-          column.editor = window.DistinctEditor;
+          column.editor = registry.getEditor("DistinctEditor");
         } else {
           column.editor = this.getEditorForType(column.type);
         }
@@ -79,15 +80,15 @@ export default class GridManager {
 
       // 3. Append formatter
       if (typeStr === "boolean" && !column.formatter) {
-        column.formatter = window.GraphicBoolCellFormatter;
+        column.formatter = registry.getFormatter("GraphicBoolCellFormatter");
       }
 
       if (!column.formatter) {
-        column.formatter = window.BaseFormatter;
+        column.formatter = registry.getFormatter("BaseFormatter");
       }
 
       if (typeof column.formatter === 'string') {
-        column.formatter = eval(column.formatter);
+        column.formatter = registry.getFormatter(column.formatter);
       }
     });
   }
@@ -217,82 +218,24 @@ export default class GridManager {
       grid.setSelectionModel(new Slick.RowSelectionModel({ selectActiveRow: false }));
       grid.registerPlugin(options.checkboxSelector);
     }
-  }
 
-  /**
-   * Native implementation of the grid context menu.
-   */
-  showContextMenu(grid, e) {
-    let contextMenu = document.getElementById('contextMenu');
-    if (!contextMenu) {
-      contextMenu = document.createElement('ul');
-      contextMenu.id = 'contextMenu';
-      contextMenu.className = 'context-menu';
-      contextMenu.style.display = 'none';
-      contextMenu.style.position = 'absolute';
-      contextMenu.tabIndex = 0;
-      document.body.appendChild(contextMenu);
-    }
-
-    const cell = grid.getCellFromEvent(e);
-    const node = grid.getCellNode(cell.row, cell.cell);
-    const text = (node.textContent || "").trim();
-
-    // Reset active states
-    grid.getContainerNode().querySelectorAll(".slick-cell, .slick-row").forEach(el => el.classList.remove("active"));
-
-    if (!node.classList.contains("selected")) {
-      grid.setActiveCell(cell.row, cell.cell);
-    } else {
-      node.classList.add("active");
-      node.parentElement.classList.add("active");
-      grid.setActiveRow(cell.row);
-      grid.setActiveCellPosX(cell.cell);
-      grid.setActiveCellNode(cell);
-    }
-
-    contextMenu.innerHTML = '';
-    contextMenu.style.top = `${e.pageY}px`;
-    contextMenu.style.left = `${e.pageX}px`;
-    contextMenu.style.display = 'block';
-    contextMenu.focus();
-
-    // Copy item
-    const copyItem = document.createElement('li');
-    copyItem.innerHTML = `<i class='material-icons'>content_copy</i>Copy Cell`;
-    copyItem.onclick = () => {
-      navigator.clipboard.writeText(text);
-      M.toast({ html: `${text} copied.` });
-      contextMenu.style.display = 'none';
-    };
-    contextMenu.appendChild(copyItem);
-
-    // Dynamic actions
-    const contextActions = [...grid.select_toolbar_items].sort((a, b) => a.title[1].localeCompare(b.title[1]));
-    contextActions.forEach(action => {
-      const gridAction = grid.actions.find(item => action.title === (item.title || item.name[0].toUpperCase() + item.name.slice(1)));
-      if (!gridAction) return;
-
-      const item = document.createElement('li');
-      const actionName = action.title.toLowerCase();
-      item.innerHTML = `<i class='material-icons'>${action.icon || 'help'}</i>${actionName[0].toUpperCase() + actionName.slice(1)}`;
-      item.onclick = () => {
-        const triggerBtn = document.getElementById(`${gridAction.name}_action_on_${grid.name}`);
-        if (triggerBtn) triggerBtn.click();
-        contextMenu.style.display = 'none';
-      };
-      contextMenu.appendChild(item);
-    });
-
-    const closeMenu = () => {
-      contextMenu.style.display = 'none';
-      document.removeEventListener('click', closeMenu);
-    };
-    setTimeout(() => document.addEventListener('click', closeMenu), 10);
+    return grid;
   }
 
   getGrid(name) {
     return this.grids.find(g => g.name === name) || null;
+  }
+
+  /**
+   * Destroys a grid instance and removes it from the collection.
+   */
+  destroyGrid(name) {
+    const gridIndex = this.grids.findIndex(g => g.name === name);
+    if (gridIndex !== -1) {
+      const grid = this.grids[gridIndex];
+      grid.destroy();
+      this.grids.splice(gridIndex, 1);
+    }
   }
 
   setGridBodyHeight(gridElement) {
@@ -315,5 +258,8 @@ export default class GridManager {
 }
 
 // Global exposure for legacy compatibility
+const gridManager = new GridManager();
 window.GridManager = GridManager;
-window.gridManager = new GridManager();
+window.gridManager = gridManager;
+
+export { gridManager };

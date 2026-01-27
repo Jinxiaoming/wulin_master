@@ -33,5 +33,5 @@ When(/^I click on the first row of the '([^"]*)' grid$/) do |grid_name|
 end
 
 When(/^I scroll down for (\d+)px$/) do |scroll|
-  page.execute_script("$('.slick-viewport')[0].scrollTop = $('.slick-viewport')[0].scrollTop + #{scroll.to_i}")
+  page.execute_script("document.querySelector('.slick-viewport').scrollTop += #{scroll.to_i}")
 end

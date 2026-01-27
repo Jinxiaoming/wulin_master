@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 When(/^(?:|I )press '([^"]*)'$/) do |button|
-  page.execute_script("$('.flatpickr-calendar').removeClass('open')")
+  page.execute_script("document.querySelectorAll('.flatpickr-calendar').forEach(el => el.classList.remove('open'))")
   click_button(button)
 end
 

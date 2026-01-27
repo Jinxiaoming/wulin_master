@@ -1,3 +1,5 @@
+import Requests from './grid_requests.js';
+
 /**
  * ActionManager handles the registration and dispatching of grid actions (toolbar items).
  */
@@ -115,7 +117,7 @@ const BaseAction = {
       message: message,
       title: title,
       confirmCallBack: function() {
-        window.Requests.deleteByAjax(grid, ids);
+        Requests.deleteByAjax(grid, ids);
         // reload the master grid (for detach detail action)
         if (self.reload_master && grid.master_grid) {
           grid.master_grid.loader.reloadData();

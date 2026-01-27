@@ -1,3 +1,5 @@
+import registry from './registry.js';
+
 /**
  * SlickGrid Formatters for WulinMaster.
  * Modernized to use ES6 and native DOM APIs.
@@ -274,6 +276,11 @@ const SlickFormatter = {
     return SlickFormatter.applyStyle(value, columnDef.style_class, columnDef.style || '');
   },
 };
+
+// Register all formatters in the registry
+Object.entries(SlickFormatter).forEach(([name, formatter]) => {
+  registry.registerFormatter(name, formatter);
+});
 
 // Export to window for SlickGrid compatibility
 Object.assign(window, SlickFormatter);

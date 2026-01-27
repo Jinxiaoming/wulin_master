@@ -1,3 +1,5 @@
+import registry from './registry.js';
+
 /**
  * SlickGrid Editors for WulinMaster.
  * Modernized to use ES6 classes and native DOM APIs.
@@ -74,7 +76,8 @@ class BaseEditor {
     if (typeof validator === 'function') {
       return validator(this.args, value);
     } else if (typeof validator === 'string') {
-      return eval(validator)(this.args, value);
+      // Avoid eval if possible, but keeping for legacy compatibility
+      return window[validator]?.(this.args, value) || { valid: true, msg: null };
     }
     return { valid: true, msg: null };
   }
@@ -746,8 +749,8 @@ class RichTextEditor extends InputElementEditor {
   }
 }
 
-// Export to window for SlickGrid compatibility
-window.WulinEditors = {
+// Register all editors in the registry
+const WulinEditors = {
   BaseEditor,
   InputElementEditor,
   IntegerEditor,
@@ -769,5 +772,10 @@ window.WulinEditors = {
   RichTextEditor
 };
 
-// Also export individual editors to window root as SlickGrid expects them there
-Object.assign(window, window.WulinEditors);
+Object.entries(WulinEditors).forEach(([name, editor]) => {
+  registry.registerEditor(name, editor);
+});
+
+// Export to window for SlickGrid compatibility
+Object.assign(window, WulinEditors);
+export default WulinEditors;

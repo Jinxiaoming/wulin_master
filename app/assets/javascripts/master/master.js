@@ -20,18 +20,18 @@ const application = Application.start()
 window.Stimulus = application
 
 // Register Stimulus Controllers
-import NotificationController from "./controllers/notification_controller"
-import ModalController from "./controllers/modal_controller"
-import LoaderController from "./controllers/loader_controller"
-import MaterializeController from "./controllers/materialize_controller"
-import PanelController from "./controllers/panel_controller"
-import NavigationController from "./controllers/navigation_controller"
-import ScreenController from "./controllers/screen_controller"
-import GridController from "./controllers/grid_controller"
-import FormController from "./controllers/form_controller"
-import InclusionExclusionController from "./controllers/inclusion_exclusion_controller"
-import GridStatesController from "./controllers/grid_states_controller"
-import ToolbarController from "./controllers/toolbar_controller"
+import NotificationController from "../controllers/notification_controller"
+import ModalController from "../controllers/modal_controller"
+import LoaderController from "../controllers/loader_controller"
+import MaterializeController from "../controllers/materialize_controller"
+import PanelController from "../controllers/panel_controller"
+import NavigationController from "../controllers/navigation_controller"
+import ScreenController from "../controllers/screen_controller"
+import GridController from "../controllers/grid_controller"
+import FormController from "../controllers/form_controller"
+import InclusionExclusionController from "../controllers/inclusion_exclusion_controller"
+import GridStatesController from "../controllers/grid_states_controller"
+import ToolbarController from "../controllers/toolbar_controller"
 
 application.register("notification", NotificationController)
 application.register("modal", ModalController)
@@ -49,21 +49,11 @@ application.register("toolbar", ToolbarController)
 // SlickGrid dependencies from NPM
 import 'slickgrid/dist/styles/css/slick.grid.css'
 import 'slickgrid/dist/styles/css/slick-default-theme.css'
-import 'slickgrid/dist/browser/slick.core'
-import 'slickgrid/dist/browser/slick.grid'
-import 'slickgrid/dist/browser/controls/slick.columnpicker'
-import 'slickgrid/dist/browser/controls/slick.pager'
-import 'slickgrid/dist/browser/plugins/slick.autotooltips'
-import 'slickgrid/dist/browser/plugins/slick.cellcopymanager'
-import 'slickgrid/dist/browser/plugins/slick.cellrangedecorator'
-import 'slickgrid/dist/browser/plugins/slick.cellrangeselector'
-import 'slickgrid/dist/browser/plugins/slick.cellselectionmodel'
-import 'slickgrid/dist/browser/plugins/slick.checkboxselectcolumn'
-import 'slickgrid/dist/browser/plugins/slick.rowdetailview'
-import 'slickgrid/dist/browser/plugins/slick.rowselectionmodel'
+import 'slickgrid'
 
 // Core master files (in dependency order)
 import './escape_html.js'
+import apiClient from './api_client.js'
 import './utility.js'
 import './datetime.js'
 import './notifications.js'
@@ -74,20 +64,32 @@ import './dialog.js'
 import './editors.js'
 import './filterpanel.js'
 import './formatters.js'
-import './grid_requests.js'
-import './grid_states_manager.js'
+import Requests from './grid_requests.js'
+import GridStatesManager from './grid_states_manager.js'
 import './loader.js'
 import './materialize_auto_init.js'
 import './menu.js'
 import './panel.js'
 import RemoteModel from './remotemodel.js'
 import './row_detail_templates.js'
-import './ui_helper.js'
-import './grid_manager.js'
+import Ui from './ui_helper.js'
+import { gridManager } from './grid_manager.js'
+import { BehaviorManager, BaseBehavior } from './behavior_manager.js'
+import { ActionManager, BaseAction } from './action_manager.js'
 
-// Managers
-import './behavior_manager.js'
-import './action_manager.js'
+// Global exposure for legacy compatibility and cross-module access
+window.apiClient = apiClient;
+window.Ui = Ui;
+window.Requests = Requests;
+window.GridStatesManager = GridStatesManager;
+window.gridManager = gridManager;
+window.WulinMaster = window.WulinMaster || {};
+window.WulinMaster.BehaviorManager = BehaviorManager;
+window.WulinMaster.behaviors = window.WulinMaster.behaviors || {};
+window.WulinMaster.behaviors.BaseBehavior = BaseBehavior;
+window.WulinMaster.ActionManager = ActionManager;
+window.WulinMaster.actions = window.WulinMaster.actions || {};
+window.WulinMaster.actions.BaseAction = BaseAction;
 
 // Wulin Master Behaviors
 import './behaviors/add_candidate_filter.js'

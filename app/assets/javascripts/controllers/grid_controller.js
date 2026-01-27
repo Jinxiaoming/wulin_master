@@ -24,12 +24,21 @@ export default class extends Controller {
     this.initializeTooltips()
   }
 
+  disconnect() {
+    if (this.grid) {
+      this.grid.destroy()
+    }
+    if (window.gridManager && this.nameValue) {
+      window.gridManager.destroyGrid(this.nameValue)
+    }
+  }
+
   /**
    * Calls GridManager to create the SlickGrid instance.
    */
   initializeGrid() {
     if (window.gridManager) {
-      window.gridManager.createNewGrid(
+      this.grid = window.gridManager.createNewGrid(
         this.nameValue,
         this.modelValue,
         this.screenValue,
@@ -43,6 +52,15 @@ export default class extends Controller {
         this.selectToolbarItemsValue,
         this.userIdValue
       )
+    }
+  }
+
+  /**
+   * Destroys the grid instance via GridManager.
+   */
+  destroyGrid() {
+    if (window.gridManager && this.nameValue) {
+      window.gridManager.destroyGrid(this.nameValue)
     }
   }
 

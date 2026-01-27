@@ -1,14 +1,22 @@
-// ------------------------------ CRUD -------------------------------------
-var Requests = {
-  // Record create by ajax
-  createByAjax: function(grid, continue_on, afterCreated) {
+import apiClient from './api_client.js';
+import Ui from './ui_helper.js';
+
+/**
+ * Requests module handles CRUD operations for SlickGrid.
+ * Modernized to use ApiClient and remove jQuery dependencies.
+ */
+const Requests = {
+  /**
+   * Creates a new record via AJAX.
+   */
+  createByAjax: async function(grid, continueOn, afterCreated) {
     const createFormElement = document.querySelector(`div#${grid.name}_form form`);
     if (!createFormElement) return;
 
     const submitButton = createFormElement.querySelector("input[type='submit']");
     const formData = new FormData(createFormElement);
     
-    // Clear all the error messages
+    // Clear all error messages
     createFormElement.querySelectorAll(".field_error").forEach(el => el.textContent = "");
     createFormElement.querySelectorAll("input.invalid").forEach(el => el.classList.remove('invalid'));
 
@@ -16,20 +24,16 @@ var Requests = {
 
     const url = `${grid.path}.json`;
     
-    fetch(url, {
-      method: 'POST',
-      body: formData,
-      headers: {
-        'X-CSRF-Token': decodeURIComponent(window._token || ''),
-        'X-Requested-With': 'XMLHttpRequest',
-        'Accept': 'application/json'
-      }
-    })
-    .then(response => {
-      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-      return response.json();
-    })
-    .then(request => {
+    try {
+      const request = await apiClient.request(url, {
+        method: 'POST',
+        body: formData,
+        headers: {
+          'Accept': 'application/json'
+          // Content-Type is not set for FormData to let the browser set the boundary
+        }
+      });
+
       if (typeof afterCreated === "function") {
         return afterCreated(request);
       }
@@ -47,7 +51,7 @@ var Requests = {
           grid.master_grid.loader.ensureData(vp.top, vp.bottom);
         }
 
-        if (continue_on) {
+        if (continueOn) {
           if (window._always_reset_form) {
             Ui.refreshCreateForm(grid);
           }
@@ -58,10 +62,10 @@ var Requests = {
         }
 
         const successMessage = grid.options.success_message || `${grid.model} successfully created`;
-        displayNewNotification(successMessage, 'success');
+        window.displayNewNotification(successMessage, 'success');
       } else {
         // Handle validation errors
-        for(let k in request.error_message){
+        for (let k in request.error_message) {
           const field = createFormElement.querySelector(`.field[name="${k}"], .field[name="${k}_id"]`);
           if (field) {
             const errorEl = field.querySelector(".field_error");
@@ -77,44 +81,20 @@ var Requests = {
         }
 
         const errorMessage = grid.options.error_message || `Error creating ${grid.model.toLowerCase()}`;
-        saveMessage(errorMessage, 'error');
+        window.saveMessage(errorMessage, 'error');
       }
-    })
-    .catch(error => {
+    } catch (error) {
       console.error('Create error:', error);
-      displayErrorMessage('An error occurred during creation.', 'Network Error');
-    })
-    .finally(() => {
+      window.displayErrorMessage('An error occurred during creation.', 'Network Error');
+    } finally {
       if (submitButton) submitButton.disabled = false;
-    });
+    }
   },
 
   /**
-   * Performs an AJAX request using the modern Fetch API.
-   * This is a step towards removing the jQuery dependency.
-   * 
-   * @param {string} url - The endpoint URL
-   * @param {Object} options - Fetch options (method, body, etc.)
-   * @returns {Promise<Object>} The JSON response
+   * Updates a record via AJAX.
    */
-  async fetchJson(url, options = {}) {
-    const defaultOptions = {
-      headers: {
-        'Content-Type': 'application/json',
-        'X-CSRF-Token': decodeURIComponent(window._token || ''),
-        'X-Requested-With': 'XMLHttpRequest'
-      }
-    };
-
-    const response = await fetch(url, { ...defaultOptions, ...options });
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    return await response.json();
-  },
-
-  // Record update by ajax
-  updateByAjax: function(grid, item, editCommand) {
+  updateByAjax: async function(grid, item, editCommand) {
     delete item.slick_index;
     const currentRow = this.getCurrentRows(grid, [item.id])[1];
 
@@ -124,42 +104,43 @@ var Requests = {
     });
 
     const url = `${grid.path}/${item.id}.json${grid.query}`;
-    const body = JSON.stringify({
+    const payload = {
       _method: 'PUT',
       item: item,
-      authenticity_token: decodeURIComponent(window._token),
       gridParams: gridParams
-    });
+    };
 
-    this.fetchJson(url, { method: 'POST', body })
-      .then(msg => {
-        if(msg.success) {
-          grid.onUpdatedByAjax.notify({item, msg});
-          const from = parseInt(currentRow / 200, 10) * 200;
-          grid.loader.reloadData(from, currentRow);
-          
-          const successMessage = grid.options.update_success_message || `${grid.model} successfully updated`;
-          displayNewNotification(successMessage, 'success');
+    try {
+      const msg = await apiClient.request(url, { method: 'POST', body: JSON.stringify(payload) });
+      
+      if (msg.success) {
+        grid.onUpdatedByAjax.notify({ item, msg });
+        const from = Math.floor(currentRow / 200) * 200;
+        grid.loader.reloadData(from, currentRow);
+        
+        const successMessage = grid.options.update_success_message || `${grid.model} successfully updated`;
+        window.displayNewNotification(successMessage, 'success');
+      } else {
+        window.displayErrorMessage(msg.error_message || 'Update failed', 'Error');
+        if (editCommand) {
+          editCommand.undo();
         } else {
-          displayErrorMessage(msg.error_message || 'Update failed', 'Error');
-          if(editCommand) {
-            editCommand.undo();
-          } else {
-            grid.loader.reloadData();
-          }
+          grid.loader.reloadData();
         }
-      })
-      .catch(error => {
-        console.error('Update error:', error);
-        displayErrorMessage('An error occurred during update.', 'Network Error');
-        if(editCommand) editCommand.undo();
-      });
+      }
+    } catch (error) {
+      console.error('Update error:', error);
+      window.displayErrorMessage('An error occurred during update.', 'Network Error');
+      if (editCommand) editCommand.undo();
+    }
   },
 
-  // Delete rows along ajax
-  deleteByAjax: function(grid, ids, force = false) {
+  /**
+   * Deletes records via AJAX.
+   */
+  deleteByAjax: async function(grid, ids, force = false) {
     if (ids.length > 350) {
-      displayErrorMessage('You selected too many rows, please select less than 350 rows.', 'Selection Error');
+      window.displayErrorMessage('You selected too many rows, please select less than 350 rows.', 'Selection Error');
       return;
     }
     
@@ -167,46 +148,44 @@ var Requests = {
     if (ids.length === 0) return;
 
     const url = `${grid.path}/${ids}.json${grid.query}&force=${force}`;
-    const body = JSON.stringify({
-      _method: 'DELETE',
-      authenticity_token: window._token
-    });
+    const payload = { _method: 'DELETE' };
 
-    this.fetchJson(url, { method: 'POST', body })
-      .then(msg => {
-        if(msg.success) {
-          grid.onDeletedByAjax.notify({ids, msg});
-          grid.resetActiveCell();
-          const from = parseInt(range[0] / 200, 10) * 200;
-          const to = range[1] + 1;
-          grid.loader.reloadData(from, to);
-          if ((grid.reloadMasterAfterUpdates || grid.options.reloadMasterAfterUpdates) && grid.master_grid) {
-            grid.master_grid.loader.reloadData();
-          }
-
-          this.updateToolbarState(grid, ids);
-
-          const recordSize = Array.isArray(ids) ? ids.length : String(ids).split(',').length;
-          const modelName = grid.model ? grid.model.toLowerCase() : 'record';
-          const message = recordSize > 1 ? `${recordSize} ${modelName}s deleted` : `1 ${modelName} deleted`;
-          displayNewNotification(message, 'success');
-        } else if(msg.confirm) {
-          displayCustomizedConfirmModal({
-            message: msg.warning_message || "Are you sure?",
-            title: "Delete Confirmation",
-            confirmCallBack: () => {
-              Requests.deleteByAjax(grid, ids, true);
-            }
-          });
-        } else {
-          displayErrorMessage(msg.error_message || 'Delete failed', 'Error');
-          saveMessage('Error deleting ' + (grid.model ? grid.model.toLowerCase() : 'record'), 'error');
+    try {
+      const msg = await apiClient.request(url, { method: 'POST', body: JSON.stringify(payload) });
+      
+      if (msg.success) {
+        grid.onDeletedByAjax.notify({ ids, msg });
+        grid.resetActiveCell();
+        const from = Math.floor(range[0] / 200) * 200;
+        const to = range[1] + 1;
+        grid.loader.reloadData(from, to);
+        
+        if ((grid.reloadMasterAfterUpdates || grid.options.reloadMasterAfterUpdates) && grid.master_grid) {
+          grid.master_grid.loader.reloadData();
         }
-      })
-      .catch(error => {
-        console.error('Delete error:', error);
-        displayErrorMessage('An error occurred during deletion.', 'Network Error');
-      });
+
+        this.updateToolbarState(grid, ids);
+
+        const recordSize = Array.isArray(ids) ? ids.length : String(ids).split(',').length;
+        const modelName = grid.model ? grid.model.toLowerCase() : 'record';
+        const message = recordSize > 1 ? `${recordSize} ${modelName}s deleted` : `1 ${modelName} deleted`;
+        window.displayNewNotification(message, 'success');
+      } else if (msg.confirm) {
+        window.displayCustomizedConfirmModal({
+          message: msg.warning_message || "Are you sure?",
+          title: "Delete Confirmation",
+          confirmCallBack: () => {
+            this.deleteByAjax(grid, ids, true);
+          }
+        });
+      } else {
+        window.displayErrorMessage(msg.error_message || 'Delete failed', 'Error');
+        window.saveMessage('Error deleting ' + (grid.model ? grid.model.toLowerCase() : 'record'), 'error');
+      }
+    } catch (error) {
+      console.error('Delete error:', error);
+      window.displayErrorMessage('An error occurred during deletion.', 'Network Error');
+    }
   },
 
   /**
@@ -218,7 +197,7 @@ var Requests = {
 
     const buttonMode = toolbarSelect.dataset.mode;
     
-    if(buttonMode === 'split') {
+    if (buttonMode === 'split') {
       toolbarSelect.hidden = true;
     } else {
       toolbarSelect.querySelectorAll('.specific').forEach(el => {
@@ -230,14 +209,20 @@ var Requests = {
     }
   },
 
+  /**
+   * Gets the range of indices for the given record IDs.
+   */
   getCurrentRows: function(grid, ids) {
-    var indexes = ids.filter((id) => {
-      grid.getRowByRecordId(id)
-    }).map((id) => parseInt(grid.getRowByRecordId(id).index, 10));
-    indexes = indexes.sort();
-    return [indexes[0], indexes[indexes.length-1]];
+    const indexes = ids
+      .map(id => grid.getRowByRecordId(id))
+      .filter(row => row !== undefined)
+      .map(row => parseInt(row.index, 10))
+      .sort((a, b) => a - b);
+    
+    return [indexes[0], indexes[indexes.length - 1]];
   }
-}; // Requests
+};
 
-// Expose Requests to global window object
+// Global exposure for legacy compatibility
 window.Requests = Requests;
+export default Requests;

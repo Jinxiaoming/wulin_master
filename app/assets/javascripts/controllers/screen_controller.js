@@ -12,6 +12,10 @@ export default class extends Controller {
     this.initializeScreen()
   }
 
+  disconnect() {
+    this.beforeRender()
+  }
+
   /**
    * Performs initialization logic for the newly loaded screen.
    */

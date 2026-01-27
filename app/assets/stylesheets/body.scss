@@ -87,3 +87,22 @@ body {
     font-size: $font-size-middle;
   }
 }
+
+// API Loading Progress Bar
+body.api-loading::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 3px;
+  background: $main-color;
+  z-index: 9999;
+  animation: api-loading-bar 2s infinite ease-in-out;
+}
+
+@keyframes api-loading-bar {
+  0% { transform: translateX(-100%); }
+  50% { transform: translateX(0); }
+  100% { transform: translateX(100%); }
+}

@@ -1,11 +1,14 @@
 # rails new wulin_app --skip-hotwire --database=postgresql -j esbuild -m ./wulin_master_template.rb
 
-# Configure Yarn to use node-modules linker (avoids PnP compatibility issues with esbuild and dartsass)
+# Configure Yarn to use node-modules linker
 file ".yarnrc.yml", <<~YAML
   nodeLinker: node-modules
+  supportedArchitectures:
+    os: [darwin, linux]
+    cpu: [arm64, x64]
 YAML
 
-run "git submodule add -b v3 https://github.com/ekohe/wulin_master.git vendor/gems/wulin_master"
+run "git submodule add -b v3.0.1a https://github.com/Jinxiaoming/wulin_master.git vendor/gems/wulin_master"
 run "git config -f .gitmodules submodule.vendor/gems/wulin_master.branch v3"
 
 gem "wulin_master", path: "vendor/gems/wulin_master"
@@ -36,11 +39,12 @@ file "package.json", <<~JSON, force: true
   {
     "name": "app",
     "private": true,
+    "packageManager": "yarn@4.0.0",
     "devDependencies": {
       "esbuild": "^0.25.9"
     },
     "scripts": {
-      "build": "esbuild app/javascript/application.js --bundle --sourcemap --format=esm --outdir=app/assets/builds --public-path=/assets --loader:.woff=file --loader:.woff2=file --external:*.css",
+      "build": "esbuild app/javascript/application.js --bundle --sourcemap --format=esm --outdir=app/assets/builds --public-path=/assets --loader:.woff=file --loader:.woff2=file --external:'*.css'",
       "copy-icons": "node script/copy_material_icons.js"
     },
     "dependencies": {
@@ -54,6 +58,11 @@ file "package.json", <<~JSON, force: true
       "tom-select": "^2.4.3",
       "@hotwired/stimulus": "^3.2.2",
       "@hotwired/turbo-rails": "^8.0.21"
+    },
+    "optionalDependencies": {
+      "@esbuild/linux-arm64": "0.25.9",
+      "@esbuild/linux-x64": "0.25.9",
+      "@esbuild/darwin-arm64": "0.25.9"
     }
   }
 JSON
@@ -157,6 +166,17 @@ ENV
 run "cp .env.example .env"
 append_to_file ".gitignore", ".env\n"
 
+# Create .dockerignore
+file ".dockerignore", <<~TEXT, force: true
+  .git
+  .env
+  node_modules
+  tmp
+  log
+  storage
+  public/assets
+TEXT
+
 # Create Dockerfile
 file "Dockerfile", <<~DOCKERFILE, force: true
   # syntax=docker/dockerfile:1
@@ -186,7 +206,7 @@ file "Dockerfile", <<~DOCKERFILE, force: true
 
   # Install JS dependencies
   COPY package.json yarn.lock .yarnrc.yml ./
-  RUN yarn install
+  RUN corepack enable && yarn install
 
   # Copy project files
   COPY . .
@@ -221,6 +241,7 @@ file "docker-compose.yml", <<~YAML
       command: ./bin/dev
       volumes:
         - .:/rails
+        - /rails/node_modules
       ports:
         - "3000:3000"
       env_file:
@@ -268,8 +289,9 @@ after_bundle do
   run "yarn run copy-icons"
 
   # Set custom build script (overwrites Rails default to include font loaders)
-  build_script = "esbuild app/javascript/application.js --bundle --sourcemap --format=esm --outdir=app/assets/builds --public-path=/assets --loader:.woff=file --loader:.woff2=file --external:*.css"
-  run %(npm pkg set scripts.build="#{build_script}")
+  package_json = JSON.parse(File.read("package.json"))
+  package_json["scripts"]["build"] = "esbuild app/javascript/application.js --bundle --sourcemap --format=esm --outdir=app/assets/builds --public-path=/assets --loader:.woff=file --loader:.woff2=file --external:*.css"
+  File.write("package.json", JSON.pretty_generate(package_json))
 
   # Build JavaScript assets
   run "yarn build"

@@ -43,7 +43,8 @@ import {
   ImportRolePermissionAction,
   UpdateBehavior,
   ColumnFilterBehavior,
-  AffiliationBehavior
+  AffiliationBehavior,
+  AggregationBehavior
 } from './index'
 
 import { registerWulinControllers } from '@wulin-master/stimulus'
@@ -91,7 +92,8 @@ Object.assign(window.WulinMaster, {
     BaseBehavior,
     Update: UpdateBehavior,
     ColumnFilter: ColumnFilterBehavior,
-    Affiliation: AffiliationBehavior
+    Affiliation: AffiliationBehavior,
+    Aggregation: AggregationBehavior
   },
   FilterPanel
 });

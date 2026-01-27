@@ -1,16 +1,20 @@
-WulinMaster.behaviors.Aggregation = Object.assign({}, WulinMaster.behaviors.BaseBehavior, {
+import { WulinGrid, GridBehavior } from '@wulin-master/core';
+import { BaseBehavior, BehaviorManager } from '../behavior_manager';
+
+const AggregationBehavior: GridBehavior = Object.assign({}, BaseBehavior, {
+  name: 'aggregation',
   events: ['onRendered', 'onDataLoaded'],
 
-  subscribe: function (target) {
+  subscribe: function (this: GridBehavior, target: WulinGrid) {
     this.grid = target;
     const [onRendered, onDataLoaded] = this.events;
-    target[onRendered].subscribe((_, args) => this.renderSpan(args));
-    target.loader[onDataLoaded].subscribe((_, args) => this.fillSpan(args));
+    (target as any)[onRendered].subscribe((_: any, args: any) => this.renderSpan(args));
+    (target.loader as any)[onDataLoaded].subscribe((_: any, args: any) => this.fillSpan(args));
   },
 
-  utils: function () {
-    const getPager = grid => grid.container.querySelector('.pager-item.extra');
-    const addAggregationSpan = pager => {
+  utils: function (this: GridBehavior) {
+    const getPager = (grid: WulinGrid) => grid.container.querySelector('.pager-item.extra') as HTMLElement;
+    const addAggregationSpan = (pager: HTMLElement | null) => {
       if (!pager) return null;
       let span = pager.querySelector('#aggregation');
       if (!span) {
@@ -20,20 +24,20 @@ WulinMaster.behaviors.Aggregation = Object.assign({}, WulinMaster.behaviors.Base
       }
       return span;
     };
-    const getSpan = grid => grid.container.querySelector('span#aggregation');
+    const getSpan = (grid: WulinGrid) => grid.container.querySelector('span#aggregation') as HTMLElement;
     return {
       getPager, addAggregationSpan, getSpan,
     };
   },
 
-  renderSpan: function (args) {
-    const { grid } = this;
+  renderSpan: function (this: GridBehavior, args: any) {
+    const grid = this.grid;
     const { getPager, addAggregationSpan } = this.utils();
     return addAggregationSpan(getPager(grid));
   },
 
-  fillSpan: async function (args) {
-    const { grid } = this;
+  fillSpan: function (this: GridBehavior, args: any) {
+    const grid = this.grid;
     const { getSpan } = this.utils();
     const aggregation = grid.loader.getPagingInfo()['aggregation'] || '';
     const span = getSpan(grid);
@@ -43,4 +47,5 @@ WulinMaster.behaviors.Aggregation = Object.assign({}, WulinMaster.behaviors.Base
   },
 });
 
-WulinMaster.BehaviorManager.register('aggregation', WulinMaster.behaviors.Aggregation);
+BehaviorManager.register('aggregation', AggregationBehavior);
+export default AggregationBehavior;

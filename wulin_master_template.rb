@@ -10,6 +10,11 @@ run "git config -f .gitmodules submodule.vendor/gems/wulin_master.branch v3"
 
 gem "wulin_master", path: "vendor/gems/wulin_master"
 
+gem "rexml"
+gem "net-smtp"
+gem "net-imap"
+gem "net-pop"
+
 gem "dartsass-rails"
 
 # Add wulin master javascript to application.js:
@@ -26,17 +31,11 @@ file "app/assets/stylesheets/application.sass", <<~CSS
   @use "../../../vendor/gems/wulin_master/app/assets/stylesheets/master";
 CSS
 
-# Remove application.html.erb
-remove_file "app/views/layouts/application.html.erb"
-
-# Setup package.json with all required dependencies and Workspace support
-file "package.json", <<~JSON
+# Setup package.json with all required dependencies
+file "package.json", <<~JSON, force: true
   {
     "name": "app",
     "private": true,
-    "workspaces": [
-      "vendor/gems/wulin_master"
-    ],
     "devDependencies": {
       "esbuild": "^0.25.9"
     },
@@ -159,7 +158,7 @@ run "cp .env.example .env"
 append_to_file ".gitignore", ".env\n"
 
 # Create Dockerfile
-file "Dockerfile", <<~DOCKERFILE
+file "Dockerfile", <<~DOCKERFILE, force: true
   # syntax=docker/dockerfile:1
   ARG RUBY_VERSION=3.3.0
   FROM ruby:$RUBY_VERSION-slim as base
@@ -256,6 +255,9 @@ file "config/database.yml", <<~YAML, force: true
 YAML
 
 after_bundle do
+  # Ensure corepack is enabled and use yarn berry (v4) as specified in Rails 8
+  run "corepack enable"
+  
   # Install npm dependencies (node-modules mode)
   run "yarn install"
 
@@ -265,9 +267,26 @@ after_bundle do
   # Copy material icons fonts
   run "yarn run copy-icons"
 
+  # Set custom build script (overwrites Rails default to include font loaders)
+  build_script = "esbuild app/javascript/application.js --bundle --sourcemap --format=esm --outdir=app/assets/builds --public-path=/assets --loader:.woff=file --loader:.woff2=file --external:*.css"
+  run %(npm pkg set scripts.build="#{build_script}")
+
   # Build JavaScript assets
   run "yarn build"
 
   # Generate theme color CSS
   run "bundle exec rake wulin_master:generate_theme_color_css"
+
+  # Finally remove the default application.html.erb after all generators and installers are done
+  remove_file "app/views/layouts/application.html.erb"
+
+  say "\n"
+  say "=================================================================", :green
+  say "  Wulin Master Application successfully created!", :green
+  say "=================================================================", :green
+  say "  To start your application with Docker (recommended):", :yellow
+  say "    1. docker-compose build"
+  say "    2. docker-compose up"
+  say "    3. docker-compose exec app bin/rails db:prepare"
+  say "=================================================================", :green
 end

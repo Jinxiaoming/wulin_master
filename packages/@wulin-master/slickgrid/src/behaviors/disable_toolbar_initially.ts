@@ -1,23 +1,22 @@
-// Disable toolbar items after grid rendered for some cases (eg: eagerLoading is false)
+import { WulinGrid, GridBehavior } from '@wulin-master/core';
+import { BaseBehavior, BehaviorManager } from '../behavior_manager';
 
-WulinMaster.behaviors.disableToolbarInitially = Object.assign({}, WulinMaster.behaviors.BaseBehavior, {
+// Disable toolbar items after grid rendered for some cases (eg: eagerLoading is false)
+const DisableToolbarInitiallyBehavior: GridBehavior = Object.assign({}, BaseBehavior, {
+  name: 'disable_toolbar_initially',
   event: "onRendered",
 
-  subscribe: function(target) {
+  subscribe: function(this: GridBehavior, target: WulinGrid) {
     this.grid = target;
-    var self = this;
-    target[this.event].subscribe(function(){ self.handler(); });
+    const self = this;
+    (target as any)[this.event].subscribe(() => { self.handler(); });
   },
 
-  unsubscribe: function() {
-
-  },
-
-  handler: function() {
-    var $toolbar_items = this.grid.container.find(".toolbar_item a").not('.switch_action');
-    $toolbar_items.addClass("toolbar_icon_disabled");
+  handler: function(this: GridBehavior) {
+    const toolbarItems = this.grid.container.querySelectorAll(".toolbar_item a:not(.switch_action)");
+    toolbarItems.forEach(el => el.classList.add("toolbar_icon_disabled"));
   }
-
 });
 
-WulinMaster.BehaviorManager.register("disable_toolbar_initially", WulinMaster.behaviors.disableToolbarInitially);
+BehaviorManager.register("disable_toolbar_initially", DisableToolbarInitiallyBehavior);
+export default DisableToolbarInitiallyBehavior;

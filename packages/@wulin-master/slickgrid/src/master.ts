@@ -47,13 +47,16 @@ import {
   MakeDefaultGridAction,
   CopyGridStatesAction,
   MultipleGridStatesAction,
+  FilterDefaultGridStatesAction,
   UpdateBehavior,
   ColumnFilterBehavior,
   AffiliationBehavior,
   AggregationBehavior,
   ValidateBehavior,
   HighlightBehavior,
-  ClearFiltersBehavior
+  ClearFiltersBehavior,
+  DisableSortingInitiallyBehavior,
+  DisableToolbarInitiallyBehavior
 } from './index'
 
 import { registerWulinControllers } from '@wulin-master/stimulus'
@@ -99,7 +102,8 @@ Object.assign(window.WulinMaster, {
     ImportRolePermission: ImportRolePermissionAction,
     MakeDefaultGrid: MakeDefaultGridAction,
     CopyGridStates: CopyGridStatesAction,
-    MultipleGridStates: MultipleGridStatesAction
+    MultipleGridStates: MultipleGridStatesAction,
+    FilterDefaultGridStates: FilterDefaultGridStatesAction
   },
   BehaviorManager,
   behaviors: { 
@@ -111,7 +115,9 @@ Object.assign(window.WulinMaster, {
     Aggregation: AggregationBehavior,
     Validate: ValidateBehavior,
     Highlight: HighlightBehavior,
-    ClearFilters: ClearFiltersBehavior
+    ClearFilters: ClearFiltersBehavior,
+    DisableSortingInitially: DisableSortingInitiallyBehavior,
+    DisableToolbarInitially: DisableToolbarInitiallyBehavior
   },
   FilterPanel
 });

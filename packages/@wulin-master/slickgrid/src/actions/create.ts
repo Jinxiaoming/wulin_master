@@ -1,24 +1,27 @@
+import { WulinGrid, GridAction } from '@wulin-master/core';
+import { BaseAction, ActionManager } from '../action_manager';
+
 // Toolbar Item 'Create'
-WulinMaster.actions.Create = Object.assign({}, WulinMaster.actions.BaseAction, {
+const CreateAction: GridAction = Object.assign({}, BaseAction, {
   name: 'create',
 
-  handler: function() {
-    const self = this;
-    const grid = this.getGrid();
-    const hiddenColumns = this.hidden_columns;
+  handler: function(this: GridAction) {
+    const grid = this.target;
+    if (!grid) return;
+    const hiddenColumns = (this as any).hidden_columns;
 
-    window.Ui.openDialog(grid, 'wulin_master_new_form', grid.options);
+    window.WulinMaster.Ui.openDialog(grid, 'wulin_master_new_form', grid.options);
 
     // Register 'Create' button click event
-    const submitHandler = (evt) => {
-      const btn = evt.target;
-      if (btn.id !== `${grid.name}_submit` && btn.id !== `${grid.name}_submit_continue`) return;
+    const submitHandler = (evt: MouseEvent) => {
+      const btn = evt.target as HTMLElement;
+      if (!btn || (btn.id !== `${grid.name}_submit` && btn.id !== `${grid.name}_submit_continue`)) return;
 
       evt.preventDefault();
       const form = btn.closest('form');
       if (!form) return;
 
-      if (hiddenColumns) self.fillHiddenColumns(grid, hiddenColumns);
+      if (hiddenColumns) this.fillHiddenColumns(grid, hiddenColumns);
 
       let cancel = false;
       const beforeSubmitEvent = new CustomEvent('beforesubmit.wulin', {
@@ -35,33 +38,33 @@ WulinMaster.actions.Create = Object.assign({}, WulinMaster.actions.BaseAction, {
       if (cancel) return false;
 
       const continueOn = btn.id === `${grid.name}_submit_continue`;
-      window.Requests.createByAjax(grid, continueOn);
+      window.WulinMaster.Requests.createByAjax(grid, continueOn);
     };
 
     // Use a single listener on body for dynamic elements
-    document.body.removeEventListener('click', submitHandler);
-    document.body.addEventListener('click', submitHandler);
+    document.body.removeEventListener('click', submitHandler as any);
+    document.body.addEventListener('click', submitHandler as any);
   },
 
-  fillHiddenColumns: function(grid, hiddenColumns) {
+  fillHiddenColumns: function(this: GridAction, grid: WulinGrid, hiddenColumns: string[]) {
     if (!Array.isArray(hiddenColumns)) return false;
 
     const currentFilters = grid.loader.getFilters();
-    currentFilters.forEach(filter => {
+    currentFilters.forEach((filter: [string, any, string]) => {
       if (hiddenColumns.includes(filter[0])) {
         this.addHiddenColumn(filter[0], filter[1]);
       }
     });
   },
 
-  addHiddenColumn: function(column, value) {
+  addHiddenColumn: function(column: string, value: any) {
     const createForm = document.querySelector(".create_form form");
     if (!createForm) return;
 
     const model = createForm.id.replace("new_", "");
     const inputId = `${model}_${column}`;
     
-    let input = document.getElementById(inputId);
+    let input = document.getElementById(inputId) as HTMLInputElement;
     if (!input) {
       input = document.createElement('input');
       input.id = inputId;
@@ -73,4 +76,5 @@ WulinMaster.actions.Create = Object.assign({}, WulinMaster.actions.BaseAction, {
   }
 });
 
-WulinMaster.ActionManager.register(WulinMaster.actions.Create);
+ActionManager.register(CreateAction);
+export default CreateAction;

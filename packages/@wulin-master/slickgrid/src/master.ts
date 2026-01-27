@@ -31,6 +31,7 @@ import {
   FilterPanel,
   DeleteAction,
   EditAction,
+  CreateAction,
   UpdateBehavior
 } from './index'
 
@@ -61,7 +62,8 @@ Object.assign(window.WulinMaster, {
     ...(window.WulinMaster.actions || {}), 
     BaseAction,
     Delete: DeleteAction,
-    Edit: EditAction
+    Edit: EditAction,
+    Create: CreateAction
   },
   BehaviorManager,
   behaviors: { 

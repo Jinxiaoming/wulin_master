@@ -1,16 +1,20 @@
+import { GridAction } from '@wulin-master/core';
+import { BaseAction, ActionManager } from '../action_manager';
+
 /**
  * Export Role Permission Action
  * Exports selected roles' permissions as a JSON file.
  */
-WulinMaster.actions.ExportRolePermission = Object.assign({}, WulinMaster.actions.BaseAction, {
+const ExportRolePermissionAction: GridAction = Object.assign({}, BaseAction, {
   name: 'export_role_permission',
 
-  handler: async function() {
-    const grid = this.getGrid();
-    const ids = grid.getSelectedIds();
+  handler: async function(this: GridAction) {
+    const grid = this.target;
+    if (!grid) return;
+    const ids = (grid as any).getSelectedIds();
 
     const params = new URLSearchParams();
-    ids.forEach(id => params.append('ids[]', id));
+    ids.forEach((id: string) => params.append('ids[]', id));
     
     const url = `/roles/export_role_permission?${params.toString()}`;
 
@@ -41,9 +45,10 @@ WulinMaster.actions.ExportRolePermission = Object.assign({}, WulinMaster.actions
       link.remove();
     } catch (error) {
       console.error('Export error:', error);
-      window.displayErrorMessage('Failed to export permissions.', 'Error');
+      window.WulinMaster.displayErrorMessage('Failed to export permissions.', 'Error');
     }
   },
 });
 
-WulinMaster.ActionManager.register(WulinMaster.actions.ExportRolePermission);
+ActionManager.register(ExportRolePermissionAction);
+export default ExportRolePermissionAction;

@@ -39,6 +39,8 @@ import {
   HotkeyDeleteAction,
   SwitchAction,
   AddDetailAction,
+  ExportRolePermissionAction,
+  ImportRolePermissionAction,
   UpdateBehavior,
   ColumnFilterBehavior,
   AffiliationBehavior
@@ -79,7 +81,9 @@ Object.assign(window.WulinMaster, {
     HotkeyCreate: HotkeyCreateAction,
     HotkeyDelete: HotkeyDeleteAction,
     Switch: SwitchAction,
-    AddDetail: AddDetailAction
+    AddDetail: AddDetailAction,
+    ExportRolePermission: ExportRolePermissionAction,
+    ImportRolePermission: ImportRolePermissionAction
   },
   BehaviorManager,
   behaviors: { 

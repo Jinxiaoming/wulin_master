@@ -1,4 +1,4 @@
-import { WulinGrid, GridBehavior } from '@wulin-master/core';
+import { WulinGrid, GridBehavior, ConfigManager } from '@wulin-master/core';
 import { BaseBehavior, BehaviorManager } from '../behavior_manager';
 
 // master-detail grid relation, detail grid render the records which belongs to the selected row of master grid
@@ -52,7 +52,7 @@ const AffiliationBehavior: GridBehavior = Object.assign({}, BaseBehavior, {
       }
 
       // Set master grid's style for selection
-      const configuredMasterDetailColorTheme = window.WulinMaster.MASTER_DETAIL_COLOR_THEME || 'teal';
+      const configuredMasterDetailColorTheme = ConfigManager.getMasterDetailColorTheme();
       const selectionColor = 'grid-selection-color-' + (this.master_grid.options['selectionColor'] || configuredMasterDetailColorTheme);
       this.master_grid.container.classList.add(selectionColor);
 

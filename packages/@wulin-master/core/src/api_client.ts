@@ -1,3 +1,5 @@
+import ConfigManager from './config_manager';
+
 /**
  * ApiClient provides a unified interface for making HTTP requests.
  * It handles CSRF tokens, error handling, and common headers.
@@ -14,14 +16,6 @@ class ApiClient {
   }
 
   /**
-   * Gets the CSRF token from the window or meta tags.
-   */
-  getCsrfToken(): string {
-    const win = window as any;
-    return decodeURIComponent(win._token || document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '');
-  }
-
-  /**
    * Performs a fetch request with unified logic.
    */
   async request(url: string, options: RequestInit = {}): Promise<any> {
@@ -34,7 +28,7 @@ class ApiClient {
     }
 
     if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method.toUpperCase())) {
-      headers['X-CSRF-Token'] = this.getCsrfToken();
+      headers['X-CSRF-Token'] = ConfigManager.getCsrfToken();
     }
 
     const fetchOptions: RequestInit = {

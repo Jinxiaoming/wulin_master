@@ -1,5 +1,6 @@
 export { default as apiClient } from './api_client';
 export { default as registry } from './registry';
+export { default as ConfigManager } from './config_manager';
 export { default as IconManager } from './icon_manager';
 export { default as RemoteModel } from './remotemodel';
 export { default as ConnectionManager } from './connectionmanager';

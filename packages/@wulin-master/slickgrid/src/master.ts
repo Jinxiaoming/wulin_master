@@ -40,7 +40,8 @@ import {
   SwitchAction,
   AddDetailAction,
   UpdateBehavior,
-  ColumnFilterBehavior
+  ColumnFilterBehavior,
+  AffiliationBehavior
 } from './index'
 
 import { registerWulinControllers } from '@wulin-master/stimulus'
@@ -85,7 +86,8 @@ Object.assign(window.WulinMaster, {
     ...(window.WulinMaster.behaviors || {}), 
     BaseBehavior,
     Update: UpdateBehavior,
-    ColumnFilter: ColumnFilterBehavior
+    ColumnFilter: ColumnFilterBehavior,
+    Affiliation: AffiliationBehavior
   },
   FilterPanel
 });

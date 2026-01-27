@@ -27,3 +27,4 @@ export { default as AddDetailAction } from './actions/add_detail';
 // Behaviors
 export { default as UpdateBehavior } from './behaviors/update';
 export { default as ColumnFilterBehavior } from './behaviors/column_filter';
+export { default as AffiliationBehavior } from './behaviors/affiliation';

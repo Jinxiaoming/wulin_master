@@ -3,7 +3,7 @@ import Ui from './ui_helper.js';
 
 /**
  * Requests module handles CRUD operations for SlickGrid.
- * Modernized to use ApiClient and remove jQuery dependencies.
+ * Modernized to use ApiClient.
  */
 const Requests = {
   /**

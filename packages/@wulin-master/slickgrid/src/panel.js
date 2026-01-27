@@ -1,6 +1,6 @@
 /**
  * Panel utilities for WulinMaster.
- * Modernized to use Stimulus bridge and remove jQuery.
+ * Modernized to use Stimulus bridge.
  */
 window.adjustPanelButtons = function(panelId) {
   const panel = document.getElementById(panelId);

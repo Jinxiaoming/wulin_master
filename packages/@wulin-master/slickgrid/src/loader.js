@@ -39,5 +39,5 @@
   window.appendLoader = appendLoader;
   window.removeLoader = removeLoader;
 
-  // Legacy jQuery support removed
+  // Legacy support removed
 })();

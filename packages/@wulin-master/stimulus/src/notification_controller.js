@@ -14,7 +14,7 @@ export default class extends Controller {
     const notification = this.buildNotification(message, type)
     this.containerTarget.appendChild(notification)
     
-    // Animate in (simple fade in for now, replacing jQuery slideDown)
+    // Animate in (simple fade in)
     notification.style.opacity = '0'
     notification.style.display = 'block'
     setTimeout(() => {

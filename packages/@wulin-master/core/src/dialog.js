@@ -1,10 +1,10 @@
 // Dialog system using Stimulus bridge
-window.displayErrorMessage = (message, title) => {
+export const displayErrorMessage = (message, title) => {
   if (message === undefined) {
     message = 'An unexpected error occured.';
   }
-  const escapedHtml = typeof escapeHtml === 'function' ? escapeHtml(message) : message;
-  const finalMessage = typeof simpleFormat === 'function' ? simpleFormat(escapedHtml) : escapedHtml;
+  const escapedHtml = typeof window.escapeHtml === 'function' ? window.escapeHtml(message) : message;
+  const finalMessage = typeof window.simpleFormat === 'function' ? window.simpleFormat(escapedHtml) : escapedHtml;
 
   const modalElement = document.getElementById('error-modal');
   if (modalElement) {
@@ -20,7 +20,7 @@ window.displayErrorMessage = (message, title) => {
   }
 };
 
-window.displayCustomizedConfirmModal = (params) => {
+export const displayCustomizedConfirmModal = (params) => {
   const {
     message = 'Are you sure to do this ?',
     title = 'Confirmation',
@@ -42,3 +42,7 @@ window.displayCustomizedConfirmModal = (params) => {
     }
   }
 };
+
+// Global exposure for legacy
+window.displayErrorMessage = displayErrorMessage;
+window.displayCustomizedConfirmModal = displayCustomizedConfirmModal;

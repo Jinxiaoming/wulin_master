@@ -9,7 +9,6 @@ module WulinMaster
     initializer "wulin_master.assets", after: :append_assets_path, group: :all do |app|      
       if defined?(Propshaft)
         Rails.application.config.assets.paths << root.join("app", "assets", "stylesheets")
-        Rails.application.config.assets.paths << root.join("app", "assets", "javascripts")
       end
 
       app.config.assets.precompile += %w( dropzone.min.js dropzone.min.css )

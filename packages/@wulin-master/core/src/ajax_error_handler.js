@@ -3,7 +3,7 @@
  */
 
 /**
- * Handles errors from both legacy jQuery AJAX and modern Fetch API.
+ * Handles errors from both legacy AJAX and modern Fetch API.
  */
 export function handleAjaxError(xhr) {
   let msg = xhr.responseText;

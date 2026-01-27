@@ -1,6 +1,6 @@
 /**
  * UI Helper tools for WulinMaster.
- * Modernized to use native JS and remove jQuery dependencies.
+ * Modernized to use native JS.
  */
 const Ui = {
   /**

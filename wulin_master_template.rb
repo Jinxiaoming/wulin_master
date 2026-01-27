@@ -11,7 +11,7 @@ YAML
 run "git submodule add -b v3.0.1a https://github.com/Jinxiaoming/wulin_master.git vendor/gems/wulin_master"
 run "git config -f .gitmodules submodule.vendor/gems/wulin_master.branch v3"
 
-gem "wulin_master", path: "vendor/gems/wulin_master"
+gem "wulin_master", path: "vendor/gems/wulin_master/gems/wulin_master"
 
 gem "rexml"
 gem "net-smtp"
@@ -33,7 +33,7 @@ JS
 remove_file "app/assets/stylesheets/application.css"
 
 # Add wulin master stylesheet to application.sass
-file "app/javascript/application.sass", <<~CSS
+file "app/assets/stylesheets/application.sass", <<~CSS
   @use "../../../vendor/gems/wulin_master/gems/wulin_master/app/assets/stylesheets/master";
 CSS
 
@@ -47,7 +47,7 @@ file "package.json", <<~JSON, force: true
       "esbuild": "^0.25.9"
     },
     "scripts": {
-      "build": "esbuild app/javascript/application.js --bundle --sourcemap --format=esm --outdir=app/assets/builds --public-path=/assets --loader:.woff=file --loader:.woff2=file --external:*.css",
+      "build": "esbuild app/javascript/application.js --bundle --sourcemap --format=esm --outdir=app/assets/builds --public-path=/assets --loader:.woff=file --loader:.woff2=file --external:\"*.css\"",
       "copy-icons": "node script/copy_material_icons.js"
     },
     "dependencies": {
@@ -296,7 +296,7 @@ after_bundle do
 
   # Set custom build script (overwrites Rails default to include font loaders)
   package_json = JSON.parse(File.read("package.json"))
-  package_json["scripts"]["build"] = "esbuild app/javascript/application.js --bundle --sourcemap --format=esm --outdir=app/assets/builds --public-path=/assets --loader:.woff=file --loader:.woff2=file --external:*.css"
+  package_json["scripts"]["build"] = "esbuild app/javascript/application.js --bundle --sourcemap --format=esm --outdir=app/assets/builds --public-path=/assets --loader:.woff=file --loader:.woff2=file --external:\"*.css\""
   File.write("package.json", JSON.pretty_generate(package_json))
 
   # Build JavaScript assets

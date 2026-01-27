@@ -4,7 +4,7 @@ import { RemoteModel, registry } from '@wulin-master/core';
  * GridManager manages the collection of SlickGrid instances on the page.
  * It handles grid creation, retrieval, and global resizing.
  */
-class GridManager {
+export class GridManager {
   constructor() {
     this.gridElementPrefix = "#grid_";
     this.gridElementSuffix = " .grid";

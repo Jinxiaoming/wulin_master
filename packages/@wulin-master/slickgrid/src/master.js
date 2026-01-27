@@ -31,7 +31,7 @@ import {
   BehaviorManager, 
   BaseBehavior,
   FilterPanel
-} from '@wulin-master/slickgrid'
+} from './index.js'
 
 import { registerWulinControllers } from '@wulin-master/stimulus'
 

@@ -1,15 +1,17 @@
-import { IconManager } from '@wulin-master/core';
+import { IconManager, GridAction } from '@wulin-master/core';
+import { BaseAction, ActionManager } from '../action_manager';
 
 /**
  * Fullscreen Action
  * Toggles the grid container to fill the entire viewport.
  */
-WulinMaster.actions.fullscreen = Object.assign({}, WulinMaster.actions.BaseAction, {
+const FullscreenAction: GridAction = Object.assign({}, BaseAction, {
   name: 'fullscreen',
   
-  handler: function (e: MouseEvent) {
+  handler: function (this: GridAction, e: MouseEvent) {
     const btn = e.currentTarget as HTMLElement;
-    const grid = this.getGrid();
+    const grid = this.target;
+    if (!grid) return;
     const container = grid.container;
 
     this.toggleSiblings(container);
@@ -56,7 +58,7 @@ WulinMaster.actions.fullscreen = Object.assign({}, WulinMaster.actions.BaseActio
     }
 
     // Trigger grid resize
-    window.gridManager.resizeGrids();
+    window.WulinMaster.gridManager.resizeGrids();
   },
 
   /**
@@ -81,4 +83,5 @@ WulinMaster.actions.fullscreen = Object.assign({}, WulinMaster.actions.BaseActio
   }
 });
 
-WulinMaster.ActionManager.register(WulinMaster.actions.fullscreen);
+ActionManager.register(FullscreenAction);
+export default FullscreenAction;

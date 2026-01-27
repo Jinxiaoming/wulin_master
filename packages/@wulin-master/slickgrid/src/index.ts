@@ -17,6 +17,7 @@ export { default as DeleteAction } from './actions/delete';
 export { default as EditAction } from './actions/edit';
 export { default as CreateAction } from './actions/create';
 export { default as FilterAction } from './actions/filter';
+export { default as FullscreenAction } from './actions/fullscreen';
 
 // Behaviors
 export { default as UpdateBehavior } from './behaviors/update';

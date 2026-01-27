@@ -33,6 +33,7 @@ import {
   EditAction,
   CreateAction,
   FilterAction,
+  FullscreenAction,
   UpdateBehavior
 } from './index'
 
@@ -65,7 +66,8 @@ Object.assign(window.WulinMaster, {
     Delete: DeleteAction,
     Edit: EditAction,
     Create: CreateAction,
-    Filter: FilterAction
+    Filter: FilterAction,
+    Fullscreen: FullscreenAction
   },
   BehaviorManager,
   behaviors: { 

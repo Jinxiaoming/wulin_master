@@ -38,3 +38,5 @@ export { default as ColumnFilterBehavior } from './behaviors/column_filter';
 export { default as AffiliationBehavior } from './behaviors/affiliation';
 export { default as AggregationBehavior } from './behaviors/aggregation';
 export { default as ValidateBehavior } from './behaviors/validate';
+export { default as HighlightBehavior } from './behaviors/highlight';
+export { default as ClearFiltersBehavior } from './behaviors/clear_filters';

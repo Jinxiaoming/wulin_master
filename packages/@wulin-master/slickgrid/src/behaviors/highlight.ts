@@ -1,29 +1,32 @@
-// highlight the selected rows
+import { WulinGrid, GridBehavior } from '@wulin-master/core';
+import { BaseBehavior, BehaviorManager } from '../behavior_manager';
 
-WulinMaster.behaviors.Highlight = Object.assign({}, WulinMaster.behaviors.BaseBehavior, {
+// highlight the selected rows
+const HighlightBehavior: GridBehavior = Object.assign({}, BaseBehavior, {
+  name: 'highlight',
   event: "onDataLoaded",
 
-  subscribe: function(target) {
+  subscribe: function(this: GridBehavior, target: WulinGrid) {
     this.grid = target;
-    var self = this;
-    target.loader[this.event].subscribe(function(){ self.handler(); });
+    const self = this;
+    (target.loader as any)[this.event].subscribe(() => { self.handler(); });
   },
 
-  unsubscribe: function() {
-
-  },
-
-  handler: function() {
-    var data = this.grid.getData(), selectedIndexes = [];
-    for (var i in data) {
-      if (data[i] && this.grid.operatedIds && this.grid.operatedIds.indexOf(data[i].id) != -1) {
-        selectedIndexes.push(data[i].slick_index);
+  handler: function(this: GridBehavior) {
+    const grid = this.grid;
+    const data = grid.getData();
+    const selectedIndexes: number[] = [];
+    
+    for (const i in data) {
+      const item = data[i];
+      if (item && (grid as any).operatedIds && (grid as any).operatedIds.indexOf(item.id) !== -1) {
+        selectedIndexes.push(item.slick_index);
       }
     }
-    // highlight selected rows, at this moment, the onSelectedRowsChanged event will be triggered so don't need to handly assign gridManager.operatedIds
-    this.grid.setSelectedRows(selectedIndexes);
+    // highlight selected rows, at this moment, the onSelectedRowsChanged event will be triggered
+    grid.setSelectedRows(selectedIndexes);
   }
-
 });
 
-WulinMaster.BehaviorManager.register("highlight", WulinMaster.behaviors.Highlight);
+BehaviorManager.register("highlight", HighlightBehavior);
+export default HighlightBehavior;

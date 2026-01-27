@@ -1,19 +1,25 @@
+import { GridAction } from '@wulin-master/core';
+import { BaseAction, ActionManager } from '../action_manager';
+
 /**
  * Filter Action
  * Ensures the FilterPanel is initialized for the grid.
  */
-WulinMaster.actions.Filter = Object.assign({}, WulinMaster.actions.BaseAction, {
+const FilterAction: GridAction = Object.assign({}, BaseAction, {
   name: 'filter',
 
   /**
    * Overrides activate to initialize FilterPanel without a separate click handler.
    */
-  activate: function() {
-    const grid = this.getGrid();
-    if (grid && !grid.filterPanel) {
-      grid.filterPanel = new window.WulinMaster.FilterPanel(grid, grid.loader, grid.states["filter"]);
+  activate: function(this: GridAction) {
+    const grid = this.target;
+    if (grid && !(grid as any).filterPanel) {
+      (grid as any).filterPanel = new window.WulinMaster.FilterPanel(grid, grid.loader, (grid as any).states["filter"]);
     }
-  }
+  },
+
+  handler: () => {}
 });
 
-WulinMaster.ActionManager.register(WulinMaster.actions.Filter);
+ActionManager.register(FilterAction);
+export default FilterAction;

@@ -67,6 +67,7 @@ if (window.Stimulus) {
 // 5. 导入样式 (SlickGrid v5+)
 import 'slickgrid/dist/styles/css/slick.grid.css'
 import 'slickgrid/dist/styles/css/slick-default-theme.css'
+import 'slickgrid/dist/styles/css/slick-icons.css'
 
 // 6. 导入本地非模块化插件 (Dropzone 等)
 import '../dropzone.min.js'

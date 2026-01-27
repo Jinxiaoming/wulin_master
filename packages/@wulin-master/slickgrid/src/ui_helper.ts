@@ -1,3 +1,5 @@
+import { IconManager } from '@wulin-master/core';
+
 /**
  * UI Helper tools for WulinMaster.
  * Modernized to use native JS.
@@ -501,7 +503,8 @@ const Ui = {
 
     const header = document.createElement('div');
     header.className = 'modal-header';
-    header.innerHTML = `<span>${title}</span><span class="modal-close material-icons right">close</span>`;
+    const closeIcon = IconManager.getIconHtml('x', { class: 'modal-close right cursor-pointer' });
+    header.innerHTML = `<span>${title}</span>${closeIcon}`;
     modal.insertBefore(header, modal.firstChild);
 
     return modal;

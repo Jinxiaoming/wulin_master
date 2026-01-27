@@ -10,7 +10,7 @@
 .grid-states-switcher{ data: { controller: "grid-states", grid_states_grid_name_value: grid.name, grid_states_current_id_value: current_state.id } }
   %a.dropdown-trigger.btn.grey.lighten-3{"data-target" => "grid_states_#{grid.name}", "data-coverTrigger" => "true", href: "#", id: "current-state-#{grid.name}", data: { action: "click->grid-states#toggleIcon" } }
     %span= current_state.name
-    %span.material-icons.right arrow_drop_down
+    %span{ data: { lucide: 'chevron-down' }, class: 'right' }
   %ul.dropdown-content{id: "grid_states_#{grid.name}"}
     - default_states.each do |option|
       %li
@@ -20,11 +20,11 @@
       %li
         %a.grid-state-item.grid-state-option-wide{id: "grid-state-#{option[1]}", "data-state-id" => option[1], href: '#!'}= option[0]
         %a.edit-icon-container.right{ data: { action: "click->grid-states#openEdit", state_id: option[1], state_name: option[0] } }
-          %span.material-icons.right mode_edit
+          %span{ data: { lucide: 'edit-2' }, class: 'right' }
       %li.divider
     %li
       %a.grid-state-option-parent-wide{id: "add-view-btn-#{grid.name}", data: { action: "click->modal#open" }, href: "#create-state-modal-#{grid.name}"}
-        %span.material-icons.left add_box
+        %span{ data: { lucide: 'plus-square' }, class: 'left' }
         ADD VIEW
 
   .grid-states-modal.modal{id: "create-state-modal-#{grid.name}"}

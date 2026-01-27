@@ -6,6 +6,7 @@
   "type": "module",
   "dependencies": {
     "@wulin-master/core": "workspace:*",
+    "lucide": "^0.563.0",
     "slickgrid": "^5.18.2",
     "sortablejs": "^1.15.6"
   }

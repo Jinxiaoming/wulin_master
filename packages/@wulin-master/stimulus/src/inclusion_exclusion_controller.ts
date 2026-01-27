@@ -47,7 +47,7 @@ export default class extends Controller {
     if (!groupId) return
 
     // Disable buttons during request
-    this.element.querySelectorAll('button, span.material-icons').forEach(el => el.classList.add('disabled'))
+    this.element.querySelectorAll('button, span[data-lucide]').forEach(el => el.classList.add('disabled'))
 
     const url = type === 'add' ? '/wulin_master/include' : '/wulin_master/exclude'
     const payload = {
@@ -83,7 +83,7 @@ export default class extends Controller {
       console.error('Move error:', error)
       window.displayErrorMessage('An unexpected error occurred.', 'Network Error')
     } finally {
-      this.element.querySelectorAll('button, span.material-icons').forEach(el => el.classList.remove('disabled'))
+      this.element.querySelectorAll('button, span[data-lucide]').forEach(el => el.classList.remove('disabled'))
     }
   }
 }

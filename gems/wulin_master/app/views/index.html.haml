@@ -7,7 +7,7 @@
     window.saveMessage("#{params[:screen]} loaded", 'info');
     const activeMenu = document.querySelector("#menu .active");
     if (activeMenu) {
-      const titleText = activeMenu.querySelector('span:not(.material-icons)')?.textContent;
+      const titleText = activeMenu.querySelector('span:not([data-lucide])')?.textContent;
       if (titleText) {
         document.title = `${titleText} | #{WulinMaster.config.app_title}`;
       }

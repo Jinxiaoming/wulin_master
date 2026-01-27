@@ -47,13 +47,12 @@ file "package.json", <<~JSON, force: true
       "esbuild": "^0.25.9"
     },
     "scripts": {
-      "build": "esbuild app/javascript/application.js --bundle --sourcemap --format=esm --outdir=app/assets/builds --public-path=/assets --loader:.woff=file --loader:.woff2=file --external:\"*.css\"",
-      "copy-icons": "node script/copy_material_icons.js"
+      "build": "esbuild app/javascript/application.js --bundle --sourcemap --format=esm --outdir=app/assets/builds --public-path=/assets --loader:.woff=file --loader:.woff2=file --external:\"*.css\""
     },
     "dependencies": {
       "rails-ujs": "^5.2.8",
       "materialize-css": "^1.0.0",
-      "material-icons": "^0.7.7",
+      "lucide": "^0.474.0",
       "flatpickr": "^4.6.13",
       "sortablejs": "^1.15.6",
       "slickgrid": "^5.18.2",
@@ -91,32 +90,7 @@ initializer "assets.rb", <<~RB
 RB
 
 # Setup script/copy_material_icons.js (uses require.resolve for better compatibility)
-file "script/copy_material_icons.js", <<~JS
-  const fs = require("fs");
-  const path = require("path");
-
-  try {
-    // Use require.resolve to locate material-icons package path
-    const iconPkgPath = require.resolve("material-icons/package.json");
-    const srcDir = path.join(path.dirname(iconPkgPath), "iconfont");
-    const dstDir = path.join(__dirname, "..", "app", "assets", "fonts");
-
-    fs.mkdirSync(dstDir, { recursive: true });
-
-    for (const name of ["material-icons.woff2", "material-icons.woff"]) {
-      const srcFile = path.join(srcDir, name);
-      if (fs.existsSync(srcFile)) {
-        fs.copyFileSync(srcFile, path.join(dstDir, name));
-        console.log(`Copied ${name}`);
-      } else {
-        console.warn(`Warning: ${name} not found at ${srcFile}`);
-      }
-    }
-  } catch (e) {
-    console.error("Error copying icons:", e.message);
-    process.exit(1);
-  }
-JS
+# Removed as we migrated to Lucide SVG icons
 
 # Setup Procfile.dev
 file "Procfile.dev", <<~PROCFILE
@@ -290,9 +264,6 @@ after_bundle do
 
   # Run wulin_master install generator
   rails_command "generate wulin_master:install"
-
-  # Copy material icons fonts
-  run "yarn run copy-icons"
 
   # Set custom build script (overwrites Rails default to include font loaders)
   package_json = JSON.parse(File.read("package.json"))

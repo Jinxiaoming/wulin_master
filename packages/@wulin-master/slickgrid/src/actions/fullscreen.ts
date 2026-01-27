@@ -1,3 +1,5 @@
+import { IconManager } from '@wulin-master/core';
+
 /**
  * Fullscreen Action
  * Toggles the grid container to fill the entire viewport.
@@ -5,8 +7,8 @@
 WulinMaster.actions.fullscreen = Object.assign({}, WulinMaster.actions.BaseAction, {
   name: 'fullscreen',
   
-  handler: function (e) {
-    const btn = e.currentTarget;
+  handler: function (e: MouseEvent) {
+    const btn = e.currentTarget as HTMLElement;
     const grid = this.getGrid();
     const container = grid.container;
 
@@ -18,11 +20,12 @@ WulinMaster.actions.fullscreen = Object.assign({}, WulinMaster.actions.BaseActio
   /**
    * Toggles visibility of all sibling elements of the grid container.
    */
-  toggleSiblings: function(container) {
-    const siblings = Array.from(container.parentElement.children);
+  toggleSiblings: function(container: HTMLElement) {
+    const siblings = Array.from(container.parentElement?.children || []);
     siblings.forEach(el => {
       if (el !== container && el.tagName !== 'SCRIPT') {
-        el.style.display = (el.style.display === 'none') ? '' : 'none';
+        const htmlEl = el as HTMLElement;
+        htmlEl.style.display = (htmlEl.style.display === 'none') ? '' : 'none';
       }
     });
   },
@@ -30,7 +33,7 @@ WulinMaster.actions.fullscreen = Object.assign({}, WulinMaster.actions.BaseActio
   /**
    * Adjusts the container size and stores/restores original dimensions.
    */
-  transform: function(btn, container) {
+  transform: function(btn: HTMLElement, container: HTMLElement) {
     const isFullscreen = btn.dataset.fullscreen === 'true';
     
     if (isFullscreen) {
@@ -41,8 +44,8 @@ WulinMaster.actions.fullscreen = Object.assign({}, WulinMaster.actions.BaseActio
       delete btn.dataset.gridHeight;
       delete btn.dataset.gridWidth;
 
-      container.style.height = originalHeight;
-      container.style.width = originalWidth;
+      container.style.height = originalHeight || '';
+      container.style.width = originalWidth || '';
     } else {
       btn.dataset.fullscreen = 'true';
       btn.dataset.gridHeight = container.style.height || `${container.offsetHeight}px`;
@@ -59,20 +62,21 @@ WulinMaster.actions.fullscreen = Object.assign({}, WulinMaster.actions.BaseActio
   /**
    * Updates the icon and labels for the fullscreen button.
    */
-  switchIcon: function(btn) {
-    const icon = btn.querySelector('a.fullscreen_action, i.material-icons');
-    if (icon) {
-      icon.textContent = (icon.textContent === 'fullscreen') ? 'fullscreen_exit' : 'fullscreen';
-    }
+  switchIcon: function(btn: HTMLElement) {
+    const isFullscreen = btn.dataset.fullscreen === 'true';
+    const iconName = isFullscreen ? 'minimize' : 'maximize';
+    
+    const iconContainer = btn.querySelector('.wulin-icon-container') || btn;
+    iconContainer.innerHTML = IconManager.getIconHtml(iconName, { class: 'wulin-icon' });
 
-    const label = btn.querySelector('a.fullscreen_action, span');
+    const label = btn.querySelector('span.toolbar-text');
     if (label) {
-      label.textContent = (label.textContent === 'Fullscreen') ? 'Exit Fullscreen' : 'Fullscreen';
+      label.textContent = isFullscreen ? 'Exit Fullscreen' : 'Fullscreen';
     }
 
     const tooltip = btn.getAttribute('data-tooltip');
     if (tooltip) {
-      btn.setAttribute('data-tooltip', (tooltip === 'Fullscreen') ? 'Exit Fullscreen' : 'Fullscreen');
+      btn.setAttribute('data-tooltip', isFullscreen ? 'Exit Fullscreen' : 'Fullscreen');
     }
   }
 });

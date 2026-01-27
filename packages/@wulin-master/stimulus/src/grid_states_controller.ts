@@ -1,4 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
+import { IconManager } from "@wulin-master/core"
 
 /**
  * GridStatesController handles the UI for switching, creating, and editing grid states.
@@ -23,10 +24,16 @@ export default class extends Controller {
   /**
    * Toggles the dropdown icon.
    */
-  toggleIcon(event) {
-    const icon = event.currentTarget.querySelector('.material-icons')
+  toggleIcon(event: MouseEvent) {
+    const iconContainer = event.currentTarget as HTMLElement
+    const icon = iconContainer.querySelector('.wulin-icon')
     if (icon) {
-      icon.textContent = (icon.textContent === 'arrow_drop_down') ? 'arrow_drop_up' : 'arrow_drop_down'
+      const isDown = icon.classList.contains('lucide-chevron-down')
+      const newIconName = isDown ? 'chevron-up' : 'chevron-down'
+      iconContainer.innerHTML = `
+        <span>${iconContainer.querySelector('span')?.textContent || ''}</span>
+        ${IconManager.getIconHtml(newIconName, { class: 'right' })}
+      `
     }
   }
 

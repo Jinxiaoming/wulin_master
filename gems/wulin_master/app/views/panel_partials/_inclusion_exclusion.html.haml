@@ -6,8 +6,8 @@
   } }
     - component_names = panel.screen.components.map(&:name)
     - if component_names.index(panel.inclusion_grid) < component_names.index(panel.exclusion_grid)
-      %span#add_btn.material-icons.disabled{ data: { action: "click->inclusion-exclusion#include" } } arrow_back
-      %span#remove_btn.material-icons.disabled{ data: { action: "click->inclusion-exclusion#exclude" } } arrow_forward
+      %span#add_btn.disabled{ data: { action: "click->inclusion-exclusion#include", lucide: 'chevron-left' } }
+      %span#remove_btn.disabled{ data: { action: "click->inclusion-exclusion#exclude", lucide: 'chevron-right' } }
     - else
-      %span#add_btn.material-icons.disabled{ data: { action: "click->inclusion-exclusion#include" } } arrow_forward
-      %span#remove_btn.material-icons.disabled{ data: { action: "click->inclusion-exclusion#exclude" } } arrow_back
+      %span#add_btn.disabled{ data: { action: "click->inclusion-exclusion#include", lucide: 'chevron-right' } }
+      %span#remove_btn.disabled{ data: { action: "click->inclusion-exclusion#exclude", lucide: 'chevron-left' } }

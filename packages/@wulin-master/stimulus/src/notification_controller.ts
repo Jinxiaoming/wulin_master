@@ -1,4 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
+import { IconManager } from "@wulin-master/core"
 
 export default class extends Controller {
   static targets = ["container"]
@@ -7,7 +8,7 @@ export default class extends Controller {
     this.duration = 3000 // 3 seconds
   }
 
-  display(event) {
+  display(event: CustomEvent) {
     const { message, type, always } = event.detail
     this.saveMessage(message, type)
     
@@ -27,7 +28,7 @@ export default class extends Controller {
     }
   }
 
-  discard(element) {
+  discard(element: HTMLElement) {
     if (!element) return
     
     element.style.opacity = '0'
@@ -36,11 +37,11 @@ export default class extends Controller {
     }, 300)
   }
 
-  discardClick(event) {
-    this.discard(event.currentTarget)
+  discardClick(event: MouseEvent) {
+    this.discard(event.currentTarget as HTMLElement)
   }
 
-  buildNotification(message, type) {
+  buildNotification(message: string, type: string) {
     const div = document.createElement('div')
     div.className = `notification ${type || ''}`
     div.innerHTML = message
@@ -48,7 +49,7 @@ export default class extends Controller {
     return div
   }
 
-  saveMessage(content, type) {
+  saveMessage(content: string, type: string) {
     const nowDate = new Date()
     const hour = ('0' + nowDate.getHours()).slice(-2)
     const minute = ('0' + nowDate.getMinutes()).slice(-2)
@@ -59,18 +60,20 @@ export default class extends Controller {
       const li = document.createElement('li')
       li.className = "notification-item collection-item"
       
-      let iconText = 'error'
+      let iconName = 'alert-circle'
       let iconClass = ''
-      if (type === 'info') iconText = 'error_outline'
+      if (type === 'info') iconName = 'info'
       else if (type === 'success') {
-        iconText = 'done'
+        iconName = 'check-circle'
         iconClass = 'green-text'
       } else {
         iconClass = 'red-text'
       }
 
+      const iconHtml = IconManager.getIconHtml(iconName, { class: `left ${iconClass}` })
+
       li.innerHTML = `
-        <i class="material-icons left ${iconClass}">${iconText}</i>
+        ${iconHtml}
         <div>${content}</div>
         <div class="right">${time}</div>
       `

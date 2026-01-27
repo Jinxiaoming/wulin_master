@@ -1,0 +1,12 @@
+{
+  "name": "@wulin-master/slickgrid",
+  "version": "3.0.0",
+  "private": true,
+  "main": "src/index.js",
+  "type": "module",
+  "dependencies": {
+    "@wulin-master/core": "workspace:*",
+    "slickgrid": "^5.18.2",
+    "sortablejs": "^1.15.6"
+  }
+}

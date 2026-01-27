@@ -1,0 +1,12 @@
+{
+  "name": "@wulin-master/stimulus",
+  "version": "3.0.0",
+  "private": true,
+  "main": "src/index.js",
+  "type": "module",
+  "dependencies": {
+    "@wulin-master/core": "workspace:*",
+    "@wulin-master/slickgrid": "workspace:*",
+    "@hotwired/stimulus": "^3.2.2"
+  }
+}

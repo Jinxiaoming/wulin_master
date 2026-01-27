@@ -22,6 +22,7 @@ export { default as ShowAllAction } from './actions/show_all';
 export { default as HotkeyCreateAction } from './actions/hotkey_create';
 export { default as HotkeyDeleteAction } from './actions/hotkey_delete';
 export { default as SwitchAction } from './actions/switch';
+export { default as AddDetailAction } from './actions/add_detail';
 
 // Behaviors
 export { default as UpdateBehavior } from './behaviors/update';

@@ -1,17 +1,21 @@
+import { WulinGrid, GridAction } from '@wulin-master/core';
+import { BaseAction, ActionManager } from '../action_manager';
+
 /**
  * Add Detail Action
  * Opens a modal to attach existing records to a middle table (many-to-many).
  */
-WulinMaster.actions.AddDetail = Object.assign({}, WulinMaster.actions.BaseAction, {
+const AddDetailAction: GridAction = Object.assign({}, BaseAction, {
   name: 'add_detail',
 
-  handler: function() {
-    const self = this;
-    const masterId = this.target.master.filter_value;
+  handler: function(this: GridAction) {
+    const grid = this.target;
+    if (!grid) return;
+    const masterId = (grid as any).master.filter_value;
 
-    const addDetailModal = window.Ui.headerModal('Attach', {
-      onOpenStart: (modal) => {
-        const content = modal.querySelector('.modal-content');
+    const addDetailModal = window.WulinMaster.Ui.headerModal('Attach', {
+      onOpenStart: (modal: HTMLElement) => {
+        const content = modal.querySelector('.modal-content') as HTMLElement;
         if (content) {
           content.style.padding = '0';
           this.getModelGrid(masterId, content);
@@ -19,12 +23,12 @@ WulinMaster.actions.AddDetail = Object.assign({}, WulinMaster.actions.BaseAction
       }
     });
 
-    if (this.dialog_options?.width) {
-      addDetailModal.style.width = `${this.dialog_options.width}px`;
+    if ((this as any).dialog_options?.width) {
+      addDetailModal.style.width = `${(this as any).dialog_options.width}px`;
     }
 
-    const modalFooter = window.Ui.appendModalFooter('Attach', addDetailModal);
-    const confirmBtn = modalFooter.querySelector('.confirm-btn');
+    const modalFooter = window.WulinMaster.Ui.appendModalFooter('Attach', addDetailModal);
+    const confirmBtn = modalFooter.querySelector('.confirm-btn') as HTMLButtonElement;
     
     confirmBtn.classList.add('disabled');
     confirmBtn.onclick = () => {
@@ -36,11 +40,13 @@ WulinMaster.actions.AddDetail = Object.assign({}, WulinMaster.actions.BaseAction
   /**
    * Fetches the grid for selecting records to attach.
    */
-  getModelGrid: async function(masterId, modalContentDom) {
-    const master = Object.assign({}, this.target.master);
-    const screen = this.screen;
-    const model = this.model;
-    const middleModel = this.target.model;
+  getModelGrid: async function(this: GridAction, masterId: any, modalContentDom: HTMLElement) {
+    const grid = this.target;
+    if (!grid) return;
+    const master = Object.assign({}, (grid as any).master);
+    const screen = (this as any).screen;
+    const model = (this as any).model;
+    const middleModel = grid.model;
 
     try {
       // 1. Get the controller name for the model
@@ -58,52 +64,54 @@ WulinMaster.actions.AddDetail = Object.assign({}, WulinMaster.actions.BaseAction
       // 3. Initialize the grid
       const gridContainer = modalContentDom.querySelector(".grid_container");
       const gridName = gridContainer?.getAttribute("name");
-      const grid = window.gridManager.getGrid(gridName);
+      const detailGrid = window.WulinMaster.gridManager.getGrid(gridName || "");
       
-      if (grid) {
+      if (detailGrid) {
         master.filter_operator = 'exclude';
-        if (Array.isArray(grid.master)) {
-          grid.master.push(Object.values(master));
+        if (Array.isArray((detailGrid as any).master)) {
+          (detailGrid as any).master.push(Object.values(master));
         } else {
-          grid.master = master;
+          (detailGrid as any).master = master;
         }
 
-        this.setGridHeightInModal(modalContentDom.parentElement);
-        window.Ui.resizeGrid(grid);
-        window.Ui.resetHeightOfModalContent(modalContentDom);
+        this.setGridHeightInModal(modalContentDom.parentElement as HTMLElement);
+        window.WulinMaster.Ui.resizeGrid(detailGrid);
+        window.WulinMaster.Ui.resetHeightOfModalContent(modalContentDom);
 
         // Wait for data to load then resize
         const checkRows = setInterval(() => {
-          if (grid.container.querySelectorAll('.slick-row').length > 0) {
-            window.gridManager.resizeGrids();
+          if (detailGrid.container.querySelectorAll('.slick-row').length > 0) {
+            window.WulinMaster.gridManager.resizeGrids();
             clearInterval(checkRows);
           }
         }, 200);
       }
     } catch (error) {
       console.error('Error loading model grid:', error);
-      window.displayErrorMessage('Failed to load selection grid.', 'Error');
+      window.WulinMaster.displayErrorMessage('Failed to load selection grid.', 'Error');
     }
   },
 
   /**
    * Sends the attach request to the server.
    */
-  appendNewRecordToMiddleTable: async function(masterId, modal) {
-    const content = modal.querySelector('.modal-content');
+  appendNewRecordToMiddleTable: async function(this: GridAction, masterId: any, modal: HTMLElement) {
+    const grid = this.target;
+    if (!grid) return;
+    const content = modal.querySelector('.modal-content') as HTMLElement;
     const gridContainer = content.querySelector(".grid_container");
     const gridName = gridContainer?.getAttribute("name");
-    const detailGrid = window.gridManager.getGrid(gridName);
+    const detailGrid = window.WulinMaster.gridManager.getGrid(gridName || "");
     
     if (!detailGrid) return;
 
-    const detailIds = detailGrid.getSelectedIds();
-    const middleModel = this.target.model;
+    const detailIds = (detailGrid as any).getSelectedIds();
+    const middleModel = grid.model;
     
     const payload = {
-      master_column: this.target.master.filter_column,
+      master_column: (grid as any).master.filter_column,
       master_id: masterId,
-      detail_model: this.model,
+      detail_model: (this as any).model,
       detail_ids: detailIds,
       model: middleModel,
       authenticity_token: decodeURIComponent(window._token || '')
@@ -120,18 +128,19 @@ WulinMaster.actions.AddDetail = Object.assign({}, WulinMaster.actions.BaseAction
       });
 
       const result = await response.json();
-      window.displayNewNotification(result.message, 'success');
-      window.M.Modal.getInstance(modal).close();
+      window.WulinMaster.displayNewNotification(result.message, 'success');
+      window.WulinMaster.M.Modal.getInstance(modal).close();
       
-      this.target.loader.reloadData();
-      if (this.reload_master && this.target.master_grid) {
-        this.target.master_grid.loader.reloadData();
+      grid.loader.reloadData();
+      if ((this as any).reload_master && (grid as any).master_grid) {
+        (grid as any).master_grid.loader.reloadData();
       }
     } catch (error) {
       console.error('Attach error:', error);
-      window.displayErrorMessage('Failed to attach records.', 'Network Error');
+      window.WulinMaster.displayErrorMessage('Failed to attach records.', 'Network Error');
     }
   }
 });
 
-WulinMaster.ActionManager.register(WulinMaster.actions.AddDetail);
+ActionManager.register(AddDetailAction);
+export default AddDetailAction;

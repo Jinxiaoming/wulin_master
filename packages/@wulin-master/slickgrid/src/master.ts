@@ -38,6 +38,7 @@ import {
   HotkeyCreateAction,
   HotkeyDeleteAction,
   SwitchAction,
+  AddDetailAction,
   UpdateBehavior,
   ColumnFilterBehavior
 } from './index'
@@ -76,7 +77,8 @@ Object.assign(window.WulinMaster, {
     ShowAll: ShowAllAction,
     HotkeyCreate: HotkeyCreateAction,
     HotkeyDelete: HotkeyDeleteAction,
-    Switch: SwitchAction
+    Switch: SwitchAction,
+    AddDetail: AddDetailAction
   },
   BehaviorManager,
   behaviors: { 

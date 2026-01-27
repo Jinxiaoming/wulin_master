@@ -31,7 +31,7 @@ import {
   BehaviorManager, 
   BaseBehavior,
   FilterPanel
-} from './index.js'
+} from './index'
 
 import { registerWulinControllers } from '@wulin-master/stimulus'
 
@@ -59,7 +59,7 @@ window.WulinMaster.FilterPanel = FilterPanel
 
 // 4. 自动注册 Stimulus 控制器
 // 注意：在 Rails 应用中，主 application.js 通常会初始化 Stimulus
-// 这里我们提供一个便捷方法，或者如果 window.Stimulus 已存在则自动注册
+// 这里我们提供 an 便捷方法，或者如果 window.Stimulus 已存在则自动注册
 if (window.Stimulus) {
   registerWulinControllers(window.Stimulus)
 }

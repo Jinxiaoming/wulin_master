@@ -1,5 +1,5 @@
 import { apiClient } from '@wulin-master/core';
-import Ui from './ui_helper.js';
+import Ui from './ui_helper';
 
 /**
  * Requests module handles CRUD operations for SlickGrid.

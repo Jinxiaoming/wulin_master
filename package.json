@@ -6,6 +6,7 @@
     "packages/@wulin-master/*"
   ],
   "devDependencies": {
-    "esbuild": "^0.25.9"
+    "esbuild": "^0.25.9",
+    "typescript": "^5.3.3"
   }
 }

@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "baseUrl": ".",
+    "paths": {
+      "@wulin-master/core": ["packages/@wulin-master/core/src"],
+      "@wulin-master/slickgrid": ["packages/@wulin-master/slickgrid/src"],
+      "@wulin-master/stimulus": ["packages/@wulin-master/stimulus/src"]
+    }
+  }
+}

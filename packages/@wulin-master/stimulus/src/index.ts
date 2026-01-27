@@ -1,15 +1,15 @@
-import NotificationController from './notification_controller.js';
-import ModalController from './modal_controller.js';
-import LoaderController from './loader_controller.js';
-import MaterializeController from './materialize_controller.js';
-import PanelController from './panel_controller.js';
-import NavigationController from './navigation_controller.js';
-import ScreenController from './screen_controller.js';
-import GridController from './grid_controller.js';
-import FormController from './form_controller.js';
-import InclusionExclusionController from './inclusion_exclusion_controller.js';
-import GridStatesController from './grid_states_controller.js';
-import ToolbarController from './toolbar_controller.js';
+import NotificationController from './notification_controller';
+import ModalController from './modal_controller';
+import LoaderController from './loader_controller';
+import MaterializeController from './materialize_controller';
+import PanelController from './panel_controller';
+import NavigationController from './navigation_controller';
+import ScreenController from './screen_controller';
+import GridController from './grid_controller';
+import FormController from './form_controller';
+import InclusionExclusionController from './inclusion_exclusion_controller';
+import GridStatesController from './grid_states_controller';
+import ToolbarController from './toolbar_controller';
 
 export const controllers = {
   notification: NotificationController,

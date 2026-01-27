@@ -1,25 +1,49 @@
 @use "mixins";
 @use 'materialize-css/sass/components/color-variables' as materialize_color;
 
-// Common
-$main-color: materialize_color.color($color-theme, "base");
-$text-color: materialize_color.color("grey", "darken-2");
-$label-color: materialize_color.color("grey", "base");
-$tag-color: materialize_color.color("grey", "lighten-1");
-$border-color: materialize_color.color("grey", "lighten-2");
-$filter-color: materialize_color.color("green", "base");
+// Define CSS Variables for Runtime Theming
+:root {
+  --wulin-main-color: #{materialize_color.color($color-theme, "base")};
+  --wulin-text-color: #{materialize_color.color("grey", "darken-2")};
+  --wulin-label-color: #{materialize_color.color("grey", "base")};
+  --wulin-tag-color: #{materialize_color.color("grey", "lighten-1")};
+  --wulin-border-color: #{materialize_color.color("grey", "lighten-2")};
+  --wulin-filter-color: #{materialize_color.color("green", "base")};
+  --wulin-error-color: #{materialize_color.color("red", "base")};
+  
+  --wulin-font-size-tiny: 10px;
+  --wulin-font-size-small: 12px;
+  --wulin-font-size-small-middle: 14px;
+  --wulin-font-size-middle: 16px;
+  --wulin-font-size-large: 20px;
+  
+  --wulin-nav-height: 48px;
+  --wulin-menu-width: 235px;
+  --wulin-grid-header-height: 50px;
+  
+  --wulin-box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
+}
 
-$font-size-tiny: 10px;
-$font-size-small: 12px;
-$font-size-small-middle: 14px;
-$font-size-middle: 16px;
-$font-size-large: 20px;
-$box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
+// Sass Variables (Mapping to CSS Variables for backward compatibility in Sass files)
+$main-color: var(--wulin-main-color);
+$text-color: var(--wulin-text-color);
+$label-color: var(--wulin-label-color);
+$tag-color: var(--wulin-tag-color);
+$border-color: var(--wulin-border-color);
+$filter-color: var(--wulin-filter-color);
+$error-color: var(--wulin-error-color);
+
+$font-size-tiny: var(--wulin-font-size-tiny);
+$font-size-small: var(--wulin-font-size-small);
+$font-size-small-middle: var(--wulin-font-size-small-middle);
+$font-size-middle: var(--wulin-font-size-middle);
+$font-size-large: var(--wulin-font-size-large);
+$box-shadow: var(--wulin-box-shadow);
 
 // Layout
 $body-bg-color: white;
-$nav-height: 48px;
-$menu-width: 235px;
+$nav-height: var(--wulin-nav-height);
+$menu-width: var(--wulin-menu-width);
 
 $screen-loader-main-color: $main-color;
 $screen-loader-sub-color: $border-color;
@@ -34,29 +58,23 @@ $notification-box-shadow: 1px 2px 5px black;
 $info-modal-width: 400px;
 
 // Menu
-
 $menu-padding: 10px;
 $menu-item-active-color: $main-color;
 
 // Nav
-
 $activity-list-width: 500px;
 
 // Panel
-
 $panel-header-height: 40px;
 $panel-header-padding: 20px;
 
 // Form
-
-$error-color: materialize_color.color("red", "base");
 $form-title-margin: 16px;
 $form-submit-padding: 24px;
 
 // Grid Header
-
-$grid-header-height: 50px;
-$grid-header-has-selected-rows-bg-color: rgba($main-color, 0.1);
+$grid-header-height: var(--wulin-grid-header-height);
+$grid-header-has-selected-rows-bg-color: rgba(0, 150, 136, 0.1); // Fallback or use color mix
 $grid-header-selection-info-color: $main-color;
 
 $grid-states-switcher-width: 200px;
@@ -66,7 +84,6 @@ $toolbar-global-color: $main-color;
 $toolbar-select-color: $text-color;
 
 // Grid Table Header
-
 $slick-header-color: materialize_color.color("grey", "base");
 $slick-header-bg-color: white;
 $slick-header-height: 44px;
@@ -75,19 +92,18 @@ $slick-header-padding: 5px;
 $filter-height: 20px;
 
 // Grid Cell
-
 $grid-row-height: 25px;
 $grid-row-odd-bg-color: materialize_color.color("grey", "lighten-4");
-$grid-cell-selected-bg-color: rgba($main-color, 0.1);
+$grid-cell-selected-bg-color: rgba(0, 150, 136, 0.1);
 $grid-cell-active-border-color: $main-color;
 $grid-cell-loading-margin: 10px;
-$grid-cell-odd-filtered-bg-color: rgba(materialize_color.color("green", "base"), 0.1);
-$grid-cell-even-filtered-bg-color: rgba(materialize_color.color("green", "lighten-2"), 0.1);
-$grid-cell-filtered-selected-bg-color: rgba(materialize_color.color("teal", "lighten-1"), 0.2);
-$grid-cell-odd-shimmer-color-1: rgba(materialize_color.color("blue-grey", "lighten-3"), 0.3);
-$grid-cell-odd-shimmer-color-2: rgba(materialize_color.color("blue-grey", "lighten-3"), 0.1);
-$grid-cell-even-shimmer-color-1: rgba(materialize_color.color("grey", "lighten-2"), 0.3);
-$grid-cell-even-shimmer-color-2: rgba(materialize_color.color("grey", "lighten-2"), 0.1);
+$grid-cell-odd-filtered-bg-color: rgba(76, 175, 80, 0.1);
+$grid-cell-even-filtered-bg-color: rgba(129, 199, 132, 0.1);
+$grid-cell-filtered-selected-bg-color: rgba(0, 150, 136, 0.2);
+$grid-cell-odd-shimmer-color-1: rgba(176, 190, 197, 0.3);
+$grid-cell-odd-shimmer-color-2: rgba(176, 190, 197, 0.1);
+$grid-cell-even-shimmer-color-1: rgba(224, 224, 224, 0.3);
+$grid-cell-even-shimmer-color-2: rgba(224, 224, 224, 0.1);
 
 @keyframes shimmerCell {
   0% {
@@ -99,12 +115,10 @@ $grid-cell-even-shimmer-color-2: rgba(materialize_color.color("grey", "lighten-2
 }
 
 // Grid Editor
-
 $grid-editor-textarea-height: 80px;
 $grid-editor-textarea-editor-padding: 5px;
 $grid-editor-textarea-editor-bg-color: white;
 $grid-editor-text-bg: none repeat scroll 0 0 transparent;
 
 // Grid Column Picker
-
 $columnpicker-li-padding: 12px;

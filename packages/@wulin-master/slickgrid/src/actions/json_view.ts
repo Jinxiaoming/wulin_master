@@ -1,12 +1,16 @@
+import { GridAction } from '@wulin-master/core';
+import { BaseAction, ActionManager } from '../action_manager';
+
 /**
  * JSON View Action
  * Displays the JSON content of a 'jsonb' column in a modal.
  */
-WulinMaster.actions.JsonView = Object.assign({}, WulinMaster.actions.BaseAction, {
+const JsonViewAction: GridAction = Object.assign({}, BaseAction, {
   name: 'json_view',
 
-  handler: function() {
-    const grid = this.getGrid();
+  handler: function(this: GridAction) {
+    const grid = this.target;
+    if (!grid) return;
     const selectedRows = grid.getSelectedRows();
 
     if (selectedRows.length === 1) {
@@ -14,9 +18,9 @@ WulinMaster.actions.JsonView = Object.assign({}, WulinMaster.actions.BaseAction,
       const currentData = grid.getData()[selectedRows[0]];
       let jsonData = null;
 
-      const jsonColumn = columns.find(col => col.type === 'jsonb');
+      const jsonColumn = columns.find((col: any) => col.type === 'jsonb');
       if (jsonColumn) {
-        const rawValue = currentData[jsonColumn.column_name];
+        const rawValue = (currentData as any)[(jsonColumn as any).column_name];
         try {
           jsonData = typeof rawValue === 'string' ? JSON.parse(rawValue) : rawValue;
         } catch (e) {
@@ -25,14 +29,15 @@ WulinMaster.actions.JsonView = Object.assign({}, WulinMaster.actions.BaseAction,
       }
 
       if (jsonData) {
-        window.Ui.createJsonViewModal(jsonData);
+        window.WulinMaster.Ui.createJsonViewModal(jsonData);
       } else {
-        window.displayErrorMessage('No JSON data found in this record.', 'View Error');
+        window.WulinMaster.displayErrorMessage('No JSON data found in this record.', 'View Error');
       }
     } else {
-      window.displayErrorMessage('Please select exactly one record.', 'Selection Error');
+      window.WulinMaster.displayErrorMessage('Please select exactly one record.', 'Selection Error');
     }
   }
 });
 
-WulinMaster.ActionManager.register(WulinMaster.actions.JsonView);
+ActionManager.register(JsonViewAction);
+export default JsonViewAction;

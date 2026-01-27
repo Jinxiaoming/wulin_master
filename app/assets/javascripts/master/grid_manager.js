@@ -5,7 +5,7 @@ import registry from './registry.js';
  * GridManager manages the collection of SlickGrid instances on the page.
  * It handles grid creation, retrieval, and global resizing.
  */
-export class GridManager {
+class GridManager {
   constructor() {
     this.gridElementPrefix = "#grid_";
     this.gridElementSuffix = " .grid";
@@ -64,7 +64,7 @@ export class GridManager {
 
       // 1. Append editor
       if (typeof column.editor === 'string') {
-        column.editor = registry.getEditor(column.editor);
+        column.editor = this.resolveGlobalSymbol(column.editor);
       } else if (typeof column.editor !== 'object') {
         if (column.distinct) {
           column.editor = registry.getEditor("DistinctEditor");
@@ -91,6 +91,14 @@ export class GridManager {
         column.formatter = registry.getFormatter(column.formatter);
       }
     });
+  }
+
+  /**
+   * Resolves a global symbol string (e.g., "Slick.Formatters.Text") to its value.
+   */
+  resolveGlobalSymbol(str) {
+    if (!str) return null;
+    return str.split('.').reduce((obj, prop) => obj?.[prop], window);
   }
 
   /**
@@ -262,4 +270,5 @@ const gridManager = new GridManager();
 window.GridManager = GridManager;
 window.gridManager = gridManager;
 
-export { gridManager };
+export { GridManager, gridManager };
+export default GridManager;

@@ -29,8 +29,9 @@ JS
 # Remove application.css file
 remove_file "app/assets/stylesheets/application.css"
 
-# Add wulin master stylesheet to application.sass
-file "app/assets/stylesheets/application.sass", <<~CSS
+# Add wulin master stylesheet to master.sass
+# Move master.sass to app/assets/stylesheets to avoid esbuild picking it up
+file "app/assets/stylesheets/master.sass", <<~CSS
   @use "../../../vendor/gems/wulin_master/app/assets/stylesheets/master";
 CSS
 
@@ -44,7 +45,7 @@ file "package.json", <<~JSON, force: true
       "esbuild": "^0.25.9"
     },
     "scripts": {
-      "build": "esbuild app/javascript/application.js --bundle --sourcemap --format=esm --outdir=app/assets/builds --public-path=/assets --loader:.woff=file --loader:.woff2=file --external:'*.css'",
+      "build": "esbuild app/javascript/application.js --bundle --sourcemap --format=esm --outdir=app/assets/builds --public-path=/assets --loader:.woff=file --loader:.woff2=file",
       "copy-icons": "node script/copy_material_icons.js"
     },
     "dependencies": {
@@ -114,8 +115,8 @@ JS
 
 # Setup Procfile.dev
 file "Procfile.dev", <<~PROCFILE
-  web: env RUBY_DEBUG_OPEN=true bin/rails server
-  js: yarn build --watch
+  web: env RUBY_DEBUG_OPEN=true bin/rails server -b 0.0.0.0
+  js: yarn build:watch
   css: bin/rails dartsass:watch
 PROCFILE
 
@@ -137,7 +138,7 @@ initializer "wulin_master_assets.rb", <<~RB
     ]
     
     Rails.application.config.dartsass.builds = {
-      "application.sass"  => "application.css"
+      "master.sass"  => "application.css"
     }
     
     # Add node_modules to Sass load path for npm packages
@@ -192,7 +193,8 @@ file "Dockerfile", <<~DOCKERFILE, force: true
       git \
       libpq-dev \
       curl \
-      gnupg2
+      gnupg2 \
+      procps
 
   # Install Node.js and Yarn
   RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
@@ -220,6 +222,7 @@ DOCKERFILE
 file "docker-compose.yml", <<~YAML
   services:
     db:
+      container_name: wulin_postgres
       image: postgres:16-alpine
       volumes:
         - postgres_data:/var/lib/postgresql/data
@@ -232,11 +235,13 @@ file "docker-compose.yml", <<~YAML
         retries: 5
 
     redis:
+      container_name: wulin_redis
       image: redis:7-alpine
       volumes:
         - redis_data:/var/lib/redis/data
 
     app:
+      container_name: wulin_app
       build: .
       command: ./bin/dev
       volumes:
@@ -290,7 +295,8 @@ after_bundle do
 
   # Set custom build script (overwrites Rails default to include font loaders)
   package_json = JSON.parse(File.read("package.json"))
-  package_json["scripts"]["build"] = "esbuild app/javascript/application.js --bundle --sourcemap --format=esm --outdir=app/assets/builds --public-path=/assets --loader:.woff=file --loader:.woff2=file --external:*.css"
+  package_json["scripts"]["build"] = "esbuild app/javascript/application.js --bundle --sourcemap --format=esm --outdir=app/assets/builds --public-path=/assets --loader:.woff=file --loader:.woff2=file"
+  package_json["scripts"]["build:watch"] = "yarn build --watch=forever"
   File.write("package.json", JSON.pretty_generate(package_json))
 
   # Build JavaScript assets

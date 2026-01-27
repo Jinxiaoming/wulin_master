@@ -1,4 +1,4 @@
-import apiClient from './api_client.js';
+import { apiClient } from '@wulin-master/core';
 import Ui from './ui_helper.js';
 
 /**

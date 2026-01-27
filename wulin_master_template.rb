@@ -22,8 +22,11 @@ gem "dartsass-rails"
 
 # Add wulin master javascript to application.js:
 file "app/javascript/application.js", <<~JS
-  // Import Wulin Master modules
-  import '../../vendor/gems/wulin_master/app/assets/javascripts/master/master.js'
+  import "@hotwired/turbo-rails"
+  import "./controllers"
+  
+  // Import Wulin Master Entry Point
+  import '@wulin-master/slickgrid/src/master.js'
 JS
 
 # Remove application.css file
@@ -31,7 +34,7 @@ remove_file "app/assets/stylesheets/application.css"
 
 # Add wulin master stylesheet to application.sass
 file "app/javascript/application.sass", <<~CSS
-  @use "../../../vendor/gems/wulin_master/app/assets/stylesheets/master";
+  @use "../../../vendor/gems/wulin_master/gems/wulin_master/app/assets/stylesheets/master";
 CSS
 
 # Setup package.json with all required dependencies
@@ -57,7 +60,10 @@ file "package.json", <<~JSON, force: true
       "inputmask": "^5.0.9",
       "tom-select": "^2.4.3",
       "@hotwired/stimulus": "^3.2.2",
-      "@hotwired/turbo-rails": "^8.0.21"
+      "@hotwired/turbo-rails": "^8.0.21",
+      "@wulin-master/core": "portal:./vendor/gems/wulin_master/packages/@wulin-master/core",
+      "@wulin-master/slickgrid": "portal:./vendor/gems/wulin_master/packages/@wulin-master/slickgrid",
+      "@wulin-master/stimulus": "portal:./vendor/gems/wulin_master/packages/@wulin-master/stimulus"
     },
     "optionalDependencies": {
       "@esbuild/linux-arm64": "0.25.9",

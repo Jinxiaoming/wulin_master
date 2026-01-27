@@ -5,7 +5,7 @@
 /**
  * Handles errors from both legacy jQuery AJAX and modern Fetch API.
  */
-function handleAjaxError(xhr) {
+export function handleAjaxError(xhr) {
   let msg = xhr.responseText;
   let wulin_oauth;
 

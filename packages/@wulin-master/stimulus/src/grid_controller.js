@@ -1,4 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
+import { gridManager } from "@wulin-master/slickgrid"
 
 /**
  * GridController manages the initialization of a SlickGrid instance.
@@ -28,8 +29,8 @@ export default class extends Controller {
     if (this.grid) {
       this.grid.destroy()
     }
-    if (window.gridManager && this.nameValue) {
-      window.gridManager.destroyGrid(this.nameValue)
+    if (gridManager && this.nameValue) {
+      gridManager.destroyGrid(this.nameValue)
     }
   }
 
@@ -37,8 +38,8 @@ export default class extends Controller {
    * Calls GridManager to create the SlickGrid instance.
    */
   initializeGrid() {
-    if (window.gridManager) {
-      this.grid = window.gridManager.createNewGrid(
+    if (gridManager) {
+      this.grid = gridManager.createNewGrid(
         this.nameValue,
         this.modelValue,
         this.screenValue,
@@ -59,8 +60,8 @@ export default class extends Controller {
    * Destroys the grid instance via GridManager.
    */
   destroyGrid() {
-    if (window.gridManager && this.nameValue) {
-      window.gridManager.destroyGrid(this.nameValue)
+    if (gridManager && this.nameValue) {
+      gridManager.destroyGrid(this.nameValue)
     }
   }
 

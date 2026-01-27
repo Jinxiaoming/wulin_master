@@ -5,8 +5,8 @@
   "main": "src/index.js",
   "type": "module",
   "dependencies": {
+    "@hotwired/stimulus": "^3.2.2",
     "@wulin-master/core": "workspace:*",
-    "@wulin-master/slickgrid": "workspace:*",
-    "@hotwired/stimulus": "^3.2.2"
+    "@wulin-master/slickgrid": "workspace:*"
   }
 }

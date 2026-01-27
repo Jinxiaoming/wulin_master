@@ -1,4 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
+import { TextEditorForForm } from "@wulin-master/slickgrid"
 
 /**
  * FormController manages complex form behaviors like dependent selects,
@@ -86,8 +87,6 @@ export default class extends Controller {
       container: container
     }
 
-    if (typeof window.TextEditorForForm === 'function') {
-      const editor = new window.TextEditorForForm(args)
-    }
+    const editor = new TextEditorForForm(args)
   }
 }

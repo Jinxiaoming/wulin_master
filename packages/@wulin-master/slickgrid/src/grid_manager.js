@@ -1,5 +1,4 @@
-import RemoteModel from './remotemodel.js';
-import registry from './registry.js';
+import { RemoteModel, registry } from '@wulin-master/core';
 
 /**
  * GridManager manages the collection of SlickGrid instances on the page.

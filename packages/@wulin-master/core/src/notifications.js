@@ -1,5 +1,5 @@
 // Notification system using Stimulus bridge
-window.displayNewNotification = (message, type, always) => {
+export const displayNewNotification = (message, type, always) => {
   // Dispatch event to Stimulus controller
   const event = new CustomEvent("display-notification", {
     detail: { message, type, always }
@@ -25,7 +25,7 @@ window.displayNewNotification = (message, type, always) => {
 };
 
 // Backward compatibility for saveMessage
-window.saveMessage = (message, type) => {
+export const saveMessage = (message, type) => {
   const event = new CustomEvent("save-message-only", {
     detail: { message, type }
   });
@@ -38,3 +38,7 @@ window.saveMessage = (message, type) => {
     }
   }
 };
+
+// Global exposure for legacy
+window.displayNewNotification = displayNewNotification;
+window.saveMessage = saveMessage;

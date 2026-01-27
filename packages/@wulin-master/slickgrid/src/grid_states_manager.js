@@ -1,4 +1,4 @@
-import apiClient from './api_client.js';
+import { apiClient } from '@wulin-master/core';
 
 /**
  * GridStatesManager handles saving and restoring grid states (width, order, visibility, sorting, filters).

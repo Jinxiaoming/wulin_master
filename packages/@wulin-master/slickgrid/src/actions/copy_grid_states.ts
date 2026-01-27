@@ -1,21 +1,24 @@
+import { GridAction } from '@wulin-master/core';
+import { BaseAction, ActionManager } from '../action_manager';
+
 /**
  * Copy Grid States Action
  * Copies selected grid states to selected users.
  */
-WulinMaster.actions.CopyGridStates = Object.assign({}, WulinMaster.actions.BaseAction, {
+const CopyGridStatesAction: GridAction = Object.assign({}, BaseAction, {
   name: 'copy_grid_states',
 
-  handler: async function() {
-    const stateGrid = window.gridManager.getGrid("state_grid_in_grid_states");
-    const userGrid = window.gridManager.getGrid("user_in_grid_states");
+  handler: async function(this: GridAction) {
+    const stateGrid = window.WulinMaster.gridManager.getGrid("state_grid_in_grid_states");
+    const userGrid = window.WulinMaster.gridManager.getGrid("user_in_grid_states");
     
     if (!stateGrid || !userGrid) return false;
 
-    const selectedStateIds = stateGrid.getSelectedIds();
-    const selectedUserIds = userGrid.getSelectedIds();
+    const selectedStateIds = (stateGrid as any).getSelectedIds();
+    const selectedUserIds = (userGrid as any).getSelectedIds();
 
     if (selectedStateIds.length === 0 || selectedUserIds.length === 0) {
-      window.displayErrorMessage("You must select both grid states and users.", "Selection Error");
+      window.WulinMaster.displayErrorMessage("You must select both grid states and users.", "Selection Error");
       return false;
     }
 
@@ -37,20 +40,21 @@ WulinMaster.actions.CopyGridStates = Object.assign({}, WulinMaster.actions.BaseA
       });
 
       const result = await response.json();
-      stateGrid.resetActiveCell();
-      userGrid.resetActiveCell();
+      (stateGrid as any).resetActiveCell();
+      (userGrid as any).resetActiveCell();
 
       if (result.success) {
         stateGrid.loader.reloadData();
-        window.displayNewNotification("Grid states successfully copied to the users.", "success");
+        window.WulinMaster.displayNewNotification("Grid states successfully copied to the users.", "success");
       } else {
-        window.displayErrorMessage(result.error_message || "Copy failed", "Error");
+        window.WulinMaster.displayErrorMessage(result.error_message || "Copy failed", "Error");
       }
     } catch (error) {
       console.error('Copy grid states error:', error);
-      window.displayErrorMessage('An error occurred while copying grid states.', 'Network Error');
+      window.WulinMaster.displayErrorMessage('An error occurred while copying grid states.', 'Network Error');
     }
   }
 });
 
-WulinMaster.ActionManager.register(WulinMaster.actions.CopyGridStates);
+ActionManager.register(CopyGridStatesAction);
+export default CopyGridStatesAction;

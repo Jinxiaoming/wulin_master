@@ -26,6 +26,7 @@ export { default as AddDetailAction } from './actions/add_detail';
 export { default as ExportRolePermissionAction } from './actions/export_role_permission';
 export { default as ImportRolePermissionAction } from './actions/import_role_permission';
 export { default as MakeDefaultGridAction } from './actions/make_default_grid';
+export { default as CopyGridStatesAction } from './actions/copy_grid_states';
 
 // Behaviors
 export { default as UpdateBehavior } from './behaviors/update';

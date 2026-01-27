@@ -1,40 +1,38 @@
-// master-detail grid relation, detail grid clear data when master grid has no selection
+import { WulinGrid, GridBehavior } from '@wulin-master/core';
+import { BaseBehavior, BehaviorManager } from '../behavior_manager';
 
-WulinMaster.behaviors.EmptyDetail = Object.assign({}, WulinMaster.behaviors.BaseBehavior, {
+// master-detail grid relation, detail grid clear data when master grid has no selection
+const EmptyDetailBehavior: GridBehavior = Object.assign({}, BaseBehavior, {
+  name: 'empty_detail',
   event: "onDataLoaded",
 
-  subscribe: function(target) {
-    var self = this;
+  subscribe: function(this: GridBehavior, target: WulinGrid) {
+    const self = this;
 
     this.detail_grids = this.detail_grids || [];
     if(this.detail_grids.indexOf(target) < 0) {
       this.detail_grids.push(target);
     }
 
-    this.master_grid = gridManager.getGrid(self.master_grid_name);
+    this.master_grid = window.WulinMaster.gridManager.getGrid(this.master_grid_name);
     if(this.master_grid) {
-      this.master_grid.loader[this.event].subscribe(function(){ self.handler(); });
+      (this.master_grid.loader as any)[this.event].subscribe(() => { self.handler(); });
     }
   },
 
-  unsubscribe: function() {
-
-  },
-
-  handler: function() {
+  handler: function(this: GridBehavior) {
     // get the selected id, then filter the detail grid
-    var rows = this.master_grid.getSelectedRows();
-    if(rows.length == 0) {
-      for(var i=0; i< this.detail_grids.length; i++) {
-        var detailGrid = this.detail_grids[i];
+    const rows = this.master_grid.getSelectedRows();
+    if(rows.length === 0) {
+      for(let i=0; i< this.detail_grids.length; i++) {
+        const detailGrid = this.detail_grids[i];
         detailGrid.resetActiveCell();
         detailGrid.loader.clear();
-        // detailGrid.pager.resetPager();
         detailGrid.render();
       }
     }
   }
-
 });
 
-WulinMaster.BehaviorManager.register("empty_detail", WulinMaster.behaviors.EmptyDetail);
+BehaviorManager.register("empty_detail", EmptyDetailBehavior);
+export default EmptyDetailBehavior;

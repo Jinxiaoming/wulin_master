@@ -1,26 +1,25 @@
-// Enable columns sorting after data loaded
+import { WulinGrid, GridBehavior } from '@wulin-master/core';
+import { BaseBehavior, BehaviorManager } from '../behavior_manager';
 
-WulinMaster.behaviors.enableSortingAfterLoading = Object.assign({}, WulinMaster.behaviors.BaseBehavior, {
+// Enable columns sorting after data loaded
+const EnableSortingAfterLoadingBehavior: GridBehavior = Object.assign({}, BaseBehavior, {
+  name: 'enable_sorting_after_loading',
   event: "onDataLoaded",
 
-  subscribe: function(target) {
+  subscribe: function(this: GridBehavior, target: WulinGrid) {
     this.grid = target;
-    var self = this;
-    target.loader[this.event].subscribe(function(){ self.handler(); });
+    const self = this;
+    (target.loader as any)[this.event].subscribe(() => { self.handler(); });
   },
 
-  unsubscribe: function() {
-
-  },
-
-  handler: function() {
-    var columns = this.grid.getColumns();
-    for(var i in columns) {
-      if(columns[i]['origin_sortable'] === false) continue;
-      columns[i]['sortable'] = true;
+  handler: function(this: GridBehavior) {
+    const columns = this.grid.getColumns();
+    for(const i in columns) {
+      if((columns[i] as any)['origin_sortable'] === false) continue;
+      (columns[i] as any)['sortable'] = true;
     }
   }
-
 });
 
-WulinMaster.BehaviorManager.register("enable_sorting_after_loading", WulinMaster.behaviors.enableSortingAfterLoading);
+BehaviorManager.register("enable_sorting_after_loading", EnableSortingAfterLoadingBehavior);
+export default EnableSortingAfterLoadingBehavior;

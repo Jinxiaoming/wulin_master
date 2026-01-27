@@ -56,7 +56,15 @@ import {
   HighlightBehavior,
   ClearFiltersBehavior,
   DisableSortingInitiallyBehavior,
-  DisableToolbarInitiallyBehavior
+  DisableToolbarInitiallyBehavior,
+  AddCandidateFilterBehavior,
+  ClearDetailWhenMultiSelectBehavior,
+  ColorColumnsBehavior,
+  EmptyDetailBehavior,
+  EnableSortingAfterLoadingBehavior,
+  EnableToolbarAfterLoadingBehavior,
+  GetOperateIdsBehavior,
+  IncludeExcludeTriviaBehavior
 } from './index'
 
 import { registerWulinControllers } from '@wulin-master/stimulus'
@@ -117,7 +125,15 @@ Object.assign(window.WulinMaster, {
     Highlight: HighlightBehavior,
     ClearFilters: ClearFiltersBehavior,
     DisableSortingInitially: DisableSortingInitiallyBehavior,
-    DisableToolbarInitially: DisableToolbarInitiallyBehavior
+    DisableToolbarInitially: DisableToolbarInitiallyBehavior,
+    AddCandidateFilter: AddCandidateFilterBehavior,
+    ClearDetailWhenMultiSelect: ClearDetailWhenMultiSelectBehavior,
+    ColorColumns: ColorColumnsBehavior,
+    EmptyDetail: EmptyDetailBehavior,
+    EnableSortingAfterLoading: EnableSortingAfterLoadingBehavior,
+    EnableToolbarAfterLoading: EnableToolbarAfterLoadingBehavior,
+    GetOperateIds: GetOperateIdsBehavior,
+    IncludeExcludeTrivia: IncludeExcludeTriviaBehavior
   },
   FilterPanel
 });

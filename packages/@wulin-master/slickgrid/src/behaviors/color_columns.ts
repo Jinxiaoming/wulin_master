@@ -1,13 +1,17 @@
-WulinMaster.behaviors.ColorColumns = Object.assign({}, WulinMaster.behaviors.BaseBehavior, {
+import { WulinGrid, GridBehavior } from '@wulin-master/core';
+import { BaseBehavior, BehaviorManager } from '../behavior_manager';
+
+const ColorColumnsBehavior: GridBehavior = Object.assign({}, BaseBehavior, {
+  name: 'color_columns',
   events: ['onAddExtraCellClasses'],
 
-  subscribe: function (target) {
+  subscribe: function (this: GridBehavior, target: WulinGrid) {
     this.grid = target;
     const [onAddExtraCellClasses] = this.events;
-    target[onAddExtraCellClasses].subscribe((e, args) => this.setCellColor(args));
+    (target as any)[onAddExtraCellClasses].subscribe((e: any, args: any) => this.setCellColor(args));
   },
 
-  setCellColor: function ({ grid, row, cell, extraCellClasses }) {
+  setCellColor: function (this: GridBehavior, { grid, row, cell, extraCellClasses }: any) {
     const cellColumnColor = grid.getColumns()[cell]['color'];
     if (cellColumnColor) {
       extraCellClasses.push('colored');
@@ -16,4 +20,5 @@ WulinMaster.behaviors.ColorColumns = Object.assign({}, WulinMaster.behaviors.Bas
   },
 });
 
-WulinMaster.BehaviorManager.register('color_columns', WulinMaster.behaviors.ColorColumns);
+BehaviorManager.register('color_columns', ColorColumnsBehavior);
+export default ColorColumnsBehavior;

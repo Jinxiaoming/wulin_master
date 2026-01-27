@@ -1,22 +1,21 @@
-// push selected IDs to operatedIds when selected row changed
+import { WulinGrid, GridBehavior } from '@wulin-master/core';
+import { BaseBehavior, BehaviorManager } from '../behavior_manager';
 
-WulinMaster.behaviors.GetOperateIds = Object.assign({}, WulinMaster.behaviors.BaseBehavior, {
+// push selected IDs to operatedIds when selected row changed
+const GetOperateIdsBehavior: GridBehavior = Object.assign({}, BaseBehavior, {
+  name: 'get_operate_ids',
   event: "onSelectedRowsChanged",
 
-  subscribe: function(target) {
+  subscribe: function(this: GridBehavior, target: WulinGrid) {
     this.grid = target;
-    var self = this;
-    target[this.event].subscribe(function(){ self.handler(); });
+    const self = this;
+    (target as any)[this.event].subscribe(() => { self.handler(); });
   },
 
-  unsubscribe: function() {
-
-  },
-
-  handler: function() {
-    this.grid.operatedIds = this.grid.getSelectedIds();
+  handler: function(this: GridBehavior) {
+    (this.grid as any).operatedIds = (this.grid as any).getSelectedIds();
   }
-
 });
 
-WulinMaster.BehaviorManager.register("get_operate_ids", WulinMaster.behaviors.GetOperateIds);
+BehaviorManager.register("get_operate_ids", GetOperateIdsBehavior);
+export default GetOperateIdsBehavior;

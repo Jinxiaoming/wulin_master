@@ -1,16 +1,17 @@
-// Enable toolbar items after data loaded
+import { WulinGrid, GridBehavior } from '@wulin-master/core';
+import { BaseBehavior, BehaviorManager } from '../behavior_manager';
 
-WulinMaster.behaviors.enableToolbarAfterLoading = Object.assign({}, WulinMaster.behaviors.BaseBehavior, {
+// Enable toolbar items after data loaded
+const EnableToolbarAfterLoadingBehavior: GridBehavior = Object.assign({}, BaseBehavior, {
+  name: 'enable_toolbar_after_loading',
   event: "onDataLoaded",
 
-  subscribe: function(target) {
+  subscribe: function(this: GridBehavior, target: WulinGrid) {
     this.grid = target;
-    target.loader[this.event].subscribe(() => this.handler());
+    (target.loader as any)[this.event].subscribe(() => this.handler());
   },
 
-  unsubscribe: function() {},
-
-  handler: function() {
+  handler: function(this: GridBehavior) {
     const toolbarItems = this.grid.container.querySelectorAll(".toolbar_item a");
     toolbarItems.forEach(item => {
       if (!item.classList.contains('toolbar_manually_enable')) {
@@ -20,4 +21,5 @@ WulinMaster.behaviors.enableToolbarAfterLoading = Object.assign({}, WulinMaster.
   }
 });
 
-WulinMaster.BehaviorManager.register("enable_toolbar_after_loading", WulinMaster.behaviors.enableToolbarAfterLoading);
+BehaviorManager.register("enable_toolbar_after_loading", EnableToolbarAfterLoadingBehavior);
+export default EnableToolbarAfterLoadingBehavior;

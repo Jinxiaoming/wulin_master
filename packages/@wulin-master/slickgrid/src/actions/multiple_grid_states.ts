@@ -1,18 +1,21 @@
+import { GridAction } from '@wulin-master/core';
+import { BaseAction, ActionManager } from '../action_manager';
+
 /**
  * Multiple Grid States Action
  * Enables switching between different saved states for a grid.
  */
-WulinMaster.actions.MultipleGridStates = Object.assign({}, WulinMaster.actions.BaseAction, {
+const MultipleGridStatesAction: GridAction = Object.assign({}, BaseAction, {
   name: 'multiple_grid_states',
 
-  activate: function() {
-    const grid = this.getGrid();
+  activate: function(this: GridAction) {
+    const grid = this.target;
     if (!grid) return false;
 
     const stateItems = document.querySelectorAll(`#grid_states_${grid.name} .grid-state-item`);
     if (stateItems.length === 0) return false;
 
-    stateItems.forEach(item => {
+    stateItems.forEach((item: any) => {
       item.onclick = async () => {
         const stateId = item.dataset.stateId;
         const url = '/wulin_master/grid_states_manages/set_current';
@@ -36,15 +39,18 @@ WulinMaster.actions.MultipleGridStates = Object.assign({}, WulinMaster.actions.B
           if (msg === "success") {
             window.location.reload();
           } else {
-            window.displayErrorMessage(msg, "Error");
+            window.WulinMaster.displayErrorMessage(msg, "Error");
           }
         } catch (error) {
           console.error('Set current state error:', error);
-          window.displayErrorMessage('An error occurred while switching states.', 'Network Error');
+          window.WulinMaster.displayErrorMessage('An error occurred while switching states.', 'Network Error');
         }
       };
     });
-  }
+  },
+
+  handler: () => {}
 });
 
-WulinMaster.ActionManager.register(WulinMaster.actions.MultipleGridStates);
+ActionManager.register(MultipleGridStatesAction);
+export default MultipleGridStatesAction;

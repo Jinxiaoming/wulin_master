@@ -20,6 +20,8 @@ export { default as FilterAction } from './actions/filter';
 export { default as FullscreenAction } from './actions/fullscreen';
 export { default as ShowAllAction } from './actions/show_all';
 export { default as HotkeyCreateAction } from './actions/hotkey_create';
+export { default as HotkeyDeleteAction } from './actions/hotkey_delete';
+export { default as SwitchAction } from './actions/switch';
 
 // Behaviors
 export { default as UpdateBehavior } from './behaviors/update';

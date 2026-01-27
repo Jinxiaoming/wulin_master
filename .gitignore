@@ -1,0 +1,27 @@
+# Dependencies
+node_modules/
+.yarn/
+yarn.lock
+
+# Build outputs
+dist/
+app/assets/builds/*
+
+# Rails specific
+.bundle
+db/*.sqlite3
+db/*.sqlite3-journal
+log/*.log
+tmp/
+.env
+.env.local
+
+# IDEs
+.DS_Store
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Monorepo specific
+.turbo/

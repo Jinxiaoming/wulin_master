@@ -23,3 +23,4 @@ export { default as HotkeyCreateAction } from './actions/hotkey_create';
 
 // Behaviors
 export { default as UpdateBehavior } from './behaviors/update';
+export { default as ColumnFilterBehavior } from './behaviors/column_filter';

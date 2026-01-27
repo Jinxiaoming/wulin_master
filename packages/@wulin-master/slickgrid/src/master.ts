@@ -36,7 +36,8 @@ import {
   FullscreenAction,
   ShowAllAction,
   HotkeyCreateAction,
-  UpdateBehavior
+  UpdateBehavior,
+  ColumnFilterBehavior
 } from './index'
 
 import { registerWulinControllers } from '@wulin-master/stimulus'
@@ -77,7 +78,8 @@ Object.assign(window.WulinMaster, {
   behaviors: { 
     ...(window.WulinMaster.behaviors || {}), 
     BaseBehavior,
-    Update: UpdateBehavior
+    Update: UpdateBehavior,
+    ColumnFilter: ColumnFilterBehavior
   },
   FilterPanel
 });

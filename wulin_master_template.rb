@@ -45,7 +45,7 @@ file "package.json", <<~JSON, force: true
       "esbuild": "^0.25.9"
     },
     "scripts": {
-      "build": "esbuild app/javascript/application.js --bundle --sourcemap --format=esm --outdir=app/assets/builds --public-path=/assets --loader:.woff=file --loader:.woff2=file",
+      "build": "esbuild app/javascript/application.js --bundle --outdir=app/assets/builds",
       "copy-icons": "node script/copy_material_icons.js"
     },
     "dependencies": {
@@ -115,7 +115,7 @@ JS
 
 # Setup Procfile.dev
 file "Procfile.dev", <<~PROCFILE
-  web: env RUBY_DEBUG_OPEN=true bin/rails server -b 0.0.0.0
+  web: bin/rails server -b 0.0.0.0
   js: yarn build:watch
   css: bin/rails dartsass:watch
 PROCFILE
@@ -296,7 +296,8 @@ after_bundle do
   # Set custom build script (overwrites Rails default to include font loaders)
   package_json = JSON.parse(File.read("package.json"))
   package_json["scripts"]["build"] = "esbuild app/javascript/application.js --bundle --sourcemap --format=esm --outdir=app/assets/builds --public-path=/assets --loader:.woff=file --loader:.woff2=file"
-  package_json["scripts"]["build:watch"] = "yarn build --watch=forever"
+  package_json["scripts"]["build:watch"] = "esbuild app/javascript/application.js --bundle --sourcemap --format=esm --outdir=app/assets/builds --public-path=/assets --loader:.woff=file --loader:.woff2=file --watch=forever"
+  package_json["scripts"]["dev"] = "bin/dev"
   File.write("package.json", JSON.pretty_generate(package_json))
 
   # Build JavaScript assets

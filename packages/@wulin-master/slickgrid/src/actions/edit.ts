@@ -1,9 +1,13 @@
+import { WulinGrid, GridAction } from '@wulin-master/core';
+import { BaseAction, ActionManager } from '../action_manager';
+
 // Toolbar Item: 'Edit'
-WulinMaster.actions.Edit = Object.assign({}, WulinMaster.actions.BaseAction, {
+const EditAction: GridAction = Object.assign({}, BaseAction, {
   name: 'edit',
 
-  handler: function () {
-    const grid = this.getGrid();
+  handler: function (this: GridAction) {
+    const grid = this.target;
+    if (!grid) return;
     this.batchUpdateByAjax(grid);
     return false;
   },
@@ -11,18 +15,18 @@ WulinMaster.actions.Edit = Object.assign({}, WulinMaster.actions.BaseAction, {
   /**
    * Opens the edit form and initializes batch update logic.
    */
-  batchUpdateByAjax: function (grid, version) {
+  batchUpdateByAjax: function (this: GridAction, grid: WulinGrid, version?: string) {
     const selectedIndexes = grid.getSelectedRows();
     const name = grid.name;
 
     if (!selectedIndexes || selectedIndexes.length === 0) {
-      window.displayErrorMessage('Please select a record', 'Selection Error');
+      window.WulinMaster.displayErrorMessage('Please select a record', 'Selection Error');
       return;
     }
 
-    const ids = grid.getSelectedIds();
+    const ids = (grid as any).getSelectedIds();
     if (ids.length > 350) {
-      window.displayErrorMessage('You selected too many rows, please select less than 350 rows.', 'Selection Error');
+      window.WulinMaster.displayErrorMessage('You selected too many rows, please select less than 350 rows.', 'Selection Error');
       return;
     }
 
@@ -32,17 +36,17 @@ WulinMaster.actions.Edit = Object.assign({}, WulinMaster.actions.BaseAction, {
     fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
       .then(response => response.text())
       .then(html => {
-        window.Ui.createModelModal(grid, html, {
+        window.WulinMaster.Ui.createModelModal(grid, html, {
           dismissible: false,
-          onOpenEnd: (modal) => {
-            window.Ui.setupForm(grid, true, selectedIndexes);
-            window.Ui.setupComponents(grid);
+          onOpenEnd: (modal: HTMLElement) => {
+            window.WulinMaster.Ui.setupForm(grid, true, selectedIndexes);
+            window.WulinMaster.Ui.setupComponents(grid);
             this.showFlagCheckBox(modal, ids);
             this.checkTheBox(name, modal);
             this.submitForm(grid, ids, selectedIndexes, modal);
-            grid.onOpenEditModalEnd.notify({ modal });
+            (grid as any).onOpenEditModalEnd.notify({ modal });
           },
-          onCloseStart: (modal) => {
+          onCloseStart: () => {
             document.querySelectorAll(".note-popover").forEach(el => el.remove());
           }
         });
@@ -52,39 +56,39 @@ WulinMaster.actions.Edit = Object.assign({}, WulinMaster.actions.BaseAction, {
   /**
    * Shows/hides update flags based on selection count.
    */
-  showFlagCheckBox: function (scope, ids) {
+  showFlagCheckBox: function (scope: HTMLElement, ids: any[]) {
     const container = scope.querySelectorAll('.target_flag_container');
-    container.forEach(el => el.style.display = ids.length > 1 ? 'block' : 'none');
+    container.forEach((el: any) => el.style.display = ids.length > 1 ? 'block' : 'none');
   },
 
   /**
    * Binds events to automatically check the "update" flag when a field is modified.
    */
-  checkTheBox: function (name, modal) {
+  checkTheBox: function (name: string, modal: HTMLElement) {
     const form = modal.querySelector('form');
     if (!form) return;
 
-    const markAsChanged = (e) => {
+    const markAsChanged = (e: any) => {
       const targetId = e.target.dataset.targetId;
       if (!targetId) return;
-      const flag = form.querySelector(`input.target_flag:checkbox[data-target-id="${targetId}"]`);
+      const flag = form.querySelector(`input.target_flag:checkbox[data-target-id="${targetId}"]`) as HTMLInputElement;
       if (flag) flag.checked = true;
     };
 
-    form.addEventListener('keyup', (e) => {
+    form.addEventListener('keyup', (e: any) => {
       if (e.target.matches('input:not([type="checkbox"]), textarea')) markAsChanged(e);
     });
 
-    form.addEventListener('change', (e) => {
+    form.addEventListener('change', (e: any) => {
       if (e.target.matches('input:not(.target_flag), select, textarea')) markAsChanged(e);
     });
 
     // Handle flag unchecking
-    form.addEventListener('change', (e) => {
+    form.addEventListener('change', (e: any) => {
       if (e.target.classList.contains('target_flag') && !e.target.checked) {
         const targetId = e.target.dataset.targetId;
         const inputs = form.querySelectorAll(`[data-target-id="${targetId}"]:not(.target_flag)`);
-        inputs.forEach(input => {
+        inputs.forEach((input: any) => {
           if (['button', 'submit', 'reset', 'hidden'].includes(input.type)) return;
           input.value = '';
           if (input.type === 'checkbox' || input.type === 'radio') input.checked = false;
@@ -97,30 +101,22 @@ WulinMaster.actions.Edit = Object.assign({}, WulinMaster.actions.BaseAction, {
   /**
    * Handles form submission for batch updates.
    */
-  submitForm: function (grid, ids, selectedIndexes, modal) {
+  submitForm: function (this: GridAction, grid: WulinGrid, ids: any[], selectedIndexes: number[], modal: HTMLElement) {
     const form = modal.querySelector('form');
-    const submitBtn = modal.querySelector('.update_btn');
+    const submitBtn = modal.querySelector('.update_btn') as HTMLButtonElement;
     if (!submitBtn || !form) return;
 
     submitBtn.onclick = (e) => {
       e.preventDefault();
       
       const gridParams = Object.fromEntries(grid.loader.getParams());
-      const formData = new FormData(form);
+      const formData = new FormData(form as HTMLFormElement);
       
-      // Filter out fields that aren't flagged for update (in batch mode)
-      if (ids.length > 1) {
-        const flaggedIds = Array.from(form.querySelectorAll('input.target_flag:checked')).map(f => f.dataset.targetId);
-        // This is tricky with FormData, we might need to manually construct the body
-        // or remove unflagged fields from FormData if possible.
-        // For now, let's assume the backend handles it or we use a plain object.
-      }
-
       submitBtn.disabled = true;
       const url = `${grid.path}/${ids.join(',')}.json${grid.query}`;
       
       // Construct body with gridParams
-      const bodyObj = { 
+      const bodyObj: any = { 
         _method: 'PUT', 
         gridParams: gridParams,
         authenticity_token: decodeURIComponent(window._token || '')
@@ -129,9 +125,9 @@ WulinMaster.actions.Edit = Object.assign({}, WulinMaster.actions.BaseAction, {
       // Add form data to bodyObj
       for (let [key, value] of formData.entries()) {
         // Only include if flagged or if it's a single record update
-        const input = form.querySelector(`[name="${key}"]`);
+        const input = form.querySelector(`[name="${key}"]`) as HTMLElement;
         const targetId = input?.dataset.targetId;
-        if (ids.length === 1 || !targetId || form.querySelector(`input.target_flag:checkbox[data-target-id="${targetId}"]`)?.checked) {
+        if (ids.length === 1 || !targetId || (form.querySelector(`input.target_flag:checkbox[data-target-id="${targetId}"]`) as HTMLInputElement)?.checked) {
           bodyObj[key] = value;
         }
       }
@@ -148,23 +144,23 @@ WulinMaster.actions.Edit = Object.assign({}, WulinMaster.actions.BaseAction, {
       .then(r => r.json())
       .then(msg => {
         if (msg.success) {
-          window.Ui.resetForm(grid.name);
+          window.WulinMaster.Ui.resetForm(grid.name);
           grid.loader.reloadData();
-          if ((grid.reloadMasterAfterUpdates || grid.options.reloadMasterAfterUpdates) && grid.master_grid) {
-            grid.master_grid.loader.reloadData();
+          if (((grid as any).reloadMasterAfterUpdates || grid.options.reloadMasterAfterUpdates) && (grid as any).master_grid) {
+            (grid as any).master_grid.loader.reloadData();
           }
           const count = selectedIndexes.length;
           const message = count > 1 ? `${count} ${grid.model.toLowerCase()}s updated` : `1 ${grid.model.toLowerCase()} updated`;
-          window.displayNewNotification(message, 'success');
-          window.M.Modal.getInstance(modal).close();
+          window.WulinMaster.displayNewNotification(message, 'success');
+          window.WulinMaster.M.Modal.getInstance(modal).close();
         } else {
-          window.displayErrorMessage(msg.error_message || 'Update failed', 'Error');
+          window.WulinMaster.displayErrorMessage(msg.error_message || 'Update failed', 'Error');
           grid.loader.reloadData();
         }
       })
       .catch(err => {
         console.error('Update error:', err);
-        window.displayErrorMessage('An error occurred during update.', 'Network Error');
+        window.WulinMaster.displayErrorMessage('An error occurred during update.', 'Network Error');
       })
       .finally(() => {
         submitBtn.disabled = false;
@@ -176,14 +172,14 @@ WulinMaster.actions.Edit = Object.assign({}, WulinMaster.actions.BaseAction, {
 /**
  * Fills form values from grid data.
  */
-window.fillValues = function (scope, grid, selectedIndexes) {
+(window as any).fillValues = function (scope: HTMLElement, grid: WulinGrid, selectedIndexes: number[]) {
   const container = scope;
   if (!container) return;
 
-  let data = {};
+  let data: any = {};
   if (selectedIndexes.length === 1) {
     data = grid.loader.data[selectedIndexes[0]];
-    const cols = grid.options["needDuplicateColumns"];
+    const cols = (grid.options as any)["needDuplicateColumns"];
     if (cols && cols.length > 0) {
       data = Object.fromEntries(Object.entries(data).filter(([key]) => cols.includes(key)));
     }
@@ -206,11 +202,11 @@ window.fillValues = function (scope, grid, selectedIndexes) {
     }
   }
 
-  window.loadValue(container, data);
+  (window as any).loadValue(container, data);
 
   // Activate labels for fields with values
   container.querySelectorAll('.field').forEach(field => {
-    if (field.querySelector('input')?.value) {
+    if ((field.querySelector('input') as HTMLInputElement)?.value) {
       field.querySelector('label')?.classList.add('active');
     }
   });
@@ -219,12 +215,12 @@ window.fillValues = function (scope, grid, selectedIndexes) {
 /**
  * Loads values into form inputs.
  */
-window.loadValue = function (scope, data) {
+(window as any).loadValue = function (scope: HTMLElement, data: any) {
   for (let i in data) {
     const value = data[i];
     const inputs = scope.querySelectorAll(`[data-field="${i}"]`);
     
-    inputs.forEach(input => {
+    inputs.forEach((input: any) => {
       if (input.tagName === 'SELECT') {
         const val = (typeof value === 'object' && value !== null) ? value.id : value;
         input.value = Array.isArray(val) ? val : [val].flat();
@@ -234,10 +230,11 @@ window.loadValue = function (scope, data) {
         input.checked = !!value;
       } else {
         input.value = value || '';
-        input.labels?.forEach(l => l.classList.toggle('active', !!value));
+        input.labels?.forEach((l: HTMLElement) => l.classList.toggle('active', !!value));
       }
     });
   }
 };
 
-WulinMaster.ActionManager.register(WulinMaster.actions.Edit);
+ActionManager.register(EditAction);
+export default EditAction;

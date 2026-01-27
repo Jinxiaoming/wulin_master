@@ -14,6 +14,7 @@ export * from './wulin_form';
 
 // Actions
 export { default as DeleteAction } from './actions/delete';
+export { default as EditAction } from './actions/edit';
 
 // Behaviors
 export { default as UpdateBehavior } from './behaviors/update';

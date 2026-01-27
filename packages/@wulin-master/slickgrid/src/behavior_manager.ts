@@ -1,28 +1,30 @@
+import { WulinGrid, GridBehavior } from '@wulin-master/core';
+
 /**
  * BehaviorManager handles the registration and dispatching of grid behaviors.
  */
-const BehaviorManager = (() => {
-  const behaviors = {};
+export const BehaviorManager = (() => {
+  const behaviors: Record<string, GridBehavior> = {};
 
   return {
     /**
      * Registers a new behavior.
      */
-    register: function(name, obj) {
+    register: function(name: string, obj: GridBehavior) {
       behaviors[name] = obj;
     },
 
     /**
      * Unregisters an existing behavior.
      */
-    unregister: function(name) {
+    unregister: function(name: string) {
       delete behaviors[name];
     },
 
     /**
      * Retrieves a behavior by name, returning a fresh copy.
      */
-    getBehavior: function(name) {
+    getBehavior: function(name: string): GridBehavior | null {
       const proto = behaviors[name];
       return proto ? Object.assign({}, proto) : null;
     },
@@ -30,7 +32,7 @@ const BehaviorManager = (() => {
     /**
      * Dispatches behaviors to a target (usually a grid).
      */
-    dispatchBehaviors: function(target, configs) {
+    dispatchBehaviors: function(target: WulinGrid, configs: any[]) {
       if (!configs) return;
       for (let i = 0; i < configs.length; i++) {
         const behavior = this.getBehavior(configs[i].name);
@@ -46,16 +48,14 @@ const BehaviorManager = (() => {
 /**
  * BaseBehavior provides the interface for all grid behaviors.
  */
-const BaseBehavior = {
-  _isBehavior: true,
+export const BaseBehavior: GridBehavior = {
+  name: 'base',
   subscribe: () => {},
   unsubscribe: () => {}
 };
 
 // Global exposure for legacy compatibility
-window.WulinMaster = window.WulinMaster || {};
-window.WulinMaster.BehaviorManager = BehaviorManager;
-window.WulinMaster.behaviors = window.WulinMaster.behaviors || {};
-window.WulinMaster.behaviors.BaseBehavior = BaseBehavior;
-
-export { BehaviorManager, BaseBehavior };
+(window as any).WulinMaster = (window as any).WulinMaster || {};
+(window as any).WulinMaster.BehaviorManager = BehaviorManager;
+(window as any).WulinMaster.behaviors = (window as any).WulinMaster.behaviors || {};
+(window as any).WulinMaster.behaviors.BaseBehavior = BaseBehavior;

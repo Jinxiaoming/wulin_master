@@ -11,3 +11,9 @@ export * from './menu';
 export * from './loader';
 export * from './panel';
 export * from './wulin_form';
+
+// Actions
+export { default as DeleteAction } from './actions/delete';
+
+// Behaviors
+export { default as UpdateBehavior } from './behaviors/update';

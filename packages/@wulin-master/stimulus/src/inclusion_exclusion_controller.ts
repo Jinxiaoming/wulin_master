@@ -1,4 +1,6 @@
 import { Controller } from "@hotwired/stimulus"
+import { gridManager } from "@wulin-master/slickgrid"
+import { displayNewNotification, displayErrorMessage } from "@wulin-master/core"
 
 /**
  * InclusionExclusionController handles the logic for moving records between
@@ -27,9 +29,11 @@ export default class extends Controller {
   /**
    * Common handler for adding or removing associations.
    */
-  async handleMove(type) {
-    const inclusionGrid = window.gridManager.getGrid(this.inclusionGridValue)
-    const exclusionGrid = window.gridManager.getGrid(this.exclusionGridValue)
+  async handleMove(type: 'add' | 'remove') {
+    if (!gridManager) return
+
+    const inclusionGrid = gridManager.getGrid(this.inclusionGridValue)
+    const exclusionGrid = gridManager.getGrid(this.exclusionGridValue)
 
     if (!inclusionGrid || !exclusionGrid) return
 
@@ -37,10 +41,10 @@ export default class extends Controller {
     if (ids.length === 0) return
 
     // Find the master grid via affiliation behavior
-    const affiliation = inclusionGrid.behaviors.find(b => b.name === 'affiliation')
+    const affiliation = inclusionGrid.behaviors.find((b: any) => b.name === 'affiliation')
     if (!affiliation) return
 
-    const groupGrid = window.gridManager.getGrid(affiliation.master_grid_name)
+    const groupGrid = gridManager.getGrid(affiliation.master_grid_name)
     if (!groupGrid) return
 
     const groupId = groupGrid.getSelectedIds()[0]
@@ -56,7 +60,7 @@ export default class extends Controller {
       include_model: inclusionGrid.model,
       exclude_model: exclusionGrid.model,
       ids: ids,
-      authenticity_token: decodeURIComponent(window._token || '')
+      authenticity_token: decodeURIComponent((window as any)._token || '')
     }
 
     try {
@@ -75,13 +79,13 @@ export default class extends Controller {
         exclusionGrid.loader.reloadData()
         inclusionGrid.resetActiveCell()
         exclusionGrid.resetActiveCell()
-        window.displayNewNotification(result.message, 'success')
+        displayNewNotification(result.message, 'success')
       } else {
-        window.displayErrorMessage(result.message, 'Error')
+        displayErrorMessage(result.message, 'Error')
       }
     } catch (error) {
       console.error('Move error:', error)
-      window.displayErrorMessage('An unexpected error occurred.', 'Network Error')
+      displayErrorMessage('An unexpected error occurred.', 'Network Error')
     } finally {
       this.element.querySelectorAll('button, span[data-lucide]').forEach(el => el.classList.remove('disabled'))
     }

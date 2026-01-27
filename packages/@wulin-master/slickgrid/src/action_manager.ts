@@ -1,30 +1,31 @@
+import { WulinGrid, GridAction } from '@wulin-master/core';
 import Requests from './grid_requests.js';
 
 /**
  * ActionManager handles the registration and dispatching of grid actions (toolbar items).
  */
-const ActionManager = (() => {
-  const actions = {};
+export const ActionManager = (() => {
+  const actions: Record<string, GridAction> = {};
 
   return {
     /**
      * Registers a new action.
      */
-    register: function(obj) {
+    register: function(obj: GridAction) {
       actions[obj.name] = obj;
     },
 
     /**
      * Unregisters an existing action.
      */
-    unregister: function(obj) {
+    unregister: function(obj: GridAction) {
       delete actions[obj.name];
     },
 
     /**
      * Retrieves an action by name, returning a fresh copy.
      */
-    getAction: function(name) {
+    getAction: function(name: string): GridAction | null {
       const proto = actions[name];
       return proto ? Object.assign({}, proto) : null;
     },
@@ -32,7 +33,7 @@ const ActionManager = (() => {
     /**
      * Dispatches actions to a target (usually a grid).
      */
-    dispatchActions: function(target, configs) {
+    dispatchActions: function(target: WulinGrid, configs: any[]) {
       if (!configs) return;
       for (let i in configs) {
         const action = this.getAction(configs[i].name);
@@ -48,51 +49,43 @@ const ActionManager = (() => {
 /**
  * BaseAction provides the base logic for all grid actions.
  */
-const BaseAction = {
+export const BaseAction: Partial<GridAction> = {
   _isAction: true,
-  name: null,
+  name: '',
   event: "click",
   triggerElementIdentifier: null,
-  target: null,
+  target: undefined,
 
   /**
    * Initializes the action by locating its trigger element and activating it.
    */
-  init: function() {
+  init: function(this: GridAction) {
     // Try to find the trigger element
-    this.triggerElement = document.querySelector(this.triggerElementIdentifier);
+    let triggerElement = document.querySelector(this.triggerElementIdentifier) as HTMLElement;
     
-    if (!this.triggerElement) {
-      this.triggerElement = document.getElementById(`${this.name}_action_on_${this.target.name}`);
+    if (!triggerElement && this.target) {
+      triggerElement = document.getElementById(`${this.name}_action_on_${this.target.name}`) as HTMLElement;
     }
 
-    if (this.triggerElement) {
-      this.activate();
+    if (triggerElement) {
+      this.activate(triggerElement);
     }
   },
 
   /**
    * Returns the grid associated with this action.
    */
-  getGrid: function() {
+  getGrid: function(this: GridAction): WulinGrid | null {
     if (this.target) return this.target;
-    
-    const toolbar = this.triggerElement?.closest(".toolbar");
-    if (toolbar) {
-      const gridName = toolbar.dataset.grid;
-      return window.gridManager.getGrid(gridName);
-    }
     return null;
   },
 
   /**
    * Activates the action by binding the trigger event.
    */
-  activate: function() {
-    if (!this.triggerElement) return;
-
-    this.triggerElement.addEventListener(this.event, (e) => {
-      if (this.triggerElement.classList.contains('toolbar_icon_disabled')) return false;
+  activate: function(this: GridAction, element: HTMLElement) {
+    element.addEventListener(this.event || 'click', (e) => {
+      if (element.classList.contains('toolbar_icon_disabled')) return false;
       this.handler(e);
     });
   },
@@ -100,7 +93,7 @@ const BaseAction = {
   /**
    * Handles deleting records with a confirmation dialog.
    */
-  deleteGridRecords: function(grid, ids, customMessage, customTitle) {
+  deleteGridRecords: function(this: GridAction, grid: WulinGrid, ids: any[], customMessage?: string, customTitle?: string) {
     const self = this;
     const modelName = grid.model || 'record';
     const recordCount = ids.length;
@@ -113,49 +106,24 @@ const BaseAction = {
 
     const title = customTitle || this.confirm_title || "Delete Confirmation";
 
-    window.displayCustomizedConfirmModal({
+    window.WulinMaster.displayCustomizedConfirmModal({
       message: message,
       title: title,
       confirmCallBack: function() {
         Requests.deleteByAjax(grid, ids);
         // reload the master grid (for detach detail action)
-        if (self.reload_master && grid.master_grid) {
-          grid.master_grid.loader.reloadData();
+        if (self.reload_master && (grid as any).master_grid) {
+          (grid as any).master_grid.loader.reloadData();
         }
       }
     });
-  },
-
-  /**
-   * Adjusts the grid height when displayed inside a modal.
-   */
-  setGridHeightInModal: function(modalDom) {
-    const modal = modalDom;
-    if (!modal) return;
-
-    const headerHeight = modal.querySelector('.modal-header')?.offsetHeight || 0;
-    const gridHeaderHeight = modal.querySelector('.grid-header')?.offsetHeight || 0;
-    const slickHeaderHeight = modal.querySelector('.slick-header')?.offsetHeight || 0;
-    const footerHeight = modal.querySelector('.modal-footer')?.offsetHeight || 0;
-    const pagerHeight = modal.querySelector('.pager')?.offsetHeight || 0;
-    const extraHeight = modal.querySelector('.extra-block')?.offsetHeight || 0;
-
-    const viewport = modal.querySelector('.slick-viewport');
-    if (viewport) {
-      const canvasHeight = modal.offsetHeight - headerHeight - gridHeaderHeight - slickHeaderHeight - footerHeight - extraHeight - pagerHeight;
-      viewport.style.height = `${canvasHeight}px`;
-    }
-    
-    modal.querySelectorAll('.grid-canvas, .grid').forEach(el => el.style.height = 'auto');
   },
 
   handler: () => {}
 };
 
 // Global exposure for legacy compatibility
-window.WulinMaster = window.WulinMaster || {};
-window.WulinMaster.ActionManager = ActionManager;
-window.WulinMaster.actions = window.WulinMaster.actions || {};
-window.WulinMaster.actions.BaseAction = BaseAction;
-
-export { ActionManager, BaseAction };
+(window as any).WulinMaster = (window as any).WulinMaster || {};
+(window as any).WulinMaster.ActionManager = ActionManager;
+(window as any).WulinMaster.actions = (window as any).WulinMaster.actions || {};
+(window as any).WulinMaster.actions.BaseAction = BaseAction;

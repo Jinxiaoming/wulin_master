@@ -3,12 +3,10 @@
 
 // 1. 外部依赖 (由主项目 package.json 提供)
 import * as Turbo from "@hotwired/turbo"
-window.Turbo = Turbo
 import 'rails-ujs'
 import 'materialize-css'
 import 'flatpickr'
 import { Sortable } from 'sortablejs'
-window.Sortable = Sortable
 
 // 2. 导入 Monorepo 内部包
 import { 
@@ -30,32 +28,47 @@ import {
   BaseAction, 
   BehaviorManager, 
   BaseBehavior,
-  FilterPanel
+  FilterPanel,
+  DeleteAction,
+  UpdateBehavior
 } from './index'
 
 import { registerWulinControllers } from '@wulin-master/stimulus'
 
 // 3. 全局暴露 (保持向后兼容)
-window.apiClient = apiClient
-window.registry = registry
-window.RemoteModel = RemoteModel
-window.ConnectionManager = ConnectionManager
-window.displayNewNotification = displayNewNotification
-window.saveMessage = saveMessage
-window.handleAjaxError = handleAjaxError
+Object.assign(window, {
+  Turbo,
+  Sortable,
+  apiClient,
+  registry,
+  RemoteModel,
+  ConnectionManager,
+  displayNewNotification,
+  saveMessage,
+  handleAjaxError,
+  gridManager,
+  GridStatesManager,
+  Requests,
+  Ui,
+  __globalWillAppend: false
+});
 
-window.gridManager = gridManager
-window.GridStatesManager = GridStatesManager
-window.Requests = Requests
-window.Ui = Ui
 window.WulinMaster = window.WulinMaster || {}
-window.WulinMaster.ActionManager = ActionManager
-window.WulinMaster.actions = window.WulinMaster.actions || {}
-window.WulinMaster.actions.BaseAction = BaseAction
-window.WulinMaster.BehaviorManager = BehaviorManager
-window.WulinMaster.behaviors = window.WulinMaster.behaviors || {}
-window.WulinMaster.behaviors.BaseBehavior = BaseBehavior
-window.WulinMaster.FilterPanel = FilterPanel
+Object.assign(window.WulinMaster, {
+  ActionManager,
+  actions: { 
+    ...(window.WulinMaster.actions || {}), 
+    BaseAction,
+    Delete: DeleteAction
+  },
+  BehaviorManager,
+  behaviors: { 
+    ...(window.WulinMaster.behaviors || {}), 
+    BaseBehavior,
+    Update: UpdateBehavior
+  },
+  FilterPanel
+});
 
 // 4. 自动注册 Stimulus 控制器
 // 注意：在 Rails 应用中，主 application.js 通常会初始化 Stimulus
@@ -68,9 +81,10 @@ if (window.Stimulus) {
 import 'slickgrid/dist/styles/css/slick.grid.css'
 import 'slickgrid/dist/styles/css/slick-default-theme.css'
 import 'slickgrid/dist/styles/css/slick-icons.css'
+import './tailwind.css'
 
 // 6. 导入本地非模块化插件 (Dropzone 等)
-import '../dropzone.min.js'
+// import '../dropzone.min.js'
 
 window.__globalWillAppend = false
 

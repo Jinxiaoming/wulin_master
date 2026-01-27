@@ -1,18 +1,24 @@
+import { WulinGrid, GridAction } from '@wulin-master/core';
+import { BaseAction, ActionManager } from '../action_manager';
+
 // Toolbar Item 'Delete'
-WulinMaster.actions.Delete = Object.assign({}, WulinMaster.actions.BaseAction, {
+const DeleteAction: GridAction = Object.assign({}, BaseAction, {
   name: 'delete',
 
-  handler: function() {
-    const grid = this.getGrid();
-    const ids = grid.getSelectedIds();
+  handler: function(this: GridAction) {
+    const grid = this.target;
+    if (!grid) return;
+    
+    const ids = (grid as any).getSelectedIds();
 
-    if (ids.length > 0) {
+    if (ids && ids.length > 0) {
       this.deleteGridRecords(grid, ids);
       return false;
     } else {
-      window.displayErrorMessage("Please select a record.", "Selection Error");
+      window.WulinMaster.displayErrorMessage("Please select a record.", "Selection Error");
     }
   }
 });
 
-WulinMaster.ActionManager.register(WulinMaster.actions.Delete);
+ActionManager.register(DeleteAction);
+export default DeleteAction;

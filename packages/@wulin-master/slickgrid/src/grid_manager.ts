@@ -1,4 +1,4 @@
-import { RemoteModel, registry } from '@wulin-master/core';
+import { RemoteModel, registry, WulinGrid, WulinColumn } from '@wulin-master/core';
 
 /**
  * GridManager manages the collection of SlickGrid instances on the page.
@@ -8,7 +8,7 @@ export class GridManager {
   private gridElementPrefix: string = "#grid_";
   private gridElementSuffix: string = " .grid";
   private pagerElementSuffix: string = " .pager";
-  public grids: any[] = [];
+  public grids: WulinGrid[] = [];
 
   private defaultOptions: any = {
     enableAddRow: false,
@@ -55,7 +55,7 @@ export class GridManager {
   /**
    * Appends editor and formatter information to column definitions.
    */
-  appendEditor(columns: any[]): void {
+  appendEditor(columns: WulinColumn[]): void {
     columns.forEach(column => {
       if (column.id === "_checkbox_selector") return;
 
@@ -103,10 +103,10 @@ export class GridManager {
   /**
    * Creates a new SlickGrid instance and initializes its components.
    */
-  createNewGrid(name: string, model: string, screen: string, path: string, filters: any[], columns: any[], states: any, actions: any[], behaviors: any[], extend_options: any, select_toolbar_items: any[], user_id: string): any {
+  createNewGrid(name: string, model: string, screen: string, path: string, filters: any[], columns: WulinColumn[], states: any, actions: any[], behaviors: any[], extend_options: any, select_toolbar_items: any[], user_id: string): WulinGrid {
     const options = Object.assign({}, this.defaultOptions, extend_options);
     
-    const Slick = (window as any).Slick;
+    const Slick = window.Slick;
 
     // Add checkbox column if enabled
     if (options.checkbox.enable) {
@@ -125,23 +125,20 @@ export class GridManager {
     const gridElement = document.querySelector(gridSelector) as HTMLElement;
 
     if (!gridElement) {
-      console.error(`Grid element not found: ${gridSelector}`);
-      return;
+      throw new Error(`Grid element not found: ${gridSelector}`);
     }
 
     this.appendEditor(columns);
 
-    const win = window as any;
-
     // Apply states
-    filters = win.GridStatesManager.applyFilters(filters, states["filter"]);
+    filters = window.GridStatesManager.applyFilters(filters, states["filter"]);
     const pathWithoutQuery = path.split(".json")[0];
     const query = path.split(".json")[1];
 
     const loader = new RemoteModel(path, filters, columns);
-    columns = win.GridStatesManager.restoreOrderStates(columns, states["order"]);
-    win.GridStatesManager.restoreVisibilityStates(columns, states["visibility"]);
-    win.GridStatesManager.restoreWidthStates(columns, states["width"]);
+    columns = window.GridStatesManager.restoreOrderStates(columns, states["order"]);
+    window.GridStatesManager.restoreVisibilityStates(columns, states["visibility"]);
+    window.GridStatesManager.restoreWidthStates(columns, states["width"]);
 
     // Row detail plugin
     let rowDetailView: any;
@@ -153,7 +150,7 @@ export class GridManager {
         hideRow: options.rowDetail.hideRow,
         cssClass: options.rowDetail.cssClass,
         preTemplate: options.rowDetail.loadingTemplate,
-        postTemplate: win['RowDetailTemplates'][options.rowDetail.postTemplate],
+        postTemplate: (window as any)['RowDetailTemplates'][options.rowDetail.postTemplate],
         process: (item: any) => rowDetailView.onAsyncResponse.notify({ 'itemDetail': item })
       });
 
@@ -167,7 +164,7 @@ export class GridManager {
     }
 
     // Create Grid
-    const grid = new Slick.Grid(gridElement, loader.data, columns, options);
+    const grid = new Slick.Grid(gridElement, loader.data, columns, options) as WulinGrid;
 
     // Context Menu (Native implementation)
     grid.onContextMenu.subscribe((e: MouseEvent) => {
@@ -183,20 +180,20 @@ export class GridManager {
       states, actions, behaviors, select_toolbar_items, options
     });
 
-    if (options.rowDetail) grid.rowDetailView = rowDetailView;
+    if (options.rowDetail) (grid as any).rowDetailView = rowDetailView;
 
     grid.setSelectionModel(new Slick.RowSelectionModel());
 
     const columnpicker = new Slick.Controls.ColumnPicker(columns, grid, user_id, options);
-    grid.columnpicker = columnpicker;
+    (grid as any).columnpicker = columnpicker;
     grid.allColumns = columnpicker.getAllColumns();
 
-    grid.filterPanel = new win.WulinMaster.FilterPanel(grid, loader, states["filter"]);
+    (grid as any).filterPanel = new window.WulinMaster.FilterPanel(grid, loader, states["filter"]);
     loader.setGrid(grid);
 
     const pagerElement = document.querySelector(`${this.gridElementPrefix}${name}${this.pagerElementSuffix}`);
     if (pagerElement) {
-      grid.pager = new Slick.Controls.Pager(loader, grid, pagerElement);
+      (grid as any).pager = new Slick.Controls.Pager(loader, grid, pagerElement);
     }
 
     // Sorting
@@ -206,21 +203,21 @@ export class GridManager {
         loader.setSort(options.defaultSortingState.column, options.defaultSortingState.direction === 'ASC');
       }
     }
-    win.GridStatesManager.restoreSortingStates(grid, loader, states["sort"]);
+    window.GridStatesManager.restoreSortingStates(grid, loader, states["sort"]);
 
     // Dispatch
-    win.WulinMaster.ActionManager.dispatchActions(grid, actions);
-    win.WulinMaster.BehaviorManager.dispatchBehaviors(grid, behaviors);
+    window.WulinMaster.ActionManager.dispatchActions(grid, actions);
+    window.WulinMaster.BehaviorManager.dispatchBehaviors(grid, behaviors);
 
     this.setGridBodyHeight(gridElement);
-    grid.initialRender();
+    (grid as any).initialRender();
     grid.onViewportChanged.notify();
 
     // Manage grid collection
     this.grids = this.grids.filter(g => g.name !== name);
     this.grids.push(grid);
 
-    if (states) win.GridStatesManager.onStateEvents(grid);
+    if (states) window.GridStatesManager.onStateEvents(grid);
 
     // Plugins
     grid.registerPlugin(new Slick.AutoTooltips());
@@ -236,7 +233,7 @@ export class GridManager {
   /**
    * Native implementation of the grid context menu.
    */
-  showContextMenu(grid: any, e: MouseEvent): void {
+  showContextMenu(grid: WulinGrid, e: MouseEvent): void {
     let contextMenu = document.getElementById('contextMenu');
     if (!contextMenu) {
       contextMenu = document.createElement('ul');
@@ -249,20 +246,22 @@ export class GridManager {
     }
 
     const cell = grid.getCellFromEvent(e);
+    if (!cell) return;
     const node = grid.getCellNode(cell.row, cell.cell);
+    if (!node) return;
     const text = (node.textContent || "").trim();
 
     // Reset active states
-    grid.getContainerNode().querySelectorAll(".slick-cell, .slick-row").forEach((el: HTMLElement) => el.classList.remove("active"));
+    grid.getContainerNode().querySelectorAll(".slick-cell, .slick-row").forEach((el: Element) => el.classList.remove("active"));
 
     if (!node.classList.contains("selected")) {
       grid.setActiveCell(cell.row, cell.cell);
     } else {
       node.classList.add("active");
-      node.parentElement.classList.add("active");
+      node.parentElement?.classList.add("active");
       grid.setActiveRow(cell.row);
       grid.setActiveCellPosX(cell.cell);
-      grid.setActiveCellNode(cell);
+      grid.setActiveCellNode(node);
     }
 
     contextMenu.innerHTML = '';
@@ -271,20 +270,18 @@ export class GridManager {
     contextMenu.style.display = 'block';
     contextMenu.focus();
 
-    const win = window as any;
-
     // Copy item
     const copyItem = document.createElement('li');
     copyItem.innerHTML = `<i class='wulin-icon' data-lucide='copy'></i>Copy Cell`;
     copyItem.onclick = () => {
       navigator.clipboard.writeText(text);
-      win.M.toast({ html: `${text} copied.` });
+      window.M.toast({ html: `${text} copied.` });
       if (contextMenu) contextMenu.style.display = 'none';
     };
     contextMenu.appendChild(copyItem);
 
     // Dynamic actions
-    const contextActions = [...grid.select_toolbar_items].sort((a, b) => a.title[1].localeCompare(b.title[1]));
+    const contextActions = [...(grid as any).select_toolbar_items].sort((a, b) => a.title[1].localeCompare(b.title[1]));
     contextActions.forEach(action => {
       const gridAction = grid.actions.find((item: any) => action.title === (item.title || item.name[0].toUpperCase() + item.name.slice(1)));
       if (!gridAction) return;
@@ -301,7 +298,7 @@ export class GridManager {
     });
 
     // Scan for icons
-    win.IconManager.scan(contextMenu);
+    window.IconManager.scan(contextMenu);
 
     const closeMenu = () => {
       if (contextMenu) contextMenu.style.display = 'none';
@@ -310,7 +307,7 @@ export class GridManager {
     setTimeout(() => document.addEventListener('click', closeMenu), 10);
   }
 
-  getGrid(name: string): any {
+  getGrid(name: string): WulinGrid | null {
     return this.grids.find(g => g.name === name) || null;
   }
 
@@ -347,9 +344,8 @@ export class GridManager {
 
 // Global exposure for legacy compatibility
 const gridManager = new GridManager();
-const win = window as any;
-win.GridManager = GridManager;
-win.gridManager = gridManager;
+(window as any).GridManager = GridManager;
+(window as any).gridManager = gridManager;
 
 export { gridManager };
 export default GridManager;

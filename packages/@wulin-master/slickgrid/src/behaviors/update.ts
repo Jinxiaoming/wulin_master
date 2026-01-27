@@ -1,28 +1,25 @@
-// cell update events
+import { WulinGrid, GridBehavior } from '@wulin-master/core';
+import { BaseBehavior, BehaviorManager } from '../behavior_manager';
+import Requests from '../grid_requests';
 
-WulinMaster.behaviors.Update = Object.assign({}, WulinMaster.behaviors.BaseBehavior, {
+// cell update events
+const UpdateBehavior: GridBehavior = Object.assign({}, BaseBehavior, {
+  name: 'update',
   event: "onCellChange",
 
-  subscribe: function(target) {
+  subscribe: function(this: GridBehavior, target: WulinGrid) {
     this.grid = target;
-    var self = this;
-    target[this.event].subscribe(function(e, args){ self.handler(args); });
+    const self = this;
+    (target as any)[this.event].subscribe((e: any, args: any) => { 
+      self.handler(args); 
+    });
   },
 
-  unsubscribe: function() {
-
-  },
-
-  handler: function(args) {
-    // memorize the updated item in local grid
-    var updated_column;
-    for(var i in args.item) {
-      if(i !== 'id') updated_column = i;
-    }
+  handler: function(this: GridBehavior, args: any) {
     // send update request
     Requests.updateByAjax(this.grid, args.item);
   }
-
 });
 
-WulinMaster.BehaviorManager.register("update", WulinMaster.behaviors.Update);
+BehaviorManager.register("update", UpdateBehavior);
+export default UpdateBehavior;

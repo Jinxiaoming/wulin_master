@@ -1,5 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
-import { IconManager } from "@wulin-master/core"
+import { IconManager, displayErrorMessage } from "@wulin-master/core"
 
 /**
  * GridStatesController handles the UI for switching, creating, and editing grid states.
@@ -15,10 +15,10 @@ export default class extends Controller {
   connect() {
     // Initialize Materialize components
     const dropdown = this.element.querySelector('.dropdown-trigger')
-    if (dropdown) M.Dropdown.init(dropdown)
+    if (dropdown && (window as any).M) (window as any).M.Dropdown.init(dropdown)
     
     const modals = this.element.querySelectorAll('.modal')
-    M.Modal.init(modals)
+    if ((window as any).M) (window as any).M.Modal.init(modals)
   }
 
   /**
@@ -47,7 +47,7 @@ export default class extends Controller {
   /**
    * Handles Enter key in create input.
    */
-  handleCreateKey(event) {
+  handleCreateKey(event: KeyboardEvent) {
     if (event.key === 'Enter' && !this.createBtnTarget.classList.contains('disabled')) {
       this.create()
     }
@@ -62,7 +62,7 @@ export default class extends Controller {
     const payload = {
       grid_name: this.gridNameValue,
       state_name: name,
-      authenticity_token: decodeURIComponent(window._token || '')
+      authenticity_token: decodeURIComponent((window as any)._token || '')
     }
 
     try {
@@ -76,7 +76,7 @@ export default class extends Controller {
       if (result === 'success') {
         window.location.reload()
       } else {
-        window.displayErrorMessage(result, "Error")
+        displayErrorMessage(result, "Error")
       }
     } catch (error) {
       console.error('Create state error:', error)
@@ -86,16 +86,19 @@ export default class extends Controller {
   /**
    * Opens the edit modal for a state.
    */
-  openEdit(event) {
-    const { stateId, stateName } = event.currentTarget.dataset
+  openEdit(event: MouseEvent) {
+    const target = event.currentTarget as HTMLElement
+    const { stateId, stateName } = target.dataset
     this.editingId = stateId
-    this.editInputTarget.value = stateName
+    this.editInputTarget.value = stateName || ''
     this.editInputTarget.nextElementSibling?.classList.add('active')
     
     const modal = document.getElementById('edit-state-modal')
-    M.Modal.getInstance(modal).open()
+    if (modal && (window as any).M) (window as any).M.Modal.getInstance(modal).open()
     this.validateUpdate()
   }
+
+  private editingId?: string;
 
   /**
    * Enables/disables the update button based on input.
@@ -108,7 +111,7 @@ export default class extends Controller {
   /**
    * Handles Enter key in edit input.
    */
-  handleEditKey(event) {
+  handleEditKey(event: KeyboardEvent) {
     if (event.key === 'Enter' && !this.updateBtnTarget.classList.contains('disabled')) {
       this.update()
     }
@@ -123,7 +126,7 @@ export default class extends Controller {
     const payload = {
       id: this.editingId,
       name: name,
-      authenticity_token: decodeURIComponent(window._token || '')
+      authenticity_token: decodeURIComponent((window as any)._token || '')
     }
 
     try {
@@ -137,7 +140,7 @@ export default class extends Controller {
       if (result === 'success') {
         window.location.reload()
       } else {
-        window.displayErrorMessage(result, "Error")
+        displayErrorMessage(result, "Error")
       }
     } catch (error) {
       console.error('Update state error:', error)
@@ -153,7 +156,7 @@ export default class extends Controller {
     const url = '/wulin_master/grid_states_manages/destroy'
     const payload = {
       id: this.editingId,
-      authenticity_token: decodeURIComponent(window._token || '')
+      authenticity_token: decodeURIComponent((window as any)._token || '')
     }
 
     try {
@@ -167,7 +170,7 @@ export default class extends Controller {
       if (result === 'success') {
         window.location.reload()
       } else {
-        window.displayErrorMessage(result, "Error")
+        displayErrorMessage(result, "Error")
       }
     } catch (error) {
       console.error('Delete state error:', error)

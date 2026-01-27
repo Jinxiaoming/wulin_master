@@ -1,3 +1,4 @@
+import { WulinGrid, WulinColumn } from './types.js';
 import ConnectionManager from './connectionmanager.js';
 
 /**
@@ -19,19 +20,19 @@ export default class RemoteModel {
   private params: Array<[string, any]> = [];
   private pagingOptionsChanged: boolean = false;
   private path: string;
-  private columns: any[];
+  private columns: WulinColumn[];
   private filters: Array<[string, any, string]> = [];
   private lastRequestVersionNumber: number = 0;
   private currentRequestVersionNumber: number = 0;
   private connectionManager: ConnectionManager;
-  private grid: any;
+  private grid!: WulinGrid;
 
   public beforeRemoteRequest: any;
   public onDataLoading: any;
   public onPagingInfoChanged: any;
   public onDataLoaded: any;
 
-  constructor(path: string, initialFilters: any[], columns: any[]) {
+  constructor(path: string, initialFilters: any[], columns: WulinColumn[]) {
     this.path = path;
     this.columns = columns;
 
@@ -51,13 +52,13 @@ export default class RemoteModel {
     this.onDataLoaded = new Slick.Event();
   }
 
-  setGrid(newGrid: any) {
+  setGrid(newGrid: WulinGrid) {
     this.grid = newGrid;
 
     // Connect the grid and the loader
     this.grid.onViewportChanged.subscribe(() => {
       const vp = this.grid.getViewport();
-      if (this.grid.options.eagerLoading === false && this.data.length === 0) return;
+      if ((this.grid.getOptions() as any).eagerLoading === false && this.data.length === 0) return;
       this.ensureData(vp.top, vp.bottom);
     });
 
@@ -165,8 +166,8 @@ export default class RemoteModel {
 
   visibleColumnNames() {
     return this.grid.allColumns
-      .filter((c: any) => c.column_name !== undefined)
-      .map((c: any) => c.column_name);
+      .filter((c: WulinColumn) => c.column_name !== undefined)
+      .map((c: WulinColumn) => c.column_name as string);
   }
 
   onSuccess(resp: any) {

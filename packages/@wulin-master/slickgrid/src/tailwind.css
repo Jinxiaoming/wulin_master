@@ -1,0 +1,13 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom Wulin Master Tailwind Components */
+@layer components {
+  .wulin-btn {
+    @apply px-4 py-2 rounded transition-colors duration-200 font-medium;
+  }
+  .wulin-btn-primary {
+    @apply wulin-btn bg-wulin-primary text-white hover:bg-blue-600;
+  }
+}

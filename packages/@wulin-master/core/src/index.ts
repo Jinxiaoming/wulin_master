@@ -7,3 +7,4 @@ export * from './escape_html';
 export * from './notifications';
 export * from './dialog';
 export * from './api_error_handler';
+export * from './types';

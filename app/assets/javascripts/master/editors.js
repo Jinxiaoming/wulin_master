@@ -74,7 +74,10 @@ class BaseEditor {
     if (typeof validator === 'function') {
       return validator(this.args, value);
     } else if (typeof validator === 'string') {
-      return eval(validator)(this.args, value);
+      const validatorFn = window[validator];
+      if (typeof validatorFn === 'function') {
+        return validatorFn(this.args, value);
+      }
     }
     return { valid: true, msg: null };
   }

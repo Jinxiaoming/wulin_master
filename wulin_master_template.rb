@@ -34,7 +34,6 @@ file "package.json", <<~JSON
   {
     "name": "app",
     "private": true,
-    "packageManager": "yarn@4.0.0",
     "workspaces": [
       "vendor/gems/wulin_master"
     ],
@@ -156,7 +155,7 @@ file ".env.example", <<~ENV
 ENV
 
 # Create .env (local development, ignored by git)
-copy_file ".env.example", ".env"
+run "cp .env.example .env"
 append_to_file ".gitignore", ".env\n"
 
 # Create Dockerfile

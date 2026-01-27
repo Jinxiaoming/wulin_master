@@ -63,7 +63,7 @@ export default class GridManager {
 
       // 1. Append editor
       if (typeof column.editor === 'string') {
-        column.editor = eval(column.editor);
+        column.editor = window[column.editor] || window.WulinEditors[column.editor];
       } else if (typeof column.editor !== 'object') {
         if (column.distinct) {
           column.editor = window.DistinctEditor;
@@ -87,7 +87,7 @@ export default class GridManager {
       }
 
       if (typeof column.formatter === 'string') {
-        column.formatter = eval(column.formatter);
+        column.formatter = window[column.formatter] || window.SlickFormatter[column.formatter];
       }
     });
   }

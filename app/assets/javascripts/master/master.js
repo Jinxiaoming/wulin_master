@@ -47,8 +47,8 @@ application.register("grid-states", GridStatesController)
 application.register("toolbar", ToolbarController)
 
 // SlickGrid dependencies from NPM
-import 'slickgrid/dist/browser/slick.grid.css'
-import 'slickgrid/dist/browser/slick-default-theme.css'
+import 'slickgrid/dist/styles/css/slick.grid.css'
+import 'slickgrid/dist/styles/css/slick-default-theme.css'
 import 'slickgrid/dist/browser/slick.core'
 import 'slickgrid/dist/browser/slick.grid'
 import 'slickgrid/dist/browser/controls/slick.columnpicker'

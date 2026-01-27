@@ -85,9 +85,9 @@ Object.assign(window, {
   Requests,
   Ui,
   __globalWillAppend: false,
-  MASTER_DETAIL_COLOR_THEME: (window as any).MASTER_DETAIL_COLOR_THEME,
-  Inputmask: (window as any).Inputmask,
-  TomSelect: (window as any).TomSelect
+  MASTER_DETAIL_COLOR_THEME: window.MASTER_DETAIL_COLOR_THEME,
+  Inputmask: window.Inputmask,
+  TomSelect: window.TomSelect
 });
 
 window.WulinMaster = window.WulinMaster || {}
@@ -96,7 +96,7 @@ Object.assign(window.WulinMaster, {
   Ui,
   gridManager,
   Turbo,
-  M: (window as any).M,
+  M: window.M,
   actions: { 
     ...(window.WulinMaster.actions || {}), 
     BaseAction,

@@ -18,6 +18,7 @@ declare global {
     Inputmask: any;
     flatpickr: any;
     TomSelect: any;
+    Dropzone: any;
     
     // Global Configs/Tokens
     _token?: string;
@@ -26,6 +27,7 @@ declare global {
     MASTER_DETAIL_COLOR_THEME?: string;
     DROPZONE_JS_URL?: string;
     DROPZONE_CSS_URL?: string;
+    RowDetailTemplates: Record<string, any>;
     
     // Wulin Master Namespace (for legacy and namespaced access)
     WulinMaster: {
@@ -46,6 +48,8 @@ declare global {
       Requests: any;
       M: any;
       Dropzone?: any;
+      Inputmask?: any;
+      TomSelect?: any;
     };
     
     // Legacy Helper Functions (Direct window access)
@@ -54,7 +58,10 @@ declare global {
     saveMessage: (message: string, type?: string) => void;
     handleAjaxError: (xhr: any) => void;
     fillValues: (scope: HTMLElement, grid: WulinGrid, selectedIndexes: number[]) => void;
+    loadValue: (scope: HTMLElement, data: any) => void;
     cleanUpEditors: (id?: string | boolean) => void;
+    __globalWillAppend: boolean;
+    _focused: any;
   }
 }
 

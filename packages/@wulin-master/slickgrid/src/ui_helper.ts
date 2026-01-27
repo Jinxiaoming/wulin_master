@@ -159,7 +159,7 @@ const Ui: WulinUi = {
     container.querySelectorAll('select.select2').forEach((select: any) => {
       if (select.tomselect) select.tomselect.destroy();
       
-      const ts = new (window as any).TomSelect(select, {
+      const ts = new window.TomSelect(select, {
         placeholder: "",
         allowEmptyOption: true,
         width: "100%",
@@ -187,19 +187,19 @@ const Ui: WulinUi = {
 
     // Setup Datepickers (Flatpickr)
     container.querySelectorAll('input[data-datetime]').forEach((el: any) => {
-      if (window.WulinMaster.Inputmask) new window.WulinMaster.Inputmask('wulinDateTime').mask(el);
-      (window as any).flatpickr(el, Object.assign({}, (window as any).fpConfigFormDateTime || {}, (window as any).onCalendarOpenClose));
+      if (window.Inputmask) new window.Inputmask('wulinDateTime').mask(el);
+      window.flatpickr(el, Object.assign({}, (window as any).fpConfigFormDateTime || {}, (window as any).onCalendarOpenClose));
     });
 
     container.querySelectorAll('input[data-date]').forEach((el: any) => {
-      const isUS = typeof window.WulinMaster.USDateFormat === 'function' && window.WulinMaster.USDateFormat();
-      if (window.WulinMaster.Inputmask) new window.WulinMaster.Inputmask(isUS ? 'wulinUSDate' : 'wulinDate').mask(el);
-      (window as any).flatpickr(el, Object.assign({}, isUS ? (window as any).fpConfigFormUSDate : (window as any).fpConfigFormDate || {}, (window as any).onCalendarOpenClose));
+      const isUS = typeof window.USDateFormat === 'function' && window.USDateFormat();
+      if (window.Inputmask) new window.Inputmask(isUS ? 'wulinUSDate' : 'wulinDate').mask(el);
+      window.flatpickr(el, Object.assign({}, isUS ? (window as any).fpConfigFormUSDate : (window as any).fpConfigFormDate || {}, (window as any).onCalendarOpenClose));
     });
 
     container.querySelectorAll('input[data-time]').forEach((el: any) => {
-      if (window.WulinMaster.Inputmask) new window.WulinMaster.Inputmask('wulinTime').mask(el);
-      (window as any).flatpickr(el, Object.assign({}, (window as any).fpConfigFormTime || {}, { appendTo: el.parentElement }));
+      if (window.Inputmask) new window.Inputmask('wulinTime').mask(el);
+      window.flatpickr(el, Object.assign({}, (window as any).fpConfigFormTime || {}, { appendTo: el.parentElement }));
     });
   },
 
@@ -325,7 +325,7 @@ const Ui: WulinUi = {
     });
 
     if (!fillValuesWillRun && selectedIndexes !== undefined) {
-      if (typeof (window as any).fillValues === 'function') (window as any).fillValues(container, grid, selectedIndexes);
+      if (typeof window.fillValues === 'function') window.fillValues(container, grid, selectedIndexes);
     }
 
     const firstInput = container.querySelector('input:not([type="hidden"]), select, textarea') as HTMLElement;
@@ -356,8 +356,8 @@ const Ui: WulinUi = {
   },
 
   setupChosen: function (grid: WulinGrid, target: HTMLElement, scope: HTMLElement, selectedIndexes?: number[]) {
-    if (selectedIndexes !== undefined && typeof (window as any).fillValues === 'function') {
-      (window as any).fillValues(scope, grid, selectedIndexes);
+    if (selectedIndexes !== undefined && typeof window.fillValues === 'function') {
+      window.fillValues(scope, grid, selectedIndexes);
     }
     target.dispatchEvent(new Event('change'));
     this.unCheckEmpty(target);
@@ -392,7 +392,7 @@ const Ui: WulinUi = {
   closeModal: function (name: string) {
     const form = document.getElementById(`${name}_form`);
     if (!form) return;
-    (window as any)._focused = {};
+    window._focused = {};
     const modal = form.closest('.modal');
     if (modal) {
       const instance = window.WulinMaster.M.Modal.getInstance(modal);
@@ -483,8 +483,8 @@ const Ui: WulinUi = {
     const onCloseEnd = (options as any).onCloseEnd;
     (options as any).onCloseEnd = (el: HTMLElement) => {
       const activeRow = modal.querySelector(".ui-widget-content.active.slick-row") as HTMLElement;
-      if (activeRow && typeof (window as any).cleanUpEditors === 'function') {
-        (window as any).cleanUpEditors(activeRow.dataset.id);
+      if (activeRow && typeof window.cleanUpEditors === 'function') {
+        window.cleanUpEditors(activeRow.dataset.id);
       }
       if (onCloseEnd) onCloseEnd(el);
       modal.remove();
@@ -553,7 +553,7 @@ const Ui: WulinUi = {
     modal.style.maxHeight = '90%';
     modal.classList.add('modal-fixed-footer');
 
-    (window as any).__globalWillAppend = true;
+    window.__globalWillAppend = true;
     (modal.querySelector('.modal-content') as HTMLElement).innerHTML = data;
     
     const footer = document.createElement('div');
@@ -561,7 +561,7 @@ const Ui: WulinUi = {
     footer.id = 'modal-footer';
     modal.appendChild(footer);
 
-    (window as any).__globalWillAppend = false;
+    window.__globalWillAppend = false;
     return modal;
   },
 

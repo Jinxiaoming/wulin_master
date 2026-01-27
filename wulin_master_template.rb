@@ -8,7 +8,7 @@ file ".yarnrc.yml", <<~YAML
     cpu: [arm64, x64]
 YAML
 
-run "git submodule add -b v3.0.1a https://github.com/Jinxiaoming/wulin_master.git vendor/gems/wulin_master"
+run "git submodule add -b v3.1a_monorepo https://github.com/Jinxiaoming/wulin_master.git vendor/gems/wulin_master"
 run "git config -f .gitmodules submodule.vendor/gems/wulin_master.branch v3"
 
 gem "wulin_master", path: "vendor/gems/wulin_master/gems/wulin_master"
@@ -23,19 +23,44 @@ gem "dartsass-rails"
 # Add wulin master javascript to application.js:
 file "app/javascript/application.js", <<~JS
   import "@hotwired/turbo-rails"
-  import "./controllers"
   
   // Import Wulin Master Entry Point
-  import '@wulin-master/slickgrid/src/master.js'
+  import '@wulin-master/slickgrid'
+  
+  import { application } from "./controllers/application"
+  import { registerWulinControllers } from "@wulin-master/stimulus"
+
+  registerWulinControllers(application)
+JS
+
+# Setup Stimulus controllers directory
+run "mkdir -p app/javascript/controllers"
+file "app/javascript/controllers/index.js", <<~JS
+  import { application } from "./application"
+JS
+file "app/javascript/controllers/application.js", <<~JS
+  import { Application } from "@hotwired/stimulus"
+
+  const application = Application.start()
+
+  // Configure Stimulus development experience
+  application.debug = false
+  window.Stimulus   = application
+
+  export { application }
 JS
 
 # Remove application.css file
 remove_file "app/assets/stylesheets/application.css"
 
-# Add wulin master stylesheet to application.sass
-file "app/assets/stylesheets/application.sass", <<~CSS
-  @use "../../../vendor/gems/wulin_master/gems/wulin_master/app/assets/stylesheets/master";
-CSS
+  # Add wulin master stylesheet to application.sass
+  file "app/assets/stylesheets/application.sass", <<~CSS
+    @use "materialize-css/sass/components/color-variables" as materialize_color
+    @use "../../../vendor/gems/wulin_master/gems/wulin_master/app/assets/stylesheets/master" with (
+      $primary-color: var(--wulin-primary-color, materialize_color.color('blue', 'lighten-2')),
+      $secondary-color: var(--wulin-secondary-color, materialize_color.color('blue', 'base'))
+    )
+  CSS
 
 # Setup package.json with all required dependencies
 file "package.json", <<~JSON, force: true
@@ -51,7 +76,7 @@ file "package.json", <<~JSON, force: true
     },
     "dependencies": {
       "rails-ujs": "^5.2.8",
-      "materialize-css": "^1.0.0",
+      "materialize-css": "github:dogfalo/materialize#v1-dev",
       "lucide": "^0.474.0",
       "flatpickr": "^4.6.13",
       "sortablejs": "^1.15.6",

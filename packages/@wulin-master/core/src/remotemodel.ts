@@ -1,5 +1,5 @@
-import { WulinGrid, WulinColumn } from './types.js';
-import ConnectionManager from './connectionmanager.js';
+import { WulinGrid, WulinColumn, GridOptions } from './types';
+import ConnectionManager from './connectionmanager';
 
 /**
  * RemoteModel provides a data source for SlickGrid with support for
@@ -193,7 +193,8 @@ export default class RemoteModel {
       resp.rows.forEach((row: any[], i: number) => {
         const j = from + i;
         const obj: any = {};
-        const indexOffset = this.grid.getOptions().checkbox.enable ? 1 : 0;
+        const options = this.grid.getOptions() as GridOptions;
+        const indexOffset = options.checkbox?.enable ? 1 : 0;
 
         this.columns.forEach((col, colIdx) => {
           if (col.id !== "_checkbox_selector") {
@@ -270,7 +271,7 @@ export default class RemoteModel {
   }
 
   decideCurrentPosition(): [number | null, number | null] {
-    if (this.grid.operatedIds && this.grid.operatedIds.length > 0) {
+    if (this.grid.operatedIds && this.grid.operatedIds.length > 0 && this.grid.getRowByRecordId) {
       const lastId = this.grid.operatedIds[this.grid.operatedIds.length - 1];
       const gridRow = this.grid.getRowByRecordId(lastId);
       if (!gridRow) return [null, null];

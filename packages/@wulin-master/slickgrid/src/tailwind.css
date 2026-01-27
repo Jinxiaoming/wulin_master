@@ -10,4 +10,18 @@
   .wulin-btn-primary {
     @apply wulin-btn bg-wulin-primary text-white hover:bg-blue-600;
   }
+
+  /* Form Layout Utilities */
+  .wulin-form-container {
+    @apply mt-16 px-8 py-4;
+  }
+  .wulin-field-line {
+    @apply flex items-center mb-4;
+  }
+  .wulin-input-outlined {
+    @apply border-2 border-gray-200 rounded p-2 focus-within:border-wulin-primary transition-colors duration-150;
+  }
+  .wulin-label-active {
+    @apply text-wulin-primary bg-white px-1 -translate-y-7 top-4 z-10;
+  }
 }

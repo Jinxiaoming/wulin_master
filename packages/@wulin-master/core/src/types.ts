@@ -28,6 +28,9 @@ export interface WulinGrid extends SlickGrid {
   actions: any[];
   behaviors: any[];
   allColumns: WulinColumn[];
+  operatedIds?: any[];
+  getRowByRecordId?: (id: any) => any;
+  [key: string]: any;
 }
 
 export interface WulinColumn extends Column {
@@ -45,6 +48,10 @@ export interface GridOptions {
   editable?: boolean;
   asyncEditorLoading?: boolean;
   autoEdit?: boolean;
+  checkbox?: {
+    enable: boolean;
+    [key: string]: any;
+  };
   [key: string]: any;
 }
 

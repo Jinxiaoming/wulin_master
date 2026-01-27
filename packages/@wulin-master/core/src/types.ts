@@ -54,3 +54,36 @@ export interface ApiResponse<T = any> {
   offset?: number;
   error_message?: string;
 }
+
+export interface WulinUi {
+  isOpen: () => boolean;
+  isEditing: () => boolean;
+  resizeGrid: (grid: WulinGrid) => void;
+  filterPanelOpen: () => boolean;
+  isFiltering: () => boolean;
+  addOrDeleteLocked: () => boolean;
+  selectGridNames: () => string[];
+  refreshCreateForm: (grid: WulinGrid) => void;
+  resetForm: (name: string) => void;
+  openDialog: (grid: WulinGrid, action: string) => void;
+  setupComponents: (grid: WulinGrid, scope?: string) => void;
+  setupForm: (grid: WulinGrid, monitor: boolean, selectedIndexes?: number[], scope?: string) => void;
+  preventPressEnterKeySubmitForm: (formSelector: string) => void;
+  setupChosen: (grid: WulinGrid, target: HTMLElement, scope: HTMLElement, selectedIndexes?: number[]) => void;
+  addNewOption: (target: HTMLElement) => void;
+  unCheckEmpty: (target: HTMLElement) => void;
+  closeModal: (name: string) => void;
+  flashNotice: (ids: any[] | string, action: string) => void;
+  findCurrentGrid: () => WulinGrid | null;
+  getModalSize: (grid: WulinGrid, data: string, willBeRemovedContainerClassName?: string) => { width: number, height: number };
+  baseModal: (options?: any) => HTMLElement;
+  headerModal: (title: string, options?: any) => HTMLElement;
+  modalFooter: (btnName: string) => HTMLElement;
+  appendModalFooter: (btnName: string, modal: HTMLElement) => HTMLElement;
+  resetHeightOfModalContent: (content: HTMLElement | null) => void;
+  pdfDownloadFooter: (pdfUrl: string) => HTMLElement;
+  createModelModal: (grid: WulinGrid, data: string, options?: any, willBeRemovedContainerClassName?: string) => HTMLElement;
+  createJsonViewModal: (jsonData: any) => void;
+  createAddOptionModal: (inputBox: HTMLSelectElement) => void;
+  formatData: (grid: WulinGrid, arrayData: any[]) => any;
+}

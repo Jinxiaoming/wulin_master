@@ -84,12 +84,19 @@ Object.assign(window, {
   GridStatesManager,
   Requests,
   Ui,
-  __globalWillAppend: false
+  __globalWillAppend: false,
+  MASTER_DETAIL_COLOR_THEME: (window as any).MASTER_DETAIL_COLOR_THEME,
+  Inputmask: (window as any).Inputmask,
+  TomSelect: (window as any).TomSelect
 });
 
 window.WulinMaster = window.WulinMaster || {}
 Object.assign(window.WulinMaster, {
   ActionManager,
+  Ui,
+  gridManager,
+  Turbo,
+  M: (window as any).M,
   actions: { 
     ...(window.WulinMaster.actions || {}), 
     BaseAction,

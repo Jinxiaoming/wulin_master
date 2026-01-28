@@ -47,9 +47,33 @@ application.register("grid-states", GridStatesController)
 application.register("toolbar", ToolbarController)
 
 // SlickGrid dependencies from NPM
-import 'slickgrid/dist/styles/css/slick.grid.css'
-import 'slickgrid/dist/styles/css/slick-default-theme.css'
-import 'slickgrid'
+import * as SlickGrid from 'slickgrid'
+import { extendSlickGrid } from './slick_grid_extensions.js'
+
+window.Slick = {
+  ...SlickGrid,
+  Grid: SlickGrid.SlickGrid,
+  Event: SlickGrid.SlickEvent,
+  EventData: SlickGrid.SlickEventData,
+  EventHandler: SlickGrid.SlickEventHandler,
+  Range: SlickGrid.SlickRange,
+  RowSelectionModel: SlickGrid.SlickRowSelectionModel,
+  CheckboxSelectColumn: SlickGrid.SlickCheckboxSelectColumn,
+  AutoTooltips: SlickGrid.SlickAutoTooltips,
+  Plugins: {
+    RowDetailView: SlickGrid.SlickRowDetailView,
+    ContextMenu: SlickGrid.SlickContextMenu
+  },
+  Controls: {
+    ColumnPicker: SlickGrid.SlickColumnPicker,
+    Pager: SlickGrid.SlickGridPager
+  }
+}
+
+// Apply WulinMaster extensions to SlickGrid
+if (SlickGrid && SlickGrid.SlickGrid) {
+  extendSlickGrid(SlickGrid.SlickGrid)
+}
 
 // Core master files (in dependency order)
 import './escape_html.js'

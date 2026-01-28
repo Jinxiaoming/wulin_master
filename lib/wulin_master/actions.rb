@@ -14,7 +14,7 @@ module WulinMaster
     def index
       respond_to do |format|
         format.html do
-          render 'index', layout: (request.xhr? ? false : 'application')
+          render 'wulin_master/index', layout: (request.xhr? ? false : 'application'), locals: {xhr: request.xhr?}
         end
         format.json do
           return find_by_ids if params[:checkbox_record_ids].present?

@@ -235,6 +235,14 @@ export default class RemoteModel {
     }
   }
 
+  getSortColumn() {
+    return this.sortcol;
+  }
+
+  getSortDirection() {
+    return this.sortdir > 0 ? "ASC" : "DESC";
+  }
+
   refresh() {
     this.pagingOptionsChanged = true;
     this.clear();
@@ -269,7 +277,17 @@ export default class RemoteModel {
   }
 
   getParams() { return this.params; }
+  getFilters() { return this.filters; }
   getColumns() { return this.columns; }
+  
+  setFilter(filters) {
+    this.filters = filters;
+    this.refresh();
+  }
+
+  setFilterWithoutRefresh(filters) {
+    this.filters = filters;
+  }
 }
 
 // Global exposure for legacy compatibility

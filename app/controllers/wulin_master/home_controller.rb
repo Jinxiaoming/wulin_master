@@ -21,9 +21,9 @@ module WulinMaster
             end
           else
             begin
-              render 'index'
+              render 'wulin_master/index'
             rescue ActionView::MissingTemplate
-              render '/home'
+              render 'wulin_master/home'
             end
           end
         end

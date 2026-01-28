@@ -32,7 +32,8 @@ remove_file "app/assets/stylesheets/application.css"
 # Add wulin master stylesheet to master.scss
 # Move master.scss to app/assets/stylesheets to avoid esbuild picking it up
 file "app/assets/stylesheets/master.scss", <<~CSS
-  @use "../../../vendor/gems/wulin_master/app/assets/stylesheets/master";
+  @import "theme.generated";
+  @import "../../../vendor/gems/wulin_master/app/assets/stylesheets/master";
 CSS
 
 # Setup package.json with all required dependencies
@@ -116,34 +117,35 @@ JS
 # Setup Procfile.dev
 file "Procfile.dev", <<~PROCFILE
   web: bundle exec rails server -b 0.0.0.0
-  js: yarn build:watch
+  js: yarn build:watch --sourcemap=inline
   css: bundle exec rails dartsass:watch
 PROCFILE
 
 # Setup Wulin Master assets initializer
-initializer "wulin_master_assets.rb", <<~RB
-  # frozen_string_literal: true
+    initializer "wulin_master_assets.rb", <<~RB
+    # frozen_string_literal: true
 
-  require 'dartsass-rails'
+    require 'dartsass-rails'
 
-  # Wulin Master assets configuration for Propshaft
-  Rails.application.configure do
-    # Add builds directory to asset paths
-    config.assets.paths << Rails.root.join("app/assets/builds")
-    
-    # Add assets to precompile
-    config.assets.precompile += %w[
-      *.woff
-      *.woff2
-    ]
-    
-    Rails.application.config.dartsass.builds = {
-      "master.scss"  => "application.css"
-    }
-    
-    # Add node_modules to Sass load path for npm packages
-    Rails.application.config.dartsass.build_options << "--load-path=node_modules"
-  end
+    # Wulin Master assets configuration for Propshaft
+    Rails.application.configure do
+      # Add builds directory to asset paths
+      config.assets.paths << Rails.root.join("app/assets/builds")
+      
+      # Add assets to precompile
+      config.assets.precompile += %w[
+        *.woff
+        *.woff2
+      ]
+      
+      Rails.application.config.dartsass.builds = {
+        "master.scss"  => "master.css"
+      }
+      
+      # Add node_modules to Sass load path for npm packages
+      Rails.application.config.dartsass.build_options << "--load-path=node_modules"
+      Rails.application.config.dartsass.build_options << "--load-path=app/assets/stylesheets"
+    end
 RB
 
 # --- Docker & Environment Setup ---
@@ -165,7 +167,7 @@ ENV
 
 # Create .env (local development, ignored by git)
 run "cp .env.example .env"
-append_to_file ".gitignore", ".env\n"
+run "echo .env >> .gitignore"
 
 # Create .dockerignore
 file ".dockerignore", <<~TEXT, force: true
@@ -187,18 +189,18 @@ file "Dockerfile", <<~DOCKERFILE, force: true
   WORKDIR /rails
 
   # Install system dependencies
-  RUN apt-get update -qq && \
-      apt-get install --no-install-recommends -y \
-      build-essential \
-      git \
-      libpq-dev \
-      curl \
-      gnupg2 \
+  RUN apt-get update -qq && \\
+      apt-get install --no-install-recommends -y \\
+      build-essential \\
+      git \\
+      libpq-dev \\
+      curl \\
+      gnupg2 \\
       procps
 
   # Install Node.js and Yarn
-  RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
-      apt-get install -y nodejs && \
+  RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \\
+      apt-get install -y nodejs && \\
       corepack enable
 
   # Install Gem dependencies
@@ -257,9 +259,9 @@ file "docker-compose.yml", <<~YAML
         redis:
           condition: service_started
 
-  volumes:
-    postgres_data:
-    redis_data:
+volumes:
+  postgres_data:
+  redis_data:
 YAML
 
 # Update database.yml to use environment variables

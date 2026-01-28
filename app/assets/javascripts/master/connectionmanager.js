@@ -27,16 +27,18 @@ export default class ConnectionManager {
     const header = container.querySelector('.slick-header');
     
     // Cleanup old progress bars
-    const oldProgress = header.nextElementSibling;
-    if (oldProgress && oldProgress.classList.contains('progress')) {
-      oldProgress.remove();
-    }
+    if (header) {
+      const oldProgress = header.nextElementSibling;
+      if (oldProgress && oldProgress.classList.contains('progress')) {
+        oldProgress.remove();
+      }
 
-    // Create new progress bar
-    const progressBar = document.createElement('div');
-    progressBar.className = 'progress';
-    progressBar.innerHTML = '<div class="indeterminate"></div>';
-    header.insertAdjacentElement('afterend', progressBar);
+      // Create new progress bar
+      const progressBar = document.createElement('div');
+      progressBar.className = 'progress';
+      progressBar.innerHTML = '<div class="indeterminate"></div>';
+      header.insertAdjacentElement('afterend', progressBar);
+    }
 
     // Initial loading state for rows
     if (container.querySelectorAll('.slick-row').length === 0) {
@@ -67,7 +69,7 @@ export default class ConnectionManager {
       const data = await response.json();
       
       // Cleanup UI
-      progressBar.remove();
+      container.querySelector('.progress')?.remove();
       loadingRows.forEach(row => row.remove());
 
       // Version check: only process if this is the latest requested version
@@ -81,7 +83,7 @@ export default class ConnectionManager {
         console.log('Fetch aborted');
       } else {
         // Cleanup UI on error
-        progressBar.remove();
+        container.querySelector('.progress')?.remove();
         loadingRows.forEach(row => row.remove());
         clientOnError({ url }, "error", error.message);
       }

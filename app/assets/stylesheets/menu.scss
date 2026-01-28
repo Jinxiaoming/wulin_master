@@ -61,10 +61,11 @@
         margin-bottom: 1rem;
 
         a {
-          font-size: 13px;
+          font-size: 1.1rem;
           padding-left: 10px;
           text-transform: uppercase;
           color: $text-color;
+          font-weight: 500;
         }
 
         // Second level menu
@@ -76,7 +77,7 @@
             .material-icons {
               position: relative;
               top: 6px;
-              font-size: 21px;
+              font-size: 24px;
               transition: color 0.4s ease;
               color: materialize_color.color("grey", "darken-2");
             }
@@ -92,7 +93,7 @@
 
               span {
                 padding-left: 10px;
-                font-size: 13px;
+                font-size: 1rem;
               }
             }
 

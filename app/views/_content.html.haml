@@ -1,8 +1,14 @@
 #content.valign-wrapper
   #screen_content{ data: { controller: "screen", screen_target: "content" } }
-    - begin
-      = render :template => 'homepage/dashboard'
-    - rescue
+    - if respond_to?(:components) && components.present?
+      - components.each do |component|
+        = render :partial => '/grid', :locals => {:grid => component} if component.grid?
+        = render :partial => '/panel', :locals => {:panel => component} if component.panel?
+        - break if component.respond_to?(:fill_window?) and component.fill_window?
+    - else
+      - begin
+        = render :template => 'homepage/dashboard'
+      - rescue
 
 #confirm-modal.info-modal.modal{ data: { controller: "modal" } }
   .modal-content

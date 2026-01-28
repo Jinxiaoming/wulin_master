@@ -1,5 +1,4 @@
-@use 'theme.generated' as theme_generated;
-$color-theme: theme_generated.$color-theme;
+$color-theme: 'blue' !default;
 @use 'materialize-css/sass/components/color-variables' as materialize_color;
 $primary-color: var(--wulin-primary-color,materialize_color.color($color-theme, 'lighten-2')) !default;
 $secondary-color: var(--wulin-secondary-color, materialize_color.color($color-theme, 'base')) !default;
@@ -7,6 +6,10 @@ $secondary-color: var(--wulin-secondary-color, materialize_color.color($color-th
 @use 'material-icons/iconfont/material-icons';
 @use 'materialize-css/sass/materialize';
 
+@import 'slickgrid/dist/styles/css/slick.grid';
+@import 'slickgrid/dist/styles/css/slick-default-theme';
+
+@import 'mixins';
 @import 'lib/flatpickr_material_blue';
 @import 'overrides/flatpickr.override';
 @import 'overrides/materialize.overrides';
@@ -26,6 +29,5 @@ $secondary-color: var(--wulin-secondary-color, materialize_color.color($color-th
 @import 'grid.container';
 @import 'grid.header';
 @import 'grid.table.header';
-@import 'mixins';
 @import 'nav';
 @import 'panel';

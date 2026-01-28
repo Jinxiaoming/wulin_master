@@ -235,6 +235,14 @@ class GridManager {
   }
 
   /**
+   * Shows the context menu for a grid.
+   */
+  showContextMenu(grid, e) {
+    // Basic implementation or placeholder
+    console.log('Context menu requested for grid:', grid.name);
+  }
+
+  /**
    * Destroys a grid instance and removes it from the collection.
    */
   destroyGrid(name) {

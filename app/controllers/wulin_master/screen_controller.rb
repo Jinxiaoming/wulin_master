@@ -8,7 +8,7 @@ module WulinMaster
     include WulinMaster::Actions
     include WulinMaster::Variables
 
-    prepend_view_path File.join(File.dirname(__FILE__), '..', '..', 'views')
+    prepend_view_path Rails.root.join('vendor/gems/wulin_master/app/views')
     rescue_from ActionView::MissingTemplate, with: :render_index
 
     helper_method :screen, :grid, :components
@@ -43,7 +43,7 @@ module WulinMaster
     private
 
     def render_index
-      render '/index', layout: (request.xhr? ? false : 'application'), locals: {xhr: request.xhr?}
+      render 'wulin_master/index', layout: (request.xhr? ? false : 'application'), locals: {xhr: request.xhr?}
     end
   end
 end

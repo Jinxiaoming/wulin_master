@@ -40,7 +40,7 @@ export default class FilterPanel {
       timer = setTimeout(callback, ms);
     };
 
-    const headers = this.grid.getHeaders();
+    const headers = this.grid.getHeaderRow();
     if (!headers) return;
 
     // Remove old listener if any
@@ -79,7 +79,7 @@ export default class FilterPanel {
   }
 
   generateFilters() {
-    const headers = this.grid.getHeaders();
+    const headers = this.grid.getHeaderRow();
     if (!headers) return;
 
     this.applyCurrentFilters(this.currentFilters);
@@ -104,7 +104,7 @@ export default class FilterPanel {
 
   updateCurrentFilters() {
     this.currentFilters = {};
-    const headers = this.grid.getHeaders();
+    const headers = this.grid.getHeaderRow();
     if (!headers) return;
 
     headers.querySelectorAll('input').forEach(input => {

@@ -1,3 +1,8 @@
+:ruby
+  user_id = (respond_to?(:current_user) && current_user) ? current_user.id : -1
+  grid_states = grid.states_for_user
+  grid_states = {} if [nil, false, "false"].include?(grid_states)
+
 .grid_container{ id: "grid_#{grid.name}", name: "#{grid.name}", style: grid.style, |
   data: { |
     controller: "grid", |
@@ -5,9 +10,9 @@
     grid_model_value: grid.model.to_s, |
     grid_screen_value: grid.params["screen"].to_s, |
     grid_path_value: grid.path_for_json.to_s, |
-    grid_filters_value: grid.params["filters"].to_json, |
+    grid_filters_value: (grid.params["filters"] || []).to_json, |
     grid_columns_value: grid.javascript_column_model, |
-    grid_states_value: grid.states_for_user, |
+    grid_states_value: grid_states.to_json, |
     grid_actions_value: grid.action_configs.to_json, |
     grid_behaviors_value: grid.behavior_configs.to_json, |
     grid_options_value: grid.options.to_json, |
@@ -16,8 +21,6 @@
   } |
 }
   - unless grid.hide_header?
-    :ruby
-      user_id = (respond_to?(:current_user) && current_user) ? current_user.id : -1
     .grid-header
       .title-with-actions
         %h2= grid.title

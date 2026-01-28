@@ -30,6 +30,7 @@ function handleAjaxError(xhr) {
       break;
     default:
       if (xhr.status >= 400) {
+        
         window.displayErrorMessage(msg || "An error occurred during the request.", `Error ${xhr.status}`);
       }
       break;

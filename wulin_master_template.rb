@@ -29,9 +29,9 @@ JS
 # Remove application.css file
 remove_file "app/assets/stylesheets/application.css"
 
-# Add wulin master stylesheet to master.sass
-# Move master.sass to app/assets/stylesheets to avoid esbuild picking it up
-file "app/assets/stylesheets/master.sass", <<~CSS
+# Add wulin master stylesheet to master.scss
+# Move master.scss to app/assets/stylesheets to avoid esbuild picking it up
+file "app/assets/stylesheets/master.scss", <<~CSS
   @use "../../../vendor/gems/wulin_master/app/assets/stylesheets/master";
 CSS
 
@@ -115,9 +115,9 @@ JS
 
 # Setup Procfile.dev
 file "Procfile.dev", <<~PROCFILE
-  web: bin/rails server -b 0.0.0.0
+  web: bundle exec rails server -b 0.0.0.0
   js: yarn build:watch
-  css: bin/rails dartsass:watch
+  css: bundle exec rails dartsass:watch
 PROCFILE
 
 # Setup Wulin Master assets initializer
@@ -138,7 +138,7 @@ initializer "wulin_master_assets.rb", <<~RB
     ]
     
     Rails.application.config.dartsass.builds = {
-      "master.sass"  => "application.css"
+      "master.scss"  => "application.css"
     }
     
     # Add node_modules to Sass load path for npm packages
@@ -308,6 +308,9 @@ after_bundle do
 
   # Finally remove the default application.html.erb after all generators and installers are done
   remove_file "app/views/layouts/application.html.erb"
+  remove_file "app/assets/stylesheets/master.sass"
+  remove_file "app/assets/stylesheets/application.sass"
+  remove_file "app/javascript/application.sass"
 
   say "\n"
   say "=================================================================", :green

@@ -13,7 +13,8 @@ module WulinMaster
       dashboard if respond_to?(:dashboard)
       respond_to do |format|
         format.html do
-          if request.xhr?
+          xhr = request.xhr?
+          if xhr
             begin
               render template: 'homepage/dashboard', layout: false
             rescue StandardError
@@ -21,9 +22,9 @@ module WulinMaster
             end
           else
             begin
-              render 'wulin_master/index'
+              render 'wulin_master/index', locals: {xhr: xhr}
             rescue ActionView::MissingTemplate
-              render 'wulin_master/home'
+              render 'wulin_master/home', locals: {xhr: xhr}
             end
           end
         end

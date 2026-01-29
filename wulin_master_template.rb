@@ -99,7 +99,18 @@ file "script/copy_material_icons.js", <<~JS
 
     fs.mkdirSync(dstDir, { recursive: true });
 
-    for (const name of ["material-icons.woff2", "material-icons.woff"]) {
+    for (const name of [
+      "material-icons.woff2",
+      "material-icons.woff",
+      "material-icons-outlined.woff2",
+      "material-icons-outlined.woff",
+      "material-icons-round.woff2",
+      "material-icons-round.woff",
+      "material-icons-sharp.woff2",
+      "material-icons-sharp.woff",
+      "material-icons-two-tone.woff2",
+      "material-icons-two-tone.woff",
+    ]) {
       const srcFile = path.join(srcDir, name);
       if (fs.existsSync(srcFile)) {
         fs.copyFileSync(srcFile, path.join(dstDir, name));
@@ -115,10 +126,10 @@ file "script/copy_material_icons.js", <<~JS
 JS
 
 # Setup Procfile.dev
-file "Procfile.dev", <<~PROCFILE
-  web: bundle exec rails server -b 0.0.0.0
-  js: yarn build:watch --sourcemap=inline
-  css: bundle exec rails dartsass:watch
+file "Procfile.dev", <<~PROCFILE, force: true
+web: bundle exec rails server -b 0.0.0.0
+js: yarn build:watch --sourcemap=inline
+css: bundle exec rails dartsass:watch
 PROCFILE
 
 # Setup Wulin Master assets initializer
@@ -145,10 +156,88 @@ PROCFILE
       # Add node_modules to Sass load path for npm packages
       Rails.application.config.dartsass.build_options << "--load-path=node_modules"
       Rails.application.config.dartsass.build_options << "--load-path=app/assets/stylesheets"
+      Rails.application.config.dartsass.build_options << "--quiet-deps"
+      Rails.application.config.dartsass.build_options << "--silence-deprecation=import,global-builtin,slash-div,color-functions"
     end
 RB
 
 # --- Docker & Environment Setup ---
+
+# Create README.md
+file "README.md", <<~MARKDOWN, force: true
+  # Wulin Master Application
+
+  This application is built with the **Wulin Master** framework, a powerful and flexible grid-based administrative interface for Ruby on Rails.
+
+  ## 🚀 Quick Start (Docker)
+
+  The easiest way to run this application is using Docker and Docker Compose.
+
+  1.  **Build and Start Services:**
+      ```bash
+      docker-compose up --build
+      ```
+  2.  **Setup Database:** (In a new terminal)
+      ```bash
+      docker-compose exec app bin/rails db:prepare
+      ```
+  3.  **Access the App:**
+      Open [http://localhost:3000](http://localhost:3000) in your browser.
+
+  ## 🛠 Tech Stack
+
+  - **Framework:** Rails 8.x
+  - **Admin UI:** [Wulin Master](https://github.com/ekohe/wulin_master) (Grid-centric framework)
+  - **Database:** PostgreSQL
+  - **Caching/PubSub:** Redis
+  - **JS Bundler:** esbuild
+  - **CSS Processor:** Dart Sass (via dartsass-rails)
+  - **Asset Pipeline:** Propshaft
+
+  ## 🏗 Project Architecture
+
+  Wulin Master follows a specific pattern to build screens quickly:
+
+  1.  **Models:** Standard Rails models (`app/models/*.rb`).
+  2.  **Grids:** Define columns, actions, and behaviors (`app/grids/*_grid.rb`).
+  3.  **Screens:** Combine one or more grids into a full page (`app/screens/*_screen.rb`).
+  4.  **Controllers:** Inherit from `WulinMaster::ScreenController` (`app/controllers/*_controller.rb`).
+  5.  **Routes:** Map URLs to your screen controllers.
+
+  ## 💻 Local Development (Without Docker)
+
+  If you prefer to run the application locally:
+
+  1.  **Install Dependencies:**
+      ```bash
+      bundle install
+      yarn install
+      ```
+  2.  **Setup Environment:**
+      ```bash
+      cp .env.example .env
+      # Update .env with your local DB credentials
+      ```
+  3.  **Start Dev Server:**
+      ```bash
+      ./bin/dev
+      ```
+      *This starts Rails, esbuild (JS), and Dart Sass (CSS) concurrently using foreman.*
+
+  ## 📜 Key Commands
+
+  - **Generate a new Wulin Master Screen:**
+    ```bash
+    bundle exec rails generate wulin_master:screen [ModelName]
+    ```
+  - **Generate Theme CSS:**
+    ```bash
+    bundle exec rake wulin_master:generate_theme_color_css
+    ```
+
+  ---
+  Built with ❤️ by [Ekohe](https://www.ekohe.com)
+MARKDOWN
 
 # Create .env.example
 file ".env.example", <<~ENV
@@ -222,42 +311,42 @@ DOCKERFILE
 
 # Create docker-compose.yml
 file "docker-compose.yml", <<~YAML
-  services:
-    db:
-      container_name: wulin_postgres
-      image: postgres:16-alpine
-      volumes:
-        - postgres_data:/var/lib/postgresql/data
-      env_file:
-        - .env
-      healthcheck:
-        test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER"]
-        interval: 5s
-        timeout: 5s
-        retries: 5
+services:
+  db:
+    container_name: wulin_postgres
+    image: postgres:16-alpine
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    env_file:
+      - .env
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
-    redis:
-      container_name: wulin_redis
-      image: redis:7-alpine
-      volumes:
-        - redis_data:/var/lib/redis/data
+  redis:
+    container_name: wulin_redis
+    image: redis:7-alpine
+    volumes:
+      - redis_data:/var/lib/redis/data
 
-    app:
-      container_name: wulin_app
-      build: .
-      command: ./bin/dev
-      volumes:
-        - .:/rails
-        - /rails/node_modules
-      ports:
-        - "3000:3000"
-      env_file:
-        - .env
-      depends_on:
-        db:
-          condition: service_healthy
-        redis:
-          condition: service_started
+  app:
+    container_name: wulin_app
+    build: .
+    command: ./bin/dev
+    volumes:
+      - .:/rails
+      - /rails/node_modules
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
 
 volumes:
   postgres_data:
@@ -304,6 +393,13 @@ after_bundle do
 
   # Build JavaScript assets
   run "yarn build"
+
+  # Fix Procfile.dev (remove duplicate js line added by jsbundling-rails)
+  procfile_content = File.read("Procfile.dev")
+  if procfile_content.include?("js: yarn build --watch")
+    procfile_content.gsub!(/^js: yarn build --watch\n?/, "")
+    File.write("Procfile.dev", procfile_content)
+  end
 
   # Generate theme color CSS
   run "bundle exec rake wulin_master:generate_theme_color_css"

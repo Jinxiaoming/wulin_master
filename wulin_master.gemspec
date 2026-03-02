@@ -14,7 +14,7 @@ Gem::Specification.new do |s|
   s.description = 'WulinMaster is a grid plugin base on Ruby on Rails and SlickGrid. It provides powerful generator
   and other tools to make grids easy to build as well as flexible configurations.'
 
-  s.files = `git ls-files`.split("\n")
+  s.files = Dir["{app,config,db,lib}/**/*", "MIT-LICENSE", "Rakefile", "README.rdoc"]
   s.executables = []
   s.require_paths = ["lib"]
 

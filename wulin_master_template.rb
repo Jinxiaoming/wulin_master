@@ -316,7 +316,7 @@ services:
     container_name: wulin_postgres
     image: postgres:16-alpine
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql
     env_file:
       - .env
     healthcheck:

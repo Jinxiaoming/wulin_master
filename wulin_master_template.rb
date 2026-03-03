@@ -336,8 +336,8 @@ services:
     build: .
     command: ./bin/dev
     volumes:
-      - .:/rails
-      - /rails/node_modules
+      - .:/workspace
+      - /workspace/node_modules
     ports:
       - "3000:3000"
     env_file:

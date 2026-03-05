@@ -388,6 +388,10 @@ after_bundle do
   # Run wulin_master install generator
   rails_command "generate wulin_master:install"
 
+  # Setup RSpec
+  rails_command "generate rspec:install"
+  remove_dir "test"
+
   # Copy material icons fonts
   run "yarn run copy-icons"
 

@@ -244,7 +244,8 @@ file ".env.example", <<~ENV
   # Database configuration
   POSTGRES_USER=postgres
   POSTGRES_PASSWORD=password
-  DATABASE_URL=postgresql://postgres:password@db:5432/postgres
+  DB_HOST=db
+  DB_PORT=5432
 
   # Redis configuration
   REDIS_URL=redis://redis:6379/1
@@ -359,7 +360,8 @@ file "config/database.yml", <<~YAML, force: true
     adapter: postgresql
     encoding: unicode
     pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
-    url: <%= ENV.fetch("DATABASE_URL") { nil } %>
+    host: <%= ENV.fetch("DB_HOST") { "localhost" } %>
+    port: <%= ENV.fetch("DB_PORT") { 5432 } %>
     username: <%= ENV.fetch("POSTGRES_USER") { "postgres" } %>
     password: <%= ENV.fetch("POSTGRES_PASSWORD") { "password" } %>
 
@@ -368,7 +370,12 @@ file "config/database.yml", <<~YAML, force: true
 
   test:
     <<: *default
-    database: app_test
+    database: <%= ENV.fetch("POSTGRES_TEST_DB") { "#{app_name}_test" } %>
+
+  production:
+    <<: *default
+    database: #{app_name}_production
+
 YAML
 
 after_bundle do

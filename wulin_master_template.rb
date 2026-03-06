@@ -4,6 +4,8 @@
 #   rails new wulin_app --skip-hotwire --database=postgresql -j esbuild \
 #     -m ./wulin_master_template.rb
 
+ruby_ver = File.read(".ruby-version").strip rescue RUBY_VERSION
+
 # =============================================================================
 # 1. Yarn — use node-modules linker for compatibility
 # =============================================================================
@@ -14,6 +16,8 @@ file ".yarnrc.yml", <<~YAML
     os: [darwin, linux]
     cpu: [arm64, x64]
 YAML
+
+file ".nvmrc", "20\n", force: true
 
 # =============================================================================
 # 2. Wulin Master — add as git submodule
@@ -30,6 +34,7 @@ run "git config -f .gitmodules submodule.vendor/gems/wulin_master.branch v3"
 gem "wulin_master", path: "vendor/gems/wulin_master"
 gem "dartsass-rails"
 gem "redis", ">= 5.0"
+gem "foreman"
 
 # Ruby 3.4+ extracted these from stdlib
 gem "rexml"
@@ -61,7 +66,23 @@ gem_group :test do
 end
 
 # =============================================================================
-# 4. JavaScript & CSS
+# 4. Remove conflicting defaults
+# =============================================================================
+
+gsub_file "Gemfile", /^gem "rubocop-rails-omakase".*\n/, ""
+
+file ".rubocop.yml", <<~YAML, force: true
+  inherit_gem:
+    standard: config/base.yml
+
+  AllCops:
+    Exclude:
+      - "vendor/**/*"
+      - "db/schema.rb"
+YAML
+
+# =============================================================================
+# 5. JavaScript & CSS
 # =============================================================================
 
 file "app/javascript/application.js", <<~JS
@@ -76,7 +97,7 @@ file "app/assets/stylesheets/master.scss", <<~SCSS
 SCSS
 
 # =============================================================================
-# 5. Package.json
+# 6. Package.json
 # =============================================================================
 
 file "package.json", <<~JSON, force: true
@@ -112,7 +133,7 @@ file "package.json", <<~JSON, force: true
 JSON
 
 # =============================================================================
-# 6. Fonts & Asset Pipeline
+# 7. Fonts & Asset Pipeline
 # =============================================================================
 
 run "mkdir -p app/assets/fonts"
@@ -161,12 +182,12 @@ file "script/copy_material_icons.js", <<~JS
 JS
 
 # =============================================================================
-# 7. Procfile & Wulin Master Assets Initializer
+# 8. Procfile & Wulin Master Assets Initializer
 # =============================================================================
 
 file "Procfile.dev", <<~PROCFILE, force: true
   web: bundle exec rails server -b 0.0.0.0
-  js: yarn build:watch --sourcemap=inline
+  js: yarn build:watch
   css: bundle exec rails dartsass:watch
 PROCFILE
 
@@ -188,7 +209,7 @@ initializer "wulin_master_assets.rb", <<~RB
 RB
 
 # =============================================================================
-# 8. Environment Variables
+# 9. Environment Variables
 # =============================================================================
 
 file ".env.example", <<~ENV
@@ -202,28 +223,31 @@ ENV
 
 run "cp .env.example .env"
 
-append_to_file ".gitignore", <<~GIT
+# Fix Rails 8 default /.env* that blocks .env.example, add Yarn 4 entries
+gsub_file ".gitignore", "/.env*", "/.env*\n!/.env.example"
 
-  # Environment
-  .env
-  .env.local
-  .env.*.local
+append_to_file ".gitignore", <<~GIT
 
   # Coverage
   coverage/
 
   # Volumes
   volumes/
+
+  # Yarn 4
+  .yarn/install-state.gz
+  .pnp.*
 GIT
 
 # =============================================================================
-# 9. Docker
+# 10. Docker
 # =============================================================================
 
 file ".dockerignore", <<~TEXT, force: true
   .git
   .env
   .env.local
+  .env.*.local
   node_modules
   tmp
   log
@@ -231,59 +255,106 @@ file ".dockerignore", <<~TEXT, force: true
   public/assets
   coverage
   .bundle
+  .yarn/install-state.gz
 TEXT
 
 file "Dockerfile", <<~DOCKERFILE, force: true
   # syntax=docker/dockerfile:1
-  ARG RUBY_VERSION=3.3.6
+  ARG RUBY_VERSION=#{ruby_ver}
   ARG NODE_MAJOR=20
 
-  FROM ruby:${RUBY_VERSION}-slim AS base
+  # ---- base ----
+  FROM ruby:\${RUBY_VERSION}-slim AS base
 
   WORKDIR /rails
 
+  # Use ARG in the stage to make it available
+  ARG NODE_MAJOR
   RUN apt-get update -qq && \\
       apt-get install --no-install-recommends -y \\
-        build-essential git libpq-dev curl gnupg2 procps && \\
-      curl -fsSL https://deb.nodesource.com/setup_${NODE_MAJOR}.x | bash - && \\
+        build-essential git libpq-dev curl gnupg2 procps \\
+        libyaml-dev libvips pkg-config && \\
+      mkdir -p /etc/apt/keyrings && \\
+      curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg && \\
+      echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_\${NODE_MAJOR}.x nodistro main" > /etc/apt/sources.list.d/nodesource.list && \\
+      apt-get update -qq && \\
       apt-get install -y --no-install-recommends nodejs && \\
+      npm install -g corepack && \\
       corepack enable && \\
       rm -rf /var/lib/apt/lists/*
+
+  # ---- dependencies ----
+  FROM base AS deps
 
   COPY Gemfile Gemfile.lock ./
   COPY vendor/gems/wulin_master ./vendor/gems/wulin_master
   RUN bundle install --jobs 4
 
   COPY package.json yarn.lock .yarnrc.yml ./
+  COPY .yarn .yarn
   RUN yarn install
+
+  # ---- development ----
+  FROM deps AS development
 
   COPY . .
 
   EXPOSE 3000
   CMD ["./bin/dev"]
+
+  # ---- production builder ----
+  FROM deps AS builder
+
+  ENV RAILS_ENV=production \\
+      NODE_ENV=production
+
+  COPY . .
+
+  RUN yarn build && \\
+      bundle exec rails dartsass:build && \\
+      SECRET_KEY_BASE_DUMMY=1 bundle exec rails assets:precompile && \\
+      rm -rf node_modules tmp/cache vendor/gems/wulin_master/.git
+
+  # ---- production ----
+  FROM ruby:\${RUBY_VERSION}-slim AS production
+
+  RUN apt-get update -qq && \\
+      apt-get install --no-install-recommends -y \\
+        libpq5 curl procps libvips libyaml-0-2 && \\
+      rm -rf /var/lib/apt/lists/*
+
+  WORKDIR /rails
+
+  COPY --from=builder /usr/local/bundle /usr/local/bundle
+  COPY --from=builder /rails /rails
+
+  ENV RAILS_ENV=production \\
+      RAILS_SERVE_STATIC_FILES=1 \\
+      RAILS_LOG_TO_STDOUT=1
+
+  EXPOSE 3000
+  CMD ["bundle", "exec", "puma", "-C", "config/puma.rb"]
 DOCKERFILE
 
 file "docker-compose.yml", <<~YAML
   services:
     db:
-      container_name: wulin_postgres
       image: postgres:16-alpine
       volumes:
-        - volumes/postgres_data:/var/lib/postgresql/data
+        - postgres_data:/var/lib/postgresql/data
       environment:
         POSTGRES_USER: \${POSTGRES_USER:-postgres}
         POSTGRES_PASSWORD: \${POSTGRES_PASSWORD:-password}
       healthcheck:
-        test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER"]
+        test: ["CMD-SHELL", "pg_isready -U \$\$POSTGRES_USER"]
         interval: 5s
         timeout: 5s
         retries: 5
 
     redis:
-      container_name: wulin_redis
       image: redis:7-alpine
       volumes:
-        - volumes/redis_data:/data
+        - redis_data:/data
       healthcheck:
         test: ["CMD", "redis-cli", "ping"]
         interval: 5s
@@ -291,9 +362,9 @@ file "docker-compose.yml", <<~YAML
         retries: 5
 
     app:
-      container_name: wulin_app
-      build: .
-      command: ./bin/dev
+      build:
+        context: .
+        target: development
       volumes:
         - .:/rails
         - bundle_cache:/usr/local/bundle
@@ -301,7 +372,8 @@ file "docker-compose.yml", <<~YAML
       ports:
         - "3000:3000"
       env_file:
-        - .env
+        - path: .env
+          required: false
       environment:
         DB_HOST: db
         REDIS_URL: redis://redis:6379/1
@@ -319,7 +391,7 @@ file "docker-compose.yml", <<~YAML
 YAML
 
 # =============================================================================
-# 10. Database Configuration
+# 11. Database Configuration
 # =============================================================================
 
 file "config/database.yml", <<~YAML, force: true
@@ -347,7 +419,7 @@ file "config/database.yml", <<~YAML, force: true
 YAML
 
 # =============================================================================
-# 11. README
+# 12. README
 # =============================================================================
 
 file "README.md", <<~MARKDOWN, force: true
@@ -366,7 +438,7 @@ file "README.md", <<~MARKDOWN, force: true
 
   ## Quick Start (Local)
 
-  Prerequisites: Ruby #{RUBY_VERSION}, Node 20+, PostgreSQL, Redis.
+  Prerequisites: Ruby #{ruby_ver}, Node 20+, PostgreSQL, Redis.
 
   ```bash
   bundle install
@@ -419,7 +491,7 @@ file "README.md", <<~MARKDOWN, force: true
 MARKDOWN
 
 # =============================================================================
-# 12. After Bundle — generators, test infra, asset build, cleanup
+# 13. After Bundle — generators, test infra, asset build, cleanup
 # =============================================================================
 
 after_bundle do
@@ -460,12 +532,9 @@ after_bundle do
     RUBY
   end
 
-  # Include FactoryBot methods
+  # Include FactoryBot methods (with correct indentation)
   inject_into_file "spec/rails_helper.rb", after: "RSpec.configure do |config|\n" do
-    <<~RUBY
-      config.include FactoryBot::Syntax::Methods
-
-    RUBY
+    "  config.include FactoryBot::Syntax::Methods\n\n"
   end
 
   # Shoulda Matchers
@@ -517,6 +586,14 @@ after_bundle do
   environment "config.action_mailer.delivery_method = :letter_opener", env: "development"
   environment 'config.action_mailer.default_url_options = { host: "localhost", port: 3000 }', env: "development"
 
+  # -- Remove conflicting gems from default test group --
+  gsub_file "Gemfile", /^\s*gem "capybara".*\n/, ""
+  gsub_file "Gemfile", /^\s*gem "selenium-webdriver".*\n/, ""
+  gsub_file "Gemfile", /^\s*gem "rubocop-rails-omakase".*\n/, ""
+
+  # Clean up empty groups left after gem removal
+  gsub_file "Gemfile", /^group :test do\n\s*end\n/, ""
+
   # -- Assets: copy icons & configure esbuild --
   run "yarn run copy-icons"
 
@@ -532,8 +609,8 @@ after_bundle do
     --loader:.woff2=file
   ].join(" ")
 
-  package_json["scripts"]["build"]       = "esbuild #{esbuild_flags}"
-  package_json["scripts"]["build:watch"]  = "esbuild #{esbuild_flags} --watch=forever"
+  package_json["scripts"]["build"]       = "esbuild \#{esbuild_flags}"
+  package_json["scripts"]["build:watch"]  = "esbuild \#{esbuild_flags} --watch=forever"
   package_json["scripts"]["dev"]          = "bin/dev"
   File.write("package.json", JSON.pretty_generate(package_json))
 

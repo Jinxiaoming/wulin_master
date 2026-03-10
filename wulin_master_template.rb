@@ -294,8 +294,20 @@ file "Dockerfile", <<~DOCKERFILE, force: true
 
   COPY . .
 
-  # Bootstrap entrypoint: ensure gems are installed when bundle_cache volume is empty
-  RUN echo '#!/bin/sh\\nif [ ! -f /usr/local/bundle/bin/rails ]; then bundle install --jobs 4; fi\\nexec "$@"' > /usr/local/bin/docker-entrypoint-dev.sh && chmod +x /usr/local/bin/docker-entrypoint-dev.sh
+  COPY <<'ENTRYPOINT' /usr/local/bin/docker-entrypoint-dev.sh
+  #!/bin/sh
+  set -e
+  if [ ! -f /usr/local/bundle/bin/rails ]; then
+    echo "[entrypoint] Gems missing — running bundle install..."
+    bundle install --jobs 4 || {
+      echo "[entrypoint] bundle install failed — clearing gem cache and retrying..."
+      rm -rf /usr/local/bundle/cache/*.gem
+      bundle install --jobs 4
+    }
+  fi
+  exec "$@"
+  ENTRYPOINT
+  RUN chmod +x /usr/local/bin/docker-entrypoint-dev.sh
   ENTRYPOINT ["/usr/local/bin/docker-entrypoint-dev.sh"]
 
   EXPOSE 3000

@@ -210,9 +210,9 @@ RB
 file ".env.example", <<~ENV
   POSTGRES_USER=postgres
   POSTGRES_PASSWORD=password
-  DB_HOST=localhost
+  DB_HOST=db
   DB_PORT=5432
-  REDIS_URL=redis://localhost:6379/1
+  REDIS_URL=redis://redis:6379/1
   RAILS_ENV=development
 ENV
 
@@ -226,12 +226,17 @@ append_to_file ".gitignore", <<~GIT
   # Coverage
   coverage/
 
-  # Volumes
+  # Docker volumes data
   volumes/
 
   # Yarn 4
   .yarn/install-state.gz
   .pnp.*
+
+  # AIDA
+  .aida_runs/
+  .aida/
+  .docker-compose.yml
 GIT
 
 # =============================================================================
@@ -244,6 +249,8 @@ file ".dockerignore", <<~TEXT, force: true
   .env.local
   .env.*.local
   node_modules
+  volumes
+  vendor/bundle
   tmp
   log
   storage
@@ -251,6 +258,8 @@ file ".dockerignore", <<~TEXT, force: true
   coverage
   .bundle
   .yarn/install-state.gz
+  .aida_runs
+  .aida
 TEXT
 
 file "Dockerfile", <<~DOCKERFILE, force: true
@@ -347,15 +356,18 @@ file "Dockerfile", <<~DOCKERFILE, force: true
   CMD ["bundle", "exec", "puma", "-C", "config/puma.rb"]
 DOCKERFILE
 
+run "mkdir -p volumes"
+
 file "docker-compose.yml", <<~YAML
   services:
     db:
       image: postgres:16-alpine
       volumes:
-        - postgres_data:/var/lib/postgresql/data
+        - ./volumes/postgres_data:/var/lib/postgresql/data
       environment:
         POSTGRES_USER: \${POSTGRES_USER:-postgres}
         POSTGRES_PASSWORD: \${POSTGRES_PASSWORD:-password}
+        PGDATA: /var/lib/postgresql/data/pgdata
       healthcheck:
         test: ["CMD-SHELL", "pg_isready -U \$\$POSTGRES_USER"]
         interval: 5s
@@ -365,7 +377,7 @@ file "docker-compose.yml", <<~YAML
     redis:
       image: redis:7-alpine
       volumes:
-        - redis_data:/data
+        - ./volumes/redis_data:/data
       healthcheck:
         test: ["CMD", "redis-cli", "ping"]
         interval: 5s
@@ -378,7 +390,7 @@ file "docker-compose.yml", <<~YAML
         target: development
       volumes:
         - .:/rails
-        - bundle_cache:/usr/local/bundle
+        - ./volumes/bundle_cache:/usr/local/bundle
         - node_modules:/rails/node_modules
       ports:
         - "3000:3000"
@@ -395,9 +407,6 @@ file "docker-compose.yml", <<~YAML
           condition: service_healthy
 
   volumes:
-    postgres_data:
-    redis_data:
-    bundle_cache:
     node_modules:
 YAML
 

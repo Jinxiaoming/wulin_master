@@ -4,7 +4,7 @@
 #   rails new wulin_app --skip-hotwire --database=postgresql -j esbuild \
 #     -m ./wulin_master_template.rb
 
-ruby_ver = File.read(".ruby-version").strip rescue RUBY_VERSION
+ruby_ver = File.read(".ruby-version").strip.sub(/^ruby-/, '') rescue RUBY_VERSION
 
 # =============================================================================
 # 1. Yarn — use node-modules linker for compatibility

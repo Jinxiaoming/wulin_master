@@ -123,11 +123,6 @@ file "package.json", <<~JSON, force: true
       "tom-select": "^2.4.3",
       "@hotwired/stimulus": "^3.2.2",
       "@hotwired/turbo-rails": "^8.0.21"
-    },
-    "optionalDependencies": {
-      "@esbuild/linux-arm64": "0.25.0",
-      "@esbuild/linux-x64": "0.25.0",
-      "@esbuild/darwin-arm64": "0.25.0"
     }
   }
 JSON
@@ -609,8 +604,8 @@ after_bundle do
     --loader:.woff2=file
   ].join(" ")
 
-  package_json["scripts"]["build"]       = "esbuild \#{esbuild_flags}"
-  package_json["scripts"]["build:watch"]  = "esbuild \#{esbuild_flags} --watch=forever"
+  package_json["scripts"]["build"]       = "esbuild #{esbuild_flags}"
+  package_json["scripts"]["build:watch"]  = "esbuild #{esbuild_flags} --watch=forever"
   package_json["scripts"]["dev"]          = "bin/dev"
   File.write("package.json", JSON.pretty_generate(package_json))
 

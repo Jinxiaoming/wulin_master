@@ -405,6 +405,12 @@ file "docker-compose.yml", <<~YAML
           condition: service_healthy
         redis:
           condition: service_healthy
+      healthcheck:
+        test: ["CMD-SHELL", "bundle check > /dev/null 2>&1"]
+        interval: 10s
+        timeout: 5s
+        retries: 30
+        start_period: 120s
 
   volumes:
     node_modules:

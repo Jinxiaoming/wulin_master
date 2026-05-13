@@ -22,7 +22,7 @@ YAML
 # 2. Wulin Master — add as git submodule
 # =============================================================================
 
-run "git submodule add -b v3 https://github.com/ekohe/wulin_master.git vendor/gems/wulin_master"
+run "git submodule add -b v3.1 https://github.com/Jinxiaoming/wulin_master.git vendor/gems/wulin_master"
 run "git config -f .gitmodules submodule.vendor/gems/wulin_master.branch v3"
 
 # =============================================================================

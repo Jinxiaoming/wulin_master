@@ -67,6 +67,8 @@ describe HomepageController, type: :controller do
 
     it "should add item to menu if submenu is nil" do
       controller.class.menu { mock_block }
+      # Clear any prior submenu instance variable
+      controller.class.instance_variable_set(:@submenu, nil)
       controller.class.menu = @menu
       allow(mock_item).to receive(:title).and_return("Post")
       expect(WulinMaster::MenuEntry).to receive(:new).with("Post", "/", screen_name: nil).and_return(mock_entry)

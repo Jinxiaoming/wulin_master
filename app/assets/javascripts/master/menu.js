@@ -24,7 +24,7 @@ $(document).ready(function() {
   loadPageForHistoryState();
 });
 
-window.loadPageForHistoryState = function loadPageForHistoryState() {
+window.loadPageForHistoryState = function() {
   var url = History.getState().url;
   if (url != currentUrl) {
     if (url === undefined) {
@@ -38,7 +38,7 @@ window.loadPageForHistoryState = function loadPageForHistoryState() {
   }
 }
 
-window.load_page = function load_page(url) {
+window.load_page = function(url) {
   // Empty the current screen content
   $("#screen_content").empty();
 
@@ -85,7 +85,7 @@ window.load_page = function load_page(url) {
   });
 }
 
-window.cleanUpEditors = function cleanUpEditors(id = false) {
+window.cleanUpEditors = function(id = false) {
   // we should cleanup open editors
   if (id) {
     $(".select-editor").data("id", id).remove();

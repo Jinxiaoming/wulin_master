@@ -1,8 +1,13 @@
 # frozen_string_literal: true
 
 # Usage (replace APP_NAME with your app directory name, same as `rails new APP_NAME`):
-#   rails new APP_NAME --skip-hotwire --database=postgresql -j esbuild \
+#   rails new APP_NAME --skip-hotwire --database=postgresql --skip-javascript \
 #     -m ./wulin_master_template.rb
+#
+# Use --skip-javascript (NOT -j esbuild): this template does ZERO asset compilation at scaffold time
+# (the JS/CSS bundle is a build artifact the runtime rebuilds via bin/dev / assets:precompile).
+# -j esbuild would run `yarn build` during `rails new`, which is redundant here and fails in a
+# hardened, exec-restricted build sandbox (esbuild can't exec in a noexec /tmp).
 
 ruby_ver = begin
   File.read(".ruby-version").strip.sub(/^ruby-/, "")

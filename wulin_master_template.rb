@@ -394,16 +394,11 @@ after_bundle do
   run "yarn run copy-icons"
   run "bundle exec rake wulin_master:generate_theme_color_css"
 
-  # Asset COMPILATION (the JS bundle + compiled CSS) is a build artifact, not source — the runtime
-  # container rebuilds it every boot via `bin/dev` (Procfile.dev: `js: yarn build:watch`,
-  # `css: bin/rails dartsass:watch`). Compiling it here too is redundant, and it is the ONLY step
-  # that needs an exec-capable /tmp (esbuild extracts a helper there), which breaks in a hardened
-  # build sandbox. So an automated build plane (AIDA/Nexus) sets WULIN_SKIP_ASSET_BUILD to keep the
-  # scaffold source-only; humans scaffolding locally get the full build by default (var unset).
-  unless ENV["WULIN_SKIP_ASSET_BUILD"]
-    run "yarn build"
-    rails_command "dartsass:build"
-  end
+  # No asset compilation at scaffold time. The JS bundle + compiled CSS are build artifacts the
+  # runtime always rebuilds — `bin/dev` in development (Procfile.dev: `js: yarn build:watch`,
+  # `css: bin/rails dartsass:watch`), the jsbundling-rails `assets:precompile` hook in production —
+  # so compiling here is redundant, and esbuild's exec-in-/tmp breaks in a hardened build sandbox
+  # anyway. app/assets/builds/.keep holds the tracked dir until the first build.
 
   remove_file "app/assets/stylesheets/application.css"
 

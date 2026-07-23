@@ -230,53 +230,15 @@ file ".dockerignore", <<~TEXT, force: true
   public/assets
 TEXT
 
-file "Dockerfile", <<~DOCKERFILE, force: true
-  # syntax=docker/dockerfile:1
-  ARG RUBY_VERSION=#{ruby_ver}
-  ARG NODE_MAJOR=20
-
-  FROM ruby:${RUBY_VERSION}-slim AS base
-  WORKDIR /rails
-
-  # Match Gemfile.lock "BUNDLED WITH" — override at build: docker compose build --build-arg BUNDLER_VERSION=x.y.z
-  ARG BUNDLER_VERSION=2.7.2
-  RUN gem install bundler -v "${BUNDLER_VERSION}"
-
-  ARG NODE_MAJOR
-  RUN apt-get update -qq && \\
-      apt-get install --no-install-recommends -y \\
-        build-essential git libpq-dev curl gnupg2 procps \\
-        libyaml-dev libvips pkg-config && \\
-      mkdir -p /etc/apt/keyrings && \\
-      curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg && \\
-      echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_${NODE_MAJOR}.x nodistro main" > /etc/apt/sources.list.d/nodesource.list && \\
-      apt-get update -qq && \\
-      apt-get install -y --no-install-recommends nodejs && \\
-      npm install -g corepack && \\
-      corepack enable && \\
-      rm -rf /var/lib/apt/lists/*
-
-  FROM base AS deps
-  COPY Gemfile Gemfile.lock ./
-  COPY vendor/gems/wulin_master ./vendor/gems/wulin_master
-  RUN bundle install --jobs 4 || { \\
-        echo "[deps] bundle install failed — retrying after cache clear..." && \\
-        rm -rf /usr/local/bundle/cache/*.gem && \\
-        bundle install --jobs 4; \\
-      }
-
-  COPY package.json yarn.lock .yarnrc.yml ./
-  RUN yarn install || true
-
-  FROM deps AS development
-  COPY . .
-
-  COPY <<'ENTRYPOINT' /usr/local/bin/docker-entrypoint-dev.sh
+# Dev entrypoint as a COMMITTED file (COPY'd in the Dockerfile). NOT a Dockerfile heredoc:
+# `COPY <<HEREDOC` needs BuildKit, but Nexus builds with the legacy builder (DOCKER_BUILDKIT=0,
+# required for the socket-proxy), which fails a heredoc COPY with "no source files were specified".
+file "bin/docker-entrypoint-dev.sh", <<~SH, force: true
   #!/bin/sh
   set -e
   bundle check > /dev/null 2>&1 || {
     echo "[entrypoint] Gems out of sync — running bundle install..."
-    bundle install --jobs 4
+    bundle install --jobs "$(nproc)"
   }
   echo "[entrypoint] Checking database..."
   if bin/rails db:version > /dev/null 2>&1; then
@@ -287,7 +249,50 @@ file "Dockerfile", <<~DOCKERFILE, force: true
     bin/rails db:prepare
   fi
   exec "$@"
-  ENTRYPOINT
+SH
+
+# The base layer (Ruby + Node + build toolchain + bundler + git safe.directory) is a PREBUILT
+# image published by wulin_master CI and shared by EVERY generated app. A cold build (CI / a
+# fresh machine with no Docker layer cache) then PULLS it instead of re-running apt + the
+# NodeSource install — the slowest part of a from-scratch build. Its definition is the single
+# source of truth at vendor/gems/wulin_master/docker/base.Dockerfile (shipped via the submodule),
+# so a fully offline / no-registry-access build is always possible with no duplicated definition:
+#   docker build -f vendor/gems/wulin_master/docker/base.Dockerfile -t wulin-base:local .
+#   docker compose build --build-arg BASE_IMAGE=wulin-base:local
+#
+# NB: no `# syntax=docker/dockerfile:1` — that opts into the BuildKit frontend, but the build
+# runs on the legacy builder (DOCKER_BUILDKIT=0). Keep this Dockerfile legacy-compatible.
+file "Dockerfile", <<~DOCKERFILE, force: true
+  ARG BASE_IMAGE=gitlab.ekohe.com:5050/ekohe/wulin/wulin_master/base:ruby-#{ruby_ver}-node-20
+  FROM ${BASE_IMAGE} AS base
+
+  FROM base AS deps
+
+  # wulin_master is a path gem AND a yarn workspace member. Copy ONLY the files bundler and
+  # yarn need to resolve dependencies — the gemspec + the VERSION constant it requires, and the
+  # workspace member's package.json. Editing the submodule's actual source (the common dev loop)
+  # then does NOT invalidate these expensive install layers; the full tree arrives later via
+  # `COPY . .` in the development stage. (A path gem installs in-place — no packaging — so the
+  # gemspec's `git ls-files` returning empty here is harmless.)
+  COPY Gemfile Gemfile.lock ./
+  COPY vendor/gems/wulin_master/wulin_master.gemspec ./vendor/gems/wulin_master/
+  COPY vendor/gems/wulin_master/lib/wulin_master/version.rb ./vendor/gems/wulin_master/lib/wulin_master/
+  RUN bundle install --jobs "$(nproc)" || { \\
+        echo "[deps] bundle install failed — retrying after cache clear..." && \\
+        rm -rf /usr/local/bundle/cache/*.gem && \\
+        bundle install --jobs "$(nproc)"; \\
+      }
+
+  COPY package.json yarn.lock .yarnrc.yml ./
+  COPY vendor/gems/wulin_master/package.json ./vendor/gems/wulin_master/
+  RUN yarn install || true
+
+  FROM deps AS development
+  COPY . .
+
+  # Plain COPY of the committed entrypoint (legacy-builder compatible — see the file "…" above).
+  # Copied to /usr/local/bin so the runtime `.:/rails` bind mount never shadows it.
+  COPY bin/docker-entrypoint-dev.sh /usr/local/bin/docker-entrypoint-dev.sh
   RUN chmod +x /usr/local/bin/docker-entrypoint-dev.sh
   ENTRYPOINT ["/usr/local/bin/docker-entrypoint-dev.sh"]
 
@@ -323,7 +328,12 @@ file "docker-compose.yml", <<~YAML
       container_name: #{app_name}_app
       volumes:
         - .:/rails
-        - ./volumes/bundle_cache:/usr/local/bundle
+        # Named volume (NOT a host bind): Docker seeds it from the image's /usr/local/bundle on
+        # first mount, so the gems installed at build time are already present → the entrypoint's
+        # `bundle check` passes and skips re-install. A host bind starts EMPTY and shadows the image
+        # gems, forcing a full `bundle install` (native recompile) at every first boot — doubling the
+        # gem cost. node_modules already uses a named volume for the same reason.
+        - bundle_cache:/usr/local/bundle
         - node_modules:/rails/node_modules
       ports:
         - "3000:3000"
@@ -344,6 +354,7 @@ file "docker-compose.yml", <<~YAML
 
   volumes:
     node_modules:
+    bundle_cache:
 YAML
 
 # =============================================================================
@@ -402,9 +413,13 @@ after_bundle do
   say "=================================================================", :green
   say ""
   say "  Next steps — Docker (PostgreSQL in Compose):", :yellow
+  say "    docker login gitlab.ekohe.com:5050   # once — the base image is pulled from here", :yellow
   say "    docker compose up --build", :yellow
   say "    # On first start the app entrypoint runs db:prepare; after that it runs", :yellow
   say "    # db:migrate when the database already exists (no env vars required).", :yellow
+  say "    # No registry access? Build the base image from the submodule instead:", :yellow
+  say "    #   docker build -f vendor/gems/wulin_master/docker/base.Dockerfile -t wulin-base:local .", :yellow
+  say "    #   docker compose build --build-arg BASE_IMAGE=wulin-base:local", :yellow
   say ""
   say "  Next steps — local machine:", :yellow
   say "    bundle install && yarn install", :yellow

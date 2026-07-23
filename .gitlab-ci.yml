@@ -17,6 +17,7 @@ cache:
     - vendor/bundle
 
 stages:
+  - base
   - test
 
 before_script:
@@ -34,6 +35,44 @@ before_script:
 
   # install gems
   - bundle check || bundle install --jobs 8
+
+# Build & publish the shared base image (Ruby + Node + toolchain) consumed by every
+# wulin_master-generated app's Dockerfile (FROM $CI_REGISTRY_IMAGE/base:...). Runs only when the
+# base definition or the Ruby version changes; otherwise trigger it manually. Keep RUBY_VERSION in
+# sync with .ruby-version so the published tag matches the default the template bakes into apps.
+build:base:
+  stage: base
+  image: docker:27-cli
+  services:
+    - docker:27-dind
+  variables:
+    RUBY_VERSION: "3.3.4"
+    NODE_MAJOR: "20"
+    # Legacy builder, matching the runtime build plane (Nexus socket-proxy). Also avoids needing a
+    # BuildKit-capable runner here.
+    DOCKER_BUILDKIT: "0"
+    # Standard dind-over-TLS wiring. If these runners expose a mounted Docker socket / socket-proxy
+    # instead of dind, drop the `services:` block and point DOCKER_HOST at that socket.
+    DOCKER_HOST: "tcp://docker:2376"
+    DOCKER_TLS_CERTDIR: "/certs"
+    DOCKER_CERT_PATH: "/certs/client"
+    DOCKER_TLS_VERIFY: "1"
+  before_script: []  # override the global bundle/apt before_script — not needed to build an image
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "push"'
+      changes:
+        - docker/base.Dockerfile
+        - .ruby-version
+    - when: manual
+      allow_failure: true
+  script:
+    - export BASE_TAG="$CI_REGISTRY_IMAGE/base:ruby-$RUBY_VERSION-node-$NODE_MAJOR"
+    - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
+    - docker build -f docker/base.Dockerfile
+        --build-arg RUBY_VERSION="$RUBY_VERSION"
+        --build-arg NODE_MAJOR="$NODE_MAJOR"
+        -t "$BASE_TAG" .
+    - docker push "$BASE_TAG"
 
 assets_precompile:
   stage: test

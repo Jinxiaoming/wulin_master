@@ -22,8 +22,21 @@ YAML
 # 2. Wulin Master — add as git submodule
 # =============================================================================
 
-run "git submodule add -b v3 https://github.com/ekohe/wulin_master.git vendor/gems/wulin_master"
-run "git config -f .gitmodules submodule.vendor/gems/wulin_master.branch v3"
+# Idempotent + self-healing: a failed scaffold retry re-runs this template over a partial tree.
+# Guard on the .gitmodules MAPPING (the `url` key — what submodule ops actually need), NOT the
+# submodule's own `.git`. A half-registered submodule has the directory but no mapping; the old
+# guard skipped the re-add in that state, then blindly set the `branch` key → a .gitmodules with
+# only `branch` (no path/url) → "no submodule mapping found". When the mapping is absent we clean
+# any partial checkout + stale index/modules entry and re-add cleanly (`git submodule add` writes
+# the full path+url+branch); the branch key is set only once a valid mapping exists.
+run <<~'SH'
+  if ! git config -f .gitmodules --get submodule.vendor/gems/wulin_master.url >/dev/null 2>&1; then
+    git rm -f --cached vendor/gems/wulin_master 2>/dev/null || true
+    rm -rf vendor/gems/wulin_master .git/modules/vendor/gems/wulin_master
+    git submodule add -b v3 https://github.com/ekohe/wulin_master.git vendor/gems/wulin_master
+  fi
+  git config -f .gitmodules submodule.vendor/gems/wulin_master.branch v3
+SH
 
 # =============================================================================
 # 3. Gem Dependencies
@@ -31,6 +44,12 @@ run "git config -f .gitmodules submodule.vendor/gems/wulin_master.branch v3"
 
 gem "wulin_master", path: "vendor/gems/wulin_master"
 gem "dartsass-rails"
+# esbuild is wired up by this template directly (package.json build script + Procfile + the
+# app/assets/builds path), so the app is scaffolded with `--skip-javascript` (NOT `-j esbuild`):
+# `-j esbuild` runs `yarn build` during `rails new`, which fails in a hardened build sandbox
+# (esbuild can't exec) and is redundant — the runtime rebuilds assets via `bin/dev`. jsbundling-rails
+# is still declared for the production `assets:precompile` hook.
+gem "jsbundling-rails"
 
 # =============================================================================
 # 4. JavaScript & CSS
@@ -78,6 +97,11 @@ JSON
 
 # Create fonts directory
 run "mkdir -p app/assets/fonts"
+
+# esbuild output dir (normally created by `-j esbuild`; we scaffold with --skip-javascript, so
+# create it + keep it tracked). The runtime's `bin/dev` (yarn build:watch) fills it.
+run "mkdir -p app/assets/builds"
+run "touch app/assets/builds/.keep"
 
 # Add fonts in assets.rb initializer
 run "rm -f config/initializers/assets.rb"
@@ -357,9 +381,18 @@ after_bundle do
   File.write("Procfile.dev", cleaned)
 
   run "yarn run copy-icons"
-  run "yarn build"
   run "bundle exec rake wulin_master:generate_theme_color_css"
-  rails_command "dartsass:build"
+
+  # Asset COMPILATION (the JS bundle + compiled CSS) is a build artifact, not source — the runtime
+  # container rebuilds it every boot via `bin/dev` (Procfile.dev: `js: yarn build:watch`,
+  # `css: bin/rails dartsass:watch`). Compiling it here too is redundant, and it is the ONLY step
+  # that needs an exec-capable /tmp (esbuild extracts a helper there), which breaks in a hardened
+  # build sandbox. So an automated build plane (AIDA/Nexus) sets WULIN_SKIP_ASSET_BUILD to keep the
+  # scaffold source-only; humans scaffolding locally get the full build by default (var unset).
+  unless ENV["WULIN_SKIP_ASSET_BUILD"]
+    run "yarn build"
+    rails_command "dartsass:build"
+  end
 
   remove_file "app/assets/stylesheets/application.css"
 

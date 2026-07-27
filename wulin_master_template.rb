@@ -34,11 +34,15 @@ YAML
 # only `branch` (no path/url) → "no submodule mapping found". When the mapping is absent we clean
 # any partial checkout + stale index/modules entry and re-add cleanly (`git submodule add` writes
 # the full path+url+branch); the branch key is set only once a valid mapping exists.
+# TESTING: vendor the FORK's v3, not ekohe's. The fork carries docker/base.Dockerfile (the offline
+# base recipe AIDA builds when the private registry is unreachable); ekohe's v3 does not yet. This
+# keeps the submodule consistent with the template source (this file is served from the fork's v3).
+# Switch back to https://github.com/ekohe/wulin_master.git once base.Dockerfile is merged to ekohe v3.
 run <<~'SH'
   if ! git config -f .gitmodules --get submodule.vendor/gems/wulin_master.url >/dev/null 2>&1; then
     git rm -f --cached vendor/gems/wulin_master 2>/dev/null || true
     rm -rf vendor/gems/wulin_master .git/modules/vendor/gems/wulin_master
-    git submodule add -b v3 https://github.com/ekohe/wulin_master.git vendor/gems/wulin_master
+    git submodule add -b v3 https://github.com/Jinxiaoming/wulin_master.git vendor/gems/wulin_master
   fi
   git config -f .gitmodules submodule.vendor/gems/wulin_master.branch v3
 SH

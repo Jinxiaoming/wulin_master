@@ -155,7 +155,7 @@ JS
 
 # Setup Procfile.dev
 file "Procfile.dev", <<~PROCFILE, force: true
-  web: bin/rails server -b 0.0.0.0
+  web: bin/rails server -b 0.0.0.0 -p 3000
   js: yarn build:watch
   css: bin/rails dartsass:watch
 PROCFILE
@@ -172,22 +172,6 @@ file "bin/dev", <<~SH, force: true
 SH
 chmod "bin/dev", 0o755
 
-# Keep runtime artifacts + deps OUT of git. `rails new --skip-javascript` never adds node_modules to
-# .gitignore, and the first build commits with `git add -A`, so without this node_modules (hundreds
-# of MB), the rebuilt-at-runtime JS/CSS bundle, the local .env, and the DB volume would all land in
-# the repo. The asset bundle is a build artifact (bin/dev rebuilds it), so only the .keep is tracked.
-append_to_file ".gitignore", <<~IGNORE
-
-  # ── Node deps + bundled assets (rebuilt at runtime by bin/dev) ──
-  /node_modules
-  /app/assets/builds/*
-  !/app/assets/builds/.keep
-  .yarn/*
-  !.yarn/releases
-  # ── Local env + Docker volumes ──
-  /.env
-  /volumes
-IGNORE
 
 # Setup Wulin Master assets initializer
 initializer "wulin_master_assets.rb", <<~RB
@@ -231,9 +215,17 @@ ENV
 
 run "cp .env.example .env"
 
+# `rails new --skip-javascript` never adds node_modules to .gitignore, and the first build commits
+# with `git add -A` — so without these, node_modules (100s of MB), the rebuilt-at-runtime JS/CSS
+# bundle, the DB volume, and the local .env would all land in the repo. The asset bundle is a build
+# artifact (bin/dev rebuilds it), so only its .keep stays tracked.
 append_to_file ".gitignore", <<~GIT
 
-  # Docker
+  # Node deps + bundled assets (rebuilt at runtime by bin/dev)
+  /node_modules
+  /app/assets/builds/*
+  !/app/assets/builds/.keep
+  # Docker volumes + local env
   volumes/
   /.env
   !/.env.example
@@ -327,7 +319,10 @@ file "Dockerfile", <<~DOCKERFILE, force: true
 
   COPY package.json yarn.lock .yarnrc.yml ./
   COPY vendor/gems/wulin_master/package.json ./vendor/gems/wulin_master/
-  RUN yarn install || true
+  # Retry once after clearing the cache (mirrors the bundle install block), but do NOT swallow a
+  # real failure with `|| true`: a broken install would otherwise seed the node_modules named volume
+  # with a half-tree and resurface later as a confusing runtime JS-build error.
+  RUN yarn install || { echo "[deps] yarn install failed — retrying after cache clear..." && yarn cache clean && yarn install; }
 
   FROM deps AS development
   COPY . .

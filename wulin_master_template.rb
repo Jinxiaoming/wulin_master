@@ -59,6 +59,10 @@ gem "dartsass-rails"
 # (esbuild can't exec) and is redundant — the runtime rebuilds assets via `bin/dev`. jsbundling-rails
 # is still declared for the production `assets:precompile` hook.
 gem "jsbundling-rails"
+# foreman runs Procfile.dev (web + js/css watchers) via bin/dev. Required because the generated
+# bin/dev (below) delegates to it; in the development group so `bundle install` provides it in the
+# runtime container without a boot-time `gem install`.
+gem "foreman", group: :development
 
 # =============================================================================
 # 4. JavaScript & CSS
@@ -155,6 +159,18 @@ file "Procfile.dev", <<~PROCFILE, force: true
   js: yarn build:watch
   css: bin/rails dartsass:watch
 PROCFILE
+
+# Override the bin/dev `rails new` generates. Its default (`exec ./bin/rails server`) bypasses
+# Procfile.dev entirely — so the web server binds Rails 7.1+'s dev default of LOCALHOST (not
+# 0.0.0.0) and the js/css asset watchers never start. Under Docker that makes the app unreachable
+# via the published port (traffic hits the container's eth0, where puma isn't listening) AND breaks
+# the ngrok preview (which dials app:3000 on the same interface). Delegating to Procfile.dev fixes
+# both: web binds 0.0.0.0 and the asset watchers run. `bundle exec` uses the Gemfile's foreman.
+file "bin/dev", <<~SH, force: true
+  #!/usr/bin/env bash
+  exec bundle exec foreman start -f Procfile.dev "$@"
+SH
+chmod "bin/dev", 0o755
 
 # Setup Wulin Master assets initializer
 initializer "wulin_master_assets.rb", <<~RB

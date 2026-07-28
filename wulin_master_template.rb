@@ -172,6 +172,23 @@ file "bin/dev", <<~SH, force: true
 SH
 chmod "bin/dev", 0o755
 
+# Keep runtime artifacts + deps OUT of git. `rails new --skip-javascript` never adds node_modules to
+# .gitignore, and the first build commits with `git add -A`, so without this node_modules (hundreds
+# of MB), the rebuilt-at-runtime JS/CSS bundle, the local .env, and the DB volume would all land in
+# the repo. The asset bundle is a build artifact (bin/dev rebuilds it), so only the .keep is tracked.
+append_to_file ".gitignore", <<~IGNORE
+
+  # ── Node deps + bundled assets (rebuilt at runtime by bin/dev) ──
+  /node_modules
+  /app/assets/builds/*
+  !/app/assets/builds/.keep
+  .yarn/*
+  !.yarn/releases
+  # ── Local env + Docker volumes ──
+  /.env
+  /volumes
+IGNORE
+
 # Setup Wulin Master assets initializer
 initializer "wulin_master_assets.rb", <<~RB
   # frozen_string_literal: true

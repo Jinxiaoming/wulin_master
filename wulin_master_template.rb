@@ -184,11 +184,9 @@ initializer "wulin_master_assets.rb", <<~RB
     # Add builds directory to asset paths
     config.assets.paths << Rails.root.join("app/assets/builds")
 
-    # Add assets to precompile
-    config.assets.precompile += %w[
-      *.woff
-      *.woff2
-    ]
+    # NB: no `config.assets.precompile += …` — under Propshaft every file on the load path is served
+    # as-is (it has no Sprockets precompile allow-list; the setter is only a no-op compat shim), so
+    # the fonts above are already served. Listing them would be dead config.
 
     config.dartsass.builds = {
       "application.sass" => "application.css"
@@ -373,7 +371,10 @@ file "docker-compose.yml", <<~YAML
         - bundle_cache:/usr/local/bundle
         - node_modules:/rails/node_modules
       ports:
-        - "3000:3000"
+        # Host port overridable (PORT=3001 docker compose up) so two generated apps can run side by
+        # side; container port stays 3000 (matches Procfile.dev / EXPOSE). AIDA's runtime remaps the
+        # host port anyway, so this only affects running the app directly.
+        - "${PORT:-3000}:3000"
       env_file:
         - path: .env
           required: false

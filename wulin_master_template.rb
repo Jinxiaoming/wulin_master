@@ -407,6 +407,15 @@ after_bundle do
   # deps stage, where exec works) does the full build, and `bin/dev` rebuilds the bundle on boot.
   run "yarn install --mode=skip-build"
 
+  # Ship NO GitHub Actions workflows. AIDA pushes generated apps with a per-user OAuth token that
+  # lacks the GitHub `workflow` scope, so ANY commit touching `.github/workflows/` is rejected
+  # ("refusing to allow an OAuth App to create or update workflow ... without workflow scope") —
+  # which silently sinks the whole build (code never reaches the branch; a PR opens with docs only).
+  # `rails new --skip-ci` prevents generating it, but this removes any copy that survived a reused/
+  # dirty checkout or a prior branch. Authoritative stack-owner guarantee: a wulin_master app carries
+  # no workflow file. (A real CI setup, when wanted, is added out-of-band with a workflow-scoped token.)
+  run "rm -rf .github/workflows"
+
   rails_command "generate wulin_master:install"
 
   # jsbundling-rails install overwrites our package.json scripts with

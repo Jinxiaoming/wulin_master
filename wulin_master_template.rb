@@ -401,7 +401,11 @@ YAML
 
 after_bundle do
   run "corepack enable"
-  run "yarn install"
+  # --mode=skip-build: install deps but DON'T run package build scripts (esbuild's postinstall
+  # compiles a native binary, which fails in the hardened, noexec scaffold sandbox — see the header
+  # note). Assets are a runtime artifact anyway: the runtime container's own `yarn install` (Dockerfile
+  # deps stage, where exec works) does the full build, and `bin/dev` rebuilds the bundle on boot.
+  run "yarn install --mode=skip-build"
 
   rails_command "generate wulin_master:install"
 

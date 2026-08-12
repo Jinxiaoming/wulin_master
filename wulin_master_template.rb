@@ -116,6 +116,26 @@ run "mkdir -p app/assets/fonts"
 run "mkdir -p app/assets/builds"
 run "touch app/assets/builds/.keep"
 
+# Sprockets' manifest. Written UNCONDITIONALLY, and that is the point: Sprockets is not something this
+# template asks for, it is something a dependency can drag in — `wulin_auth` still declares `sass-rails`,
+# which pulls sassc-rails → sprockets-rails. The moment it is in the tree Sprockets refuses to boot
+# without this file ("Expected to find a manifest file in `app/assets/config/manifest.js`"), and the app
+# dies before any log a person could read.
+#
+# Not conditional on which capability gems are present: that would be a list of gems to keep in sync with
+# gems, and it would be wrong the first time one of them changed its dependencies. The condition that
+# matters is "Sprockets is in the tree", and a manifest that is simply always there satisfies it without
+# anyone having to know.
+#
+# `builds` and NOT `../stylesheets`: dartsass compiles `application.sass` into `app/assets/builds/
+# application.css`, so linking the stylesheet directory too would declare two sources for one output and
+# Sprockets raises DoubleLinkError on the first page render.
+run "mkdir -p app/assets/config"
+file "app/assets/config/manifest.js", <<~JS, force: true
+  //= link_tree ../images
+  //= link_tree ../builds
+JS
+
 # Add fonts in assets.rb initializer
 run "rm -f config/initializers/assets.rb"
 
@@ -184,9 +204,12 @@ initializer "wulin_master_assets.rb", <<~RB
     # Add builds directory to asset paths
     config.assets.paths << Rails.root.join("app/assets/builds")
 
-    # NB: no `config.assets.precompile += …` — under Propshaft every file on the load path is served
-    # as-is (it has no Sprockets precompile allow-list; the setter is only a no-op compat shim), so
-    # the fonts above are already served. Listing them would be dead config.
+    # NB: no `config.assets.precompile += …`. Which pipeline is actually loaded depends on the
+    # capability gems a project selects — `wulin_auth` declares `sass-rails`, which brings Sprockets in
+    # behind Propshaft — so this must be true either way. Under Propshaft the setter is a no-op compat
+    # shim; under Sprockets the allow-list is `app/assets/config/manifest.js`, which the scaffold writes.
+    # Listing files here would be dead config in the first case and a second, disagreeing source of
+    # truth in the second.
 
     config.dartsass.builds = {
       "application.sass" => "application.css"
@@ -365,6 +388,13 @@ file "docker-compose.yml", <<~YAML
       build:
         context: .
         target: development
+        args:
+          # Defaults to the tag `base.Dockerfile` produces, so a plain `docker compose build` works
+          # for someone with no registry credentials — which includes anyone reproducing a bug. The
+          # Dockerfile's own ARG default is the private registry, and reaching it without a login is a
+          # 403 during metadata resolution: no image, no container, and no logs to explain either.
+          # Set BASE_IMAGE in the environment to pull the published base instead.
+          BASE_IMAGE: ${BASE_IMAGE:-wulin-base:local}
       container_name: #{app_name}_app
       volumes:
         - .:/rails
@@ -464,13 +494,15 @@ after_bundle do
   say "=================================================================", :green
   say ""
   say "  Next steps — Docker (PostgreSQL in Compose):", :yellow
-  say "    docker login gitlab.ekohe.com:5050   # once — the base image is pulled from here", :yellow
+  say "    # Build the base image once — compose defaults to this tag, no registry login needed:", :yellow
+  say "    docker build -f vendor/gems/wulin_master/docker/base.Dockerfile -t wulin-base:local .", :yellow
   say "    docker compose up --build", :yellow
   say "    # On first start the app entrypoint runs db:prepare; after that it runs", :yellow
   say "    # db:migrate when the database already exists (no env vars required).", :yellow
-  say "    # No registry access? Build the base image from the submodule instead:", :yellow
-  say "    #   docker build -f vendor/gems/wulin_master/docker/base.Dockerfile -t wulin-base:local .", :yellow
-  say "    #   docker compose build --build-arg BASE_IMAGE=wulin-base:local", :yellow
+  say "    # Have registry access and want the published base instead?", :yellow
+  say "    #   docker login gitlab.ekohe.com:5050", :yellow
+  say "    #   BASE_IMAGE=gitlab.ekohe.com:5050/ekohe/wulin/wulin_master/base:ruby-#{ruby_ver}-node-20 \\\\", :yellow
+  say "    #     docker compose up --build", :yellow
   say ""
   say "  Next steps — local machine:", :yellow
   say "    bundle install && yarn install", :yellow

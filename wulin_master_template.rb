@@ -64,6 +64,16 @@ gem "jsbundling-rails"
 # runtime container without a boot-time `gem install`.
 gem "foreman", group: :development
 
+# This stack tests with RSpec, and the app is scaffolded `--skip-test` because of it — so the harness
+# has to come from somewhere. Without these an app ships with no way to run a test at all: `spec/` is
+# absent because the gems are, and `test/` is absent because the flag removed it. An implementer then
+# writes a stock `test/test_helper.rb` by hand and leaves a `test/` tree beside the specs everyone
+# else expects.
+gem_group :development, :test do
+  gem "rspec-rails"
+  gem "factory_bot_rails"
+end
+
 # =============================================================================
 # 4. JavaScript & CSS
 # =============================================================================
@@ -148,6 +158,17 @@ initializer "assets.rb", <<~RB
   # Add additional assets to the asset load path.
   # Rails.application.config.assets.paths << Emoji.images_path
   Rails.application.config.assets.paths << Rails.root.join("app/assets/fonts")
+
+  # sassc-rails arrives the same way Sprockets does — `wulin_auth` declares `sass-rails`, which pulls
+  # it in — and on load it sets `css_compressor = :sass` for every environment except development.
+  # Stylesheets here are compiled by dartsass, and libsass cannot re-parse Dart Sass output: it fails
+  # on the digested asset URLs already inside it, raising SassC::SyntaxError at request time. The
+  # symptom is every page 500ing under test and production while development is fine.
+  #
+  # Cleared unconditionally, for the same reason the Sprockets manifest is written unconditionally:
+  # the condition that matters is "sassc-rails is in the tree", and no list of capability gems stays
+  # true about that. dartsass has already produced the CSS this would be compressing.
+  Rails.application.config.assets.css_compressor = nil
 RB
 
 # Setup script/copy_material_icons.js
@@ -450,6 +471,10 @@ after_bundle do
   # dirty checkout or a prior branch. Authoritative stack-owner guarantee: a wulin_master app carries
   # no workflow file. (A real CI setup, when wanted, is added out-of-band with a workflow-scoped token.)
   run "rm -rf .github/workflows"
+
+  # `spec/spec_helper.rb` + `spec/rails_helper.rb` + `.rspec`. Runs here, not above, because the
+  # generator ships with the gem and the gem is only installed once bundle has run.
+  rails_command "generate rspec:install"
 
   rails_command "generate wulin_master:install"
 
